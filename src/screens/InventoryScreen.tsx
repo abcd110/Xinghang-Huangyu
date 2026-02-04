@@ -1,0 +1,1109 @@
+import { useState, useEffect } from 'react';
+import { useGameStore } from '../stores/gameStore';
+import { ItemType, ItemRarity, TYPE_NAMES } from '../data/types';
+import type { InventoryItem } from '../data/types';
+import type { EquipmentInstance } from '../core/EquipmentSystem';
+import { EquipmentSlot } from '../data/equipmentTypes';
+
+interface InventoryScreenProps {
+  onBack: () => void;
+  onNavigate?: (screen: string) => void;
+}
+
+const RARITY_COLORS_MAP: Record<ItemRarity, string> = {
+  [ItemRarity.COMMON]: '#9ca3af',
+  [ItemRarity.UNCOMMON]: '#4ade80',
+  [ItemRarity.RARE]: '#60a5fa',
+  [ItemRarity.EPIC]: '#c084fc',
+  [ItemRarity.LEGENDARY]: '#fbbf24',
+  [ItemRarity.MYTHIC]: '#f87171',
+};
+
+const RARITY_BORDERS: Record<ItemRarity, string> = {
+  [ItemRarity.COMMON]: '#4b5563',
+  [ItemRarity.UNCOMMON]: '#16a34a',
+  [ItemRarity.RARE]: '#2563eb',
+  [ItemRarity.EPIC]: '#9333ea',
+  [ItemRarity.LEGENDARY]: '#d97706',
+  [ItemRarity.MYTHIC]: '#dc2626',
+};
+
+const SLOT_ICONS: Record<EquipmentSlot, string> = {
+  [EquipmentSlot.HEAD]: '头',
+  [EquipmentSlot.BODY]: '甲',
+  [EquipmentSlot.LEGS]: '腿',
+  [EquipmentSlot.FEET]: '靴',
+  [EquipmentSlot.WEAPON]: '武',
+  [EquipmentSlot.ACCESSORY]: '饰',
+};
+
+// 合并后的分类
+const CATEGORIES = [
+  { id: 'all', label: '全部' },
+  { id: 'equipment', label: '装备' }, // 武器/防具/饰品 + 神话装备
+  { id: 'consumable', label: '消耗品' },
+  { id: 'material', label: '材料' },
+  { id: 'misc', label: '道具' }, // 特殊/技能书
+];
+
+export default function InventoryScreen({ onBack, onNavigate }: InventoryScreenProps) {
+  const { gameManager, useItem, equipItem, unequipItem, sublimateItem, getEnhancePreview } = useGameStore();
+  const inventory = gameManager.inventory;
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
+  const [selectedEquipment, setSelectedEquipment] = useState<EquipmentInstance | null>(null);
+  const [showEnhancePreview, setShowEnhancePreview] = useState(false);
+  const [enhancePreview, setEnhancePreview] = useState<ReturnType<typeof getEnhancePreview> | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  // 强制刷新
+  const forceRefresh = () => setRefreshKey(prev => prev + 1);
+
+  // 根据分类筛选物品
+  const filteredItems = inventory.items.filter(item => {
+    if (selectedCategory === 'all') return true;
+    if (selectedCategory === 'equipment') {
+      return item.type === ItemType.WEAPON || item.type === ItemType.ARMOR || item.type === ItemType.ACCESSORY;
+    }
+    if (selectedCategory === 'consumable') {
+      return item.type === ItemType.CONSUMABLE;
+    }
+    if (selectedCategory === 'material') {
+      return item.type === ItemType.MATERIAL;
+    }
+    if (selectedCategory === 'misc') {
+      return item.type === ItemType.SPECIAL || item.type === ItemType.SKILL_BOOK;
+    }
+    return true;
+  });
+
+  // 获取神话装备
+  const filteredEquipment = selectedCategory === 'all' || selectedCategory === 'equipment'
+    ? inventory.equipment
+    : [];
+
+  // 计算空格子数量
+  const totalItems = inventory.items.length + inventory.equipment.length;
+  const emptySlots = Math.max(0, inventory.maxSlots - totalItems);
+
+  const handleItemAction = (action: string) => {
+    if (!selectedItem) return;
+
+    if (action === 'use') {
+      useItem(selectedItem.id);
+      setSelectedItem(null);
+    } else if (action === 'equip') {
+      equipItem(selectedItem.id);
+      setSelectedItem(null);
+    } else if (action === 'unequip') {
+      unequipItem(selectedItem.id);
+      setSelectedItem(null);
+    } else if (action === 'discard') {
+      inventory.removeItem(selectedItem.id, 1);
+      setSelectedItem(null);
+    } else if (action === 'sublimate') {
+      if (onNavigate) {
+        onNavigate('sublimation');
+      } else {
+        sublimateItem(selectedItem.id);
+      }
+      setSelectedItem(null);
+    } else if (action === 'enhance') {
+      const preview = getEnhancePreview(selectedItem.id);
+      setEnhancePreview(preview);
+      setShowEnhancePreview(true);
+    }
+  };
+
+  const isEquipment = (item: InventoryItem) => {
+    return item.type === ItemType.WEAPON || item.type === ItemType.ARMOR || item.type === ItemType.ACCESSORY;
+  };
+
+  const isConsumable = (item: InventoryItem) => {
+    return item.type === ItemType.CONSUMABLE;
+  };
+
+  return (
+    <div style={{
+      height: '100vh',
+      backgroundColor: '#1a1a1a',
+      display: 'flex',
+      flexDirection: 'column'
+    }}>
+      {/* 顶部标题栏 - 固定 */}
+      <header style={{
+        flexShrink: 0,
+        backgroundColor: '#2d2d2d',
+        borderBottom: '1px solid #4b5563',
+        padding: '12px 16px'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <button
+            onClick={onBack}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              color: '#9ca3af',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '14px'
+            }}
+          >
+            <span>←</span>
+            <span>返回</span>
+          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <h1 style={{ color: 'white', fontWeight: 'bold', fontSize: '18px' }}>背包</h1>
+            <span style={{ color: '#9ca3af', fontSize: '14px' }}>({inventory.usedSlots}/{inventory.maxSlots})</span>
+          </div>
+          <div style={{ width: '48px' }} />
+        </div>
+      </header>
+
+      {/* 分类标签 - 固定 */}
+      <section style={{
+        flexShrink: 0,
+        display: 'flex',
+        gap: '8px',
+        overflowX: 'auto',
+        padding: '12px 16px',
+        backgroundColor: '#1a1a1a',
+        borderBottom: '1px solid #374151'
+      }}>
+        {CATEGORIES.map(cat => (
+          <button
+            key={cat.id}
+            onClick={() => setSelectedCategory(cat.id)}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '8px',
+              fontSize: '14px',
+              whiteSpace: 'nowrap',
+              backgroundColor: selectedCategory === cat.id ? '#d97706' : '#374151',
+              color: selectedCategory === cat.id ? 'white' : '#9ca3af',
+              border: 'none',
+              cursor: 'pointer',
+              fontWeight: selectedCategory === cat.id ? 'bold' : 'normal'
+            }}
+          >
+            {cat.label}
+          </button>
+        ))}
+      </section>
+
+      {/* 物品格子区域 - 可滚动 */}
+      <main style={{
+        flex: 1,
+        overflowY: 'auto',
+        padding: '16px 12px 80px 12px'
+      }}>
+        <section style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '6px' }}>
+          {/* 普通物品 */}
+          {filteredItems.map((item, index) => (
+            <ItemSlot
+              key={`${item.id}-${index}`}
+              item={item}
+              onClick={() => setSelectedItem(item)}
+            />
+          ))}
+          {/* 神话装备 */}
+          {filteredEquipment.map((equipment) => (
+            <EquipmentSlotComponent
+              key={equipment.instanceId}
+              equipment={equipment}
+              onClick={() => setSelectedEquipment(equipment)}
+            />
+          ))}
+          {/* 空格子 */}
+          {Array.from({ length: Math.min(emptySlots, 10) }).map((_, index) => (
+            <EmptySlot key={`empty-${index}`} />
+          ))}
+        </section>
+
+        {filteredItems.length === 0 && filteredEquipment.length === 0 && (
+          <div style={{ textAlign: 'center', padding: '48px 0', color: '#6b7280' }}>
+            <div style={{ fontSize: '48px', marginBottom: '8px' }}>📦</div>
+            <p>背包是空的</p>
+          </div>
+        )}
+      </main>
+
+      {/* 物品详情弹窗 - 屏幕中间 */}
+      {selectedItem && !showEnhancePreview && (
+        <ItemDetailModal
+          item={selectedItem}
+          onClose={() => setSelectedItem(null)}
+          onAction={handleItemAction}
+          isEquipment={isEquipment(selectedItem)}
+          isConsumable={isConsumable(selectedItem)}
+        />
+      )}
+
+      {/* 装备详情弹窗 */}
+      {selectedEquipment && (
+        <EquipmentDetailModal
+          equipment={selectedEquipment}
+          onClose={() => setSelectedEquipment(null)}
+          onEquip={() => {
+            // 导航到属性界面装备
+            if (onNavigate) {
+              onNavigate('player');
+            }
+            setSelectedEquipment(null);
+          }}
+        />
+      )}
+
+      {/* 强化预览弹窗 */}
+      {showEnhancePreview && selectedItem && enhancePreview && (
+        <EnhancePreviewModal
+          item={selectedItem}
+          preview={enhancePreview}
+          onClose={() => {
+            setShowEnhancePreview(false);
+            setEnhancePreview(null);
+          }}
+          onGoToEnhance={() => {
+            setShowEnhancePreview(false);
+            setSelectedItem(null);
+            // 这里可以通过导航到强化页面
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// 物品格子
+function ItemSlot({ item, onClick }: { item: InventoryItem; onClick: () => void }) {
+  const rarityColor = RARITY_COLORS_MAP[item.rarity];
+  const borderColor = RARITY_BORDERS[item.rarity];
+
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        aspectRatio: '1',
+        backgroundColor: '#1f2937',
+        border: `2px solid ${borderColor}`,
+        borderRadius: '8px',
+        padding: '4px',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        position: 'relative',
+        cursor: 'pointer'
+      }}
+    >
+      {/* 物品名称 */}
+      <span style={{
+        fontSize: '10px',
+        color: rarityColor,
+        textAlign: 'center',
+        lineHeight: '1.2',
+        maxHeight: '28px',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        display: '-webkit-box',
+        WebkitLineClamp: 2,
+        WebkitBoxOrient: 'vertical',
+        padding: '0 2px'
+      }}>
+        {item.name}
+      </span>
+
+      {/* 数量 - 右下角 */}
+      {item.quantity > 1 && (
+        <span style={{
+          position: 'absolute',
+          bottom: '2px',
+          right: '4px',
+          fontSize: '10px',
+          color: 'white',
+          fontWeight: 'bold',
+          backgroundColor: 'rgba(0,0,0,0.6)',
+          padding: '1px 4px',
+          borderRadius: '4px',
+          minWidth: '16px',
+          textAlign: 'center'
+        }}>
+          {item.quantity}
+        </span>
+      )}
+
+      {/* 已装备标记 */}
+      {item.equipped && (
+        <span style={{
+          position: 'absolute',
+          top: '2px',
+          left: '2px',
+          fontSize: '10px',
+          color: '#4ade80'
+        }}>✓</span>
+      )}
+
+      {/* 升华等级 */}
+      {item.sublimationLevel > 0 && (
+        <span style={{
+          position: 'absolute',
+          top: '2px',
+          right: '2px',
+          fontSize: '9px',
+          color: '#fbbf24',
+          fontWeight: 'bold'
+        }}>
+          +{item.sublimationLevel}
+        </span>
+      )}
+    </button>
+  );
+}
+
+// 神话装备格子
+function EquipmentSlotComponent({ equipment, onClick }: { equipment: EquipmentInstance; onClick: () => void }) {
+  const rarityColor = RARITY_COLORS_MAP[equipment.rarity];
+  const borderColor = RARITY_BORDERS[equipment.rarity];
+
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        aspectRatio: '1',
+        backgroundColor: '#1f2937',
+        border: `2px solid ${borderColor}`,
+        borderRadius: '8px',
+        padding: '4px',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        position: 'relative',
+        cursor: 'pointer'
+      }}
+    >
+      {/* 槽位图标 */}
+      <span style={{ fontSize: '20px', marginBottom: '2px' }}>
+        {SLOT_ICONS[equipment.slot]}
+      </span>
+
+      {/* 装备名称 */}
+      <span style={{
+        fontSize: '9px',
+        color: rarityColor,
+        textAlign: 'center',
+        lineHeight: '1.2',
+        maxHeight: '24px',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        display: '-webkit-box',
+        WebkitLineClamp: 2,
+        WebkitBoxOrient: 'vertical',
+        padding: '0 2px'
+      }}>
+        {equipment.name}
+      </span>
+
+      {/* 强化等级 */}
+      {equipment.enhanceLevel > 0 && (
+        <span style={{
+          position: 'absolute',
+          top: '2px',
+          right: '2px',
+          fontSize: '9px',
+          color: '#fbbf24',
+          fontWeight: 'bold'
+        }}>
+          +{equipment.enhanceLevel}
+        </span>
+      )}
+
+      {/* 站台标记 */}
+      <span style={{
+        position: 'absolute',
+        bottom: '2px',
+        left: '2px',
+        fontSize: '8px',
+        color: '#9ca3af'
+      }}>
+        {equipment.stationNumber}站
+      </span>
+    </button>
+  );
+}
+
+// 空格子
+function EmptySlot() {
+  return (
+    <div style={{
+      aspectRatio: '1',
+      backgroundColor: 'rgba(31, 41, 55, 0.5)',
+      border: '2px dashed #374151',
+      borderRadius: '8px'
+    }} />
+  );
+}
+
+// 物品详情弹窗
+function ItemDetailModal({
+  item,
+  onClose,
+  onAction,
+  isEquipment,
+  isConsumable,
+}: {
+  item: InventoryItem;
+  onClose: () => void;
+  onAction: (action: string) => void;
+  isEquipment: boolean;
+  isConsumable: boolean;
+}) {
+  const rarityColor = RARITY_COLORS_MAP[item.rarity];
+
+  return (
+    <div style={{
+      position: 'fixed',
+      inset: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.8)',
+      zIndex: 100,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '16px'
+    }}>
+      <div style={{
+        backgroundColor: '#2d2d2d',
+        borderRadius: '16px',
+        width: '100%',
+        maxWidth: '320px',
+        border: '1px solid #4b5563',
+        overflow: 'hidden'
+      }}>
+        {/* 头部 */}
+        <div style={{ padding: '16px', borderBottom: '1px solid #374151' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{
+                width: '56px',
+                height: '56px',
+                backgroundColor: '#1f2937',
+                borderRadius: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '28px',
+                border: `2px solid ${rarityColor}`
+              }}>
+                {TYPE_NAMES[item.type][0]}
+              </div>
+              <div>
+                <h2 style={{ color: rarityColor, fontWeight: 'bold', fontSize: '16px', margin: 0 }}>
+                  {item.name}
+                </h2>
+                <p style={{ color: '#9ca3af', fontSize: '12px', margin: '4px 0 0 0' }}>{TYPE_NAMES[item.type]}</p>
+                {item.sublimationLevel > 0 && (
+                  <p style={{ color: '#fbbf24', fontSize: '12px', margin: '4px 0 0 0' }}>升华等级: +{item.sublimationLevel}</p>
+                )}
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              style={{ color: '#9ca3af', background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer' }}
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+
+        {/* 详情内容 */}
+        <div style={{ padding: '16px', maxHeight: '50vh', overflowY: 'auto' }}>
+          <p style={{ color: '#d1d5db', fontSize: '14px', marginBottom: '16px' }}>{item.description}</p>
+
+          <div style={{ backgroundColor: '#1f2937', borderRadius: '8px', padding: '12px', marginBottom: '16px' }}>
+            <h4 style={{ color: '#9ca3af', fontSize: '12px', marginBottom: '8px' }}>物品属性</h4>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '14px' }}>
+              {item.attack !== undefined && item.attack > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#9ca3af' }}>攻击力</span>
+                  <span style={{ color: '#f87171' }}>+{item.attack}</span>
+                </div>
+              )}
+              {item.defense !== undefined && item.defense > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#9ca3af' }}>防御力</span>
+                  <span style={{ color: '#60a5fa' }}>+{item.defense}</span>
+                </div>
+              )}
+              {item.agility !== undefined && item.agility > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#9ca3af' }}>敏捷</span>
+                  <span style={{ color: '#4ade80' }}>+{item.agility}</span>
+                </div>
+              )}
+              {item.speed !== undefined && item.speed > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#9ca3af' }}>攻速</span>
+                  <span style={{ color: '#fbbf24' }}>+{item.speed}</span>
+                </div>
+              )}
+              {item.maxHp !== undefined && item.maxHp > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#9ca3af' }}>生命值</span>
+                  <span style={{ color: '#f87171' }}>+{item.maxHp}</span>
+                </div>
+              )}
+              {item.healHp !== undefined && item.healHp > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#9ca3af' }}>恢复生命</span>
+                  <span style={{ color: '#4ade80' }}>+{item.healHp}</span>
+                </div>
+              )}
+              {item.healStamina !== undefined && item.healStamina > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#9ca3af' }}>恢复体力</span>
+                  <span style={{ color: '#fbbf24' }}>+{item.healStamina}</span>
+                </div>
+              )}
+              {item.healHunger !== undefined && item.healHunger > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#9ca3af' }}>恢复饥饿</span>
+                  <span style={{ color: '#fb923c' }}>+{item.healHunger}</span>
+                </div>
+              )}
+              {item.healThirst !== undefined && item.healThirst > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#9ca3af' }}>恢复口渴</span>
+                  <span style={{ color: '#60a5fa' }}>+{item.healThirst}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div style={{ textAlign: 'center', color: '#9ca3af', fontSize: '14px', marginBottom: '16px' }}>
+            数量: <span style={{ color: 'white', fontWeight: 'bold' }}>{item.quantity}</span>
+          </div>
+        </div>
+
+        {/* 操作按钮 */}
+        <div style={{ padding: '16px', borderTop: '1px solid #374151', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+          {isConsumable && (
+            <button
+              onClick={() => onAction('use')}
+              style={{
+                padding: '12px',
+                backgroundColor: '#16a34a',
+                color: 'white',
+                fontWeight: 'bold',
+                borderRadius: '8px',
+                border: 'none',
+                cursor: 'pointer'
+              }}
+            >
+              使用
+            </button>
+          )}
+
+          {isEquipment && (
+            <>
+              {item.equipped ? (
+                <button
+                  onClick={() => onAction('unequip')}
+                  style={{
+                    padding: '12px',
+                    backgroundColor: '#374151',
+                    color: 'white',
+                    fontWeight: 'bold',
+                    borderRadius: '8px',
+                    border: 'none',
+                    cursor: 'pointer'
+                  }}
+                >
+                  卸下
+                </button>
+              ) : (
+                <button
+                  onClick={() => onAction('equip')}
+                  style={{
+                    padding: '12px',
+                    backgroundColor: '#d97706',
+                    color: 'white',
+                    fontWeight: 'bold',
+                    borderRadius: '8px',
+                    border: 'none',
+                    cursor: 'pointer'
+                  }}
+                >
+                  装备
+                </button>
+              )}
+              <button
+                onClick={() => onAction('sublimate')}
+                style={{
+                  padding: '12px',
+                  backgroundColor: '#9333ea',
+                  color: 'white',
+                  fontWeight: 'bold',
+                  borderRadius: '8px',
+                  border: 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                升华
+              </button>
+              <button
+                onClick={() => onAction('enhance')}
+                style={{
+                  padding: '12px',
+                  backgroundColor: '#2563eb',
+                  color: 'white',
+                  fontWeight: 'bold',
+                  borderRadius: '8px',
+                  border: 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                强化
+              </button>
+            </>
+          )}
+
+          <button
+            onClick={() => onAction('discard')}
+            style={{
+              padding: '12px',
+              backgroundColor: 'rgba(220, 38, 38, 0.6)',
+              color: 'white',
+              fontWeight: 'bold',
+              borderRadius: '8px',
+              border: 'none',
+              cursor: 'pointer'
+            }}
+          >
+            丢弃
+          </button>
+
+          <button
+            onClick={onClose}
+            style={{
+              padding: '12px',
+              backgroundColor: '#374151',
+              color: '#d1d5db',
+              fontWeight: 'bold',
+              borderRadius: '8px',
+              border: 'none',
+              cursor: 'pointer'
+            }}
+          >
+            关闭
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// 强化预览弹窗
+interface EnhancePreviewData {
+  canEnhance: boolean;
+  reason?: string;
+  currentLevel: number;
+  targetLevel: number;
+  successRate: number;
+  materialCost: { materialId: string; name: string; quantity: number; hasEnough: boolean }[];
+  goldCost: number;
+  hasEnoughGold: boolean;
+  failureDowngrade: boolean;
+  attributePreview: {
+    attack: { current: number; after: number };
+    defense: { current: number; after: number };
+    agility: { current: number; after: number };
+    speed: { current: number; after: number };
+    maxHp: { current: number; after: number };
+  };
+}
+
+function EnhancePreviewModal({
+  item,
+  preview,
+  onClose,
+  onGoToEnhance,
+}: {
+  item: InventoryItem;
+  preview: EnhancePreviewData;
+  onClose: () => void;
+  onGoToEnhance: () => void;
+}) {
+  const rarityColor = RARITY_COLORS_MAP[item.rarity];
+  const getSuccessRateColor = (rate: number) => {
+    if (rate >= 0.8) return '#4ade80';
+    if (rate >= 0.6) return '#fbbf24';
+    if (rate >= 0.4) return '#fb923c';
+    return '#ef4444';
+  };
+
+  return (
+    <div style={{
+      position: 'fixed',
+      inset: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.8)',
+      zIndex: 100,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '16px'
+    }}>
+      <div style={{
+        backgroundColor: '#2d2d2d',
+        borderRadius: '16px',
+        width: '100%',
+        maxWidth: '320px',
+        border: '1px solid #4b5563',
+        overflow: 'hidden'
+      }}>
+        {/* 头部 */}
+        <div style={{ padding: '16px', borderBottom: '1px solid #374151' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <h2 style={{ color: 'white', fontWeight: 'bold', fontSize: '16px', margin: 0 }}>
+              强化预览
+            </h2>
+            <button
+              onClick={onClose}
+              style={{ color: '#9ca3af', background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer' }}
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+
+        {/* 内容 */}
+        <div style={{ padding: '16px' }}>
+          {preview.canEnhance ? (
+            <>
+              {/* 装备信息 */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                <div style={{
+                  width: '48px',
+                  height: '48px',
+                  backgroundColor: '#1f2937',
+                  borderRadius: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '24px',
+                  border: `2px solid ${rarityColor}`
+                }}>
+                  {TYPE_NAMES[item.type][0]}
+                </div>
+                <div>
+                  <p style={{ color: rarityColor, fontWeight: 'bold', fontSize: '14px', margin: 0 }}>
+                    {item.name}
+                  </p>
+                  <p style={{ color: '#fbbf24', fontSize: '13px', margin: '4px 0 0 0' }}>
+                    当前 +{preview.currentLevel} → 目标 +{preview.targetLevel}
+                  </p>
+                </div>
+              </div>
+
+              {/* 成功率 */}
+              <div style={{
+                backgroundColor: '#1f2937',
+                borderRadius: '8px',
+                padding: '12px',
+                marginBottom: '12px'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                  <span style={{ color: '#9ca3af', fontSize: '13px' }}>成功率</span>
+                  <span style={{
+                    color: getSuccessRateColor(preview.successRate),
+                    fontWeight: 'bold',
+                    fontSize: '16px'
+                  }}>
+                    {Math.round(preview.successRate * 100)}%
+                  </span>
+                </div>
+                <div style={{
+                  backgroundColor: '#374151',
+                  borderRadius: '9999px',
+                  height: '6px',
+                  overflow: 'hidden'
+                }}>
+                  <div style={{
+                    height: '100%',
+                    backgroundColor: getSuccessRateColor(preview.successRate),
+                    width: `${preview.successRate * 100}%`
+                  }} />
+                </div>
+              </div>
+
+              {/* 属性变化 */}
+              <div style={{
+                backgroundColor: '#1f2937',
+                borderRadius: '8px',
+                padding: '12px',
+                marginBottom: '12px'
+              }}>
+                <p style={{ color: '#9ca3af', fontSize: '12px', marginBottom: '8px' }}>属性提升</p>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', fontSize: '12px' }}>
+                  {preview.attributePreview.attack.after > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: '#9ca3af' }}>攻击</span>
+                      <span style={{ color: '#4ade80' }}>+{preview.attributePreview.attack.after}</span>
+                    </div>
+                  )}
+                  {preview.attributePreview.defense.after > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: '#9ca3af' }}>防御</span>
+                      <span style={{ color: '#4ade80' }}>+{preview.attributePreview.defense.after}</span>
+                    </div>
+                  )}
+                  {preview.attributePreview.agility.after > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: '#9ca3af' }}>敏捷</span>
+                      <span style={{ color: '#4ade80' }}>+{preview.attributePreview.agility.after}</span>
+                    </div>
+                  )}
+                  {preview.attributePreview.maxHp.after > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: '#9ca3af' }}>生命</span>
+                      <span style={{ color: '#4ade80' }}>+{preview.attributePreview.maxHp.after}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* 消耗材料 */}
+              <div style={{
+                backgroundColor: '#1f2937',
+                borderRadius: '8px',
+                padding: '12px',
+                marginBottom: '12px'
+              }}>
+                <p style={{ color: '#9ca3af', fontSize: '12px', marginBottom: '8px' }}>所需材料</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '12px' }}>
+                  {preview.materialCost.map((cost: { materialId: string; name: string; quantity: number; hasEnough: boolean }, index: number) => (
+                    <div key={index} style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: '#d1d5db' }}>{cost.name}</span>
+                      <span style={{ color: cost.hasEnough ? '#4ade80' : '#ef4444' }}>
+                        x{cost.quantity}
+                      </span>
+                    </div>
+                  ))}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', paddingTop: '4px', borderTop: '1px solid #374151' }}>
+                    <span style={{ color: '#d1d5db' }}>列车币</span>
+                    <span style={{ color: preview.hasEnoughGold ? '#4ade80' : '#ef4444' }}>
+                      {preview.goldCost}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {preview.failureDowngrade && (
+                <p style={{ color: '#ef4444', fontSize: '12px', textAlign: 'center', marginBottom: '12px' }}>
+                  ⚠️ 强化失败将降低1级
+                </p>
+              )}
+
+              <button
+                onClick={onGoToEnhance}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  backgroundColor: '#2563eb',
+                  color: 'white',
+                  fontWeight: 'bold',
+                  borderRadius: '8px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '14px'
+                }}
+              >
+                前往强化
+              </button>
+            </>
+          ) : (
+            <div style={{ textAlign: 'center', padding: '24px 0' }}>
+              <p style={{ color: '#9ca3af', fontSize: '14px' }}>{preview.reason || '无法强化'}</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// 装备详情弹窗
+function EquipmentDetailModal({
+  equipment,
+  onClose,
+  onEquip,
+}: {
+  equipment: EquipmentInstance;
+  onClose: () => void;
+  onEquip: () => void;
+}) {
+  const rarityColor = RARITY_COLORS_MAP[equipment.rarity];
+
+  return (
+    <div style={{
+      position: 'fixed',
+      inset: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.8)',
+      zIndex: 100,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '16px'
+    }}>
+      <div style={{
+        backgroundColor: '#2d2d2d',
+        borderRadius: '16px',
+        width: '100%',
+        maxWidth: '320px',
+        border: `2px solid ${rarityColor}`,
+        overflow: 'hidden'
+      }}>
+        {/* 头部 */}
+        <div style={{ padding: '16px', borderBottom: '1px solid #374151' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{
+                width: '56px',
+                height: '56px',
+                backgroundColor: '#1f2937',
+                borderRadius: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '28px',
+                border: `2px solid ${rarityColor}`
+              }}>
+                {SLOT_ICONS[equipment.slot]}
+              </div>
+              <div>
+                <h2 style={{ color: rarityColor, fontWeight: 'bold', fontSize: '16px', margin: 0 }}>
+                  {equipment.name}
+                </h2>
+                <p style={{ color: '#9ca3af', fontSize: '12px', margin: '4px 0 0 0' }}>
+                  站台{equipment.stationNumber} · 强化+{equipment.enhanceLevel}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              style={{ color: '#9ca3af', background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer' }}
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+
+        {/* 详情内容 */}
+        <div style={{ padding: '16px', maxHeight: '50vh', overflowY: 'auto' }}>
+          <p style={{ color: '#d1d5db', fontSize: '14px', marginBottom: '16px' }}>{equipment.description}</p>
+
+          <div style={{ backgroundColor: '#1f2937', borderRadius: '8px', padding: '12px', marginBottom: '16px' }}>
+            <h4 style={{ color: '#9ca3af', fontSize: '12px', marginBottom: '8px' }}>基础属性</h4>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '14px' }}>
+              {equipment.stats.attack !== undefined && equipment.stats.attack > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#9ca3af' }}>攻击力</span>
+                  <span style={{ color: '#f87171' }}>
+                    {Math.floor(equipment.stats.attack * (1 + equipment.enhanceLevel * 0.1))}
+                  </span>
+                </div>
+              )}
+              {equipment.stats.defense !== undefined && equipment.stats.defense > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#9ca3af' }}>防御力</span>
+                  <span style={{ color: '#60a5fa' }}>
+                    {Math.floor(equipment.stats.defense * (1 + equipment.enhanceLevel * 0.1))}
+                  </span>
+                </div>
+              )}
+              {equipment.stats.hp !== undefined && equipment.stats.hp > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#9ca3af' }}>生命值</span>
+                  <span style={{ color: '#ef4444' }}>
+                    {Math.floor(equipment.stats.hp * (1 + equipment.enhanceLevel * 0.1))}
+                  </span>
+                </div>
+              )}
+              {equipment.stats.hit !== undefined && equipment.stats.hit > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#9ca3af' }}>命中</span>
+                  <span style={{ color: '#fbbf24' }}>
+                    {Math.floor(equipment.stats.hit * (1 + equipment.enhanceLevel * 0.1))}
+                  </span>
+                </div>
+              )}
+              {equipment.stats.dodge !== undefined && equipment.stats.dodge > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#9ca3af' }}>闪避</span>
+                  <span style={{ color: '#4ade80' }}>
+                    {Math.floor(equipment.stats.dodge * (1 + equipment.enhanceLevel * 0.1))}
+                  </span>
+                </div>
+              )}
+              {equipment.stats.speed !== undefined && equipment.stats.speed > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#9ca3af' }}>攻速</span>
+                  <span style={{ color: '#c084fc' }}>
+                    {Math.floor(equipment.stats.speed * (1 + equipment.enhanceLevel * 0.1))}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {equipment.effects.length > 0 && (
+            <div style={{ backgroundColor: '#1f2937', borderRadius: '8px', padding: '12px', marginBottom: '16px' }}>
+              <h4 style={{ color: '#9ca3af', fontSize: '12px', marginBottom: '8px' }}>特殊效果</h4>
+              {equipment.effects.map((effect, index) => (
+                <div key={index} style={{ marginBottom: '4px', fontSize: '12px' }}>
+                  <span style={{ color: '#d1d5db' }}>{effect.description}</span>
+                  <span style={{ color: '#9ca3af', marginLeft: '8px' }}>({effect.chance * 100}%)</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* 操作按钮 */}
+        <div style={{ padding: '16px', borderTop: '1px solid #374151', display: 'flex', gap: '8px' }}>
+          <button
+            onClick={onEquip}
+            style={{
+              flex: 1,
+              padding: '12px',
+              backgroundColor: '#d97706',
+              color: 'white',
+              fontWeight: 'bold',
+              borderRadius: '8px',
+              border: 'none',
+              cursor: 'pointer'
+            }}
+          >
+            去装备
+          </button>
+          <button
+            onClick={onClose}
+            style={{
+              flex: 1,
+              padding: '12px',
+              backgroundColor: '#374151',
+              color: '#d1d5db',
+              fontWeight: 'bold',
+              borderRadius: '8px',
+              border: 'none',
+              cursor: 'pointer'
+            }}
+          >
+            关闭
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
