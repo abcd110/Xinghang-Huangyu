@@ -33,25 +33,26 @@ export const RARITY_NAMES: Record<ItemRarity, string> = {
 /**
  * 计算装备分解奖励
  * 规则：
- * - 普通装备（非神话）-> 精炼碎片，数量 = 品质等级 (1-5)
- * - 神话装备 -> 神话碎片，数量 = 品质等级 (1-6)
+ * - 制造装备 -> 精炼碎片，数量 = 品质等级 (1-5)
+ * - 神话装备（非制造）-> 神话碎片，数量 = 品质等级 (1-6)
  * @param rarity 装备品质
+ * @param isCrafted 是否为制造装备
  * @returns 分解奖励
  */
-export function calculateDecomposeReward(rarity: ItemRarity): DecomposeReward | null {
+export function calculateDecomposeReward(rarity: ItemRarity, isCrafted: boolean = false): DecomposeReward | null {
   const rarityLevel = getRarityLevel(rarity);
 
-  if (rarity === ItemRarity.MYTHIC) {
-    // 神话装备 -> 神话碎片
-    return {
-      materialId: 'mat_mythic_fragment',
-      quantity: rarityLevel, // 1-6个
-    };
-  } else {
-    // 普通装备 -> 精炼碎片
+  if (isCrafted) {
+    // 制造装备 -> 精炼碎片
     return {
       materialId: 'mat_refined_fragment',
       quantity: rarityLevel, // 1-5个
+    };
+  } else {
+    // 神话装备（非制造）-> 神话碎片
+    return {
+      materialId: 'mat_mythic_fragment',
+      quantity: rarityLevel, // 1-6个
     };
   }
 }
@@ -76,12 +77,14 @@ function getRarityLevel(rarity: ItemRarity): number {
  * @param itemType 物品类型
  * @param rarity 物品品质
  * @param itemName 物品名称
+ * @param isCrafted 是否为制造装备
  * @returns 分解预览信息
  */
 export function getDecomposePreview(
   itemType: ItemType,
   rarity: ItemRarity,
-  itemName: string
+  itemName: string,
+  isCrafted: boolean = false
 ): {
   canDecompose: boolean;
   itemName: string;
@@ -102,28 +105,28 @@ export function getDecomposePreview(
       canDecompose: false,
       itemName,
       rarity: RARITY_NAMES[rarity],
-      isMythic: rarity === ItemRarity.MYTHIC,
+      isMythic: !isCrafted,
       reward: null,
       message: '该物品类型无法分解',
     };
   }
 
   // 计算分解奖励
-  const reward = calculateDecomposeReward(rarity);
+  const reward = calculateDecomposeReward(rarity, isCrafted);
 
   if (!reward) {
     return {
       canDecompose: false,
       itemName,
       rarity: RARITY_NAMES[rarity],
-      isMythic: rarity === ItemRarity.MYTHIC,
+      isMythic: !isCrafted,
       reward: null,
       message: '无法计算分解奖励',
     };
   }
 
   const materialName = MATERIAL_NAMES[reward.materialId] || reward.materialId;
-  const isMythic = rarity === ItemRarity.MYTHIC;
+  const isMythic = !isCrafted;
   const icon = isMythic ? '🔴' : '🔷';
 
   return {
@@ -145,11 +148,13 @@ export function getDecomposePreview(
  * 执行分解
  * @param itemType 物品类型
  * @param rarity 物品品质
+ * @param isCrafted 是否为制造装备
  * @returns 分解结果
  */
 export function decompose(
   itemType: ItemType,
-  rarity: ItemRarity
+  rarity: ItemRarity,
+  isCrafted: boolean = false
 ): {
   success: boolean;
   reward: {
@@ -170,7 +175,7 @@ export function decompose(
   }
 
   // 计算分解奖励
-  const reward = calculateDecomposeReward(rarity);
+  const reward = calculateDecomposeReward(rarity, isCrafted);
 
   if (!reward) {
     return {

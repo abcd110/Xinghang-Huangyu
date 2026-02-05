@@ -17,6 +17,7 @@ import { ShopItem, SHOP_ITEMS } from './ShopSystem';
 import { DECOMPOSE_REWARDS, TYPE_BONUS, SUBLIMATION_BONUS, MATERIAL_NAMES, getDecomposePreview as getDecomposePreviewFunc, decompose as decomposeFunc } from './DecomposeSystem';
 import { ENHANCE_CONFIG, MAX_ENHANCE_LEVEL, ENHANCE_STONE_ID, PROTECTION_ITEM_ID, MATERIAL_NAMES as ENHANCE_MATERIAL_NAMES, EnhanceResultType, type EnhanceResult, type EnhancePreview, calculateEnhanceBonus, canEnhance, getSuccessRate } from './EnhanceSystem';
 import { equipmentSystem } from './EquipmentSystem';
+import { calculateEquipmentStats, calculateEnhancedStatsPreview } from './EquipmentStatCalculator';
 import { createEquipmentInstance, getEquipmentById } from '../data/mythologyEquipmentIndex';
 import { MYTHOLOGY_LOCATIONS } from '../data/mythologyLocations';
 import { TrainUpgradeType } from './Train';
@@ -525,6 +526,7 @@ export class GameManager {
     // 先从普通物品中查找
     let item = this.inventory.getItem(itemId);
     let isEquipment = false;
+    let isCrafted = false;
 
     // 如果没找到，检查是否是背包中的神话装备
     if (!item) {
@@ -554,12 +556,16 @@ export class GameManager {
           id: inventoryEquipment.instanceId,
           name: inventoryEquipment.name,
           type: mappedType,
-          rarity: ItemRarity.MYTHIC,
+          rarity: inventoryEquipment.rarity,
           description: inventoryEquipment.description,
           sublimationLevel: inventoryEquipment.sublimationLevel,
         } as any;
         isEquipment = true;
+        isCrafted = inventoryEquipment.isCrafted || false;
       }
+    } else {
+      // 从普通物品中获取，判断是否为装备类型
+      isCrafted = item.type === ItemType.WEAPON || item.type === ItemType.ARMOR || item.type === ItemType.ACCESSORY;
     }
 
     if (!item) {
@@ -570,7 +576,8 @@ export class GameManager {
     const preview = getDecomposePreviewFunc(
       item.type,
       item.rarity as ItemRarity,
-      item.name
+      item.name,
+      isCrafted
     );
 
     if (!preview.canDecompose) {
@@ -596,12 +603,13 @@ export class GameManager {
     // 先从普通物品中查找
     let item = this.inventory.getItem(itemId);
     let isInventoryEquipment = false;
+    let isCrafted = false;
 
-    // 如果没找到，检查是否是背包中的神话装备
+    // 如果没找到，检查是否是背包中的装备（包括制造装备和神话装备）
     if (!item) {
       const inventoryEquipment = this.inventory.getEquipment(itemId);
       if (inventoryEquipment) {
-        // 神话装备使用 slot 字段，需要映射到 type
+        // 装备使用 slot 字段，需要映射到 type
         let mappedType: ItemType;
         const slot = inventoryEquipment.slot;
         switch (slot) {
@@ -624,11 +632,15 @@ export class GameManager {
           id: inventoryEquipment.instanceId,
           name: inventoryEquipment.name,
           type: mappedType,
-          rarity: ItemRarity.MYTHIC,
+          rarity: inventoryEquipment.rarity,
           description: inventoryEquipment.description,
         } as any;
         isInventoryEquipment = true;
+        isCrafted = inventoryEquipment.isCrafted || false;
       }
+    } else {
+      // 从普通物品中获取，判断是否为装备类型
+      isCrafted = item.type === ItemType.WEAPON || item.type === ItemType.ARMOR || item.type === ItemType.ACCESSORY;
     }
 
     if (!item) {
@@ -638,7 +650,8 @@ export class GameManager {
     // 使用新的分解系统执行分解
     const result = decomposeFunc(
       item.type,
-      item.rarity as ItemRarity
+      item.rarity as ItemRarity,
+      isCrafted
     );
 
     if (!result.success) {
@@ -921,6 +934,26 @@ export class GameManager {
   rest(): { success: boolean; message: string; logs: string[] } {
     const logs: string[] = [];
 
+    // 检查饥饿和口渴值是否足够
+    const hungerCost = 20;
+    const thirstCost = 10;
+
+    if (this.player.hunger < hungerCost) {
+      return {
+        success: false,
+        message: '饥饿值不足，无法休息（需要20点饥饿值）',
+        logs: ['饥饿值不足，无法休息'],
+      };
+    }
+
+    if (this.player.thirst < thirstCost) {
+      return {
+        success: false,
+        message: '口渴值不足，无法休息（需要10点口渴值）',
+        logs: ['口渴值不足，无法休息'],
+      };
+    }
+
     const oldHp = this.player.hp;
     const oldStamina = this.player.stamina;
     const oldHunger = this.player.hunger;
@@ -938,8 +971,6 @@ export class GameManager {
     this.player.recoverStamina(staminaRecovery);
 
     // 消耗饥饿和口渴
-    const hungerCost = 20;
-    const thirstCost = 10;
     this.player.consumeHunger(hungerCost);
     this.player.consumeThirst(thirstCost);
 
@@ -1187,6 +1218,17 @@ export class GameManager {
     const inventoryItems = Array.isArray(state.inventory) ? state.inventory : (state.inventory?.items || []);
     const inventoryEquipment = Array.isArray(state.inventory) ? [] : (state.inventory?.equipment || []);
     this.inventory = new Inventory(inventoryItems, inventoryEquipment);
+
+    // 数据迁移：将旧格式的装备从 items 迁移到 equipment
+    const migrationResult = this.inventory.migrateOldEquipment();
+    if (migrationResult.migrated > 0) {
+      console.log(`[数据迁移] 成功迁移 ${migrationResult.migrated} 件旧格式装备`);
+      this.addLog('系统', `数据迁移完成：${migrationResult.migrated} 件装备已更新格式`);
+    }
+    if (migrationResult.errors.length > 0) {
+      console.error('[数据迁移] 错误:', migrationResult.errors);
+    }
+
     this.train = new Train(state.train);
     this.day = state.day;
     this.time = state.time;
@@ -1623,25 +1665,47 @@ export class GameManager {
 
   // 获取强化预览
   getEnhancePreview(itemId: string): EnhancePreview {
-    // 先在普通物品中查找
-    let item = this.inventory.getItem(itemId);
-
-    // 如果没找到，在神话装备中查找
-    if (!item) {
-      const mythEquipment = this.inventory.equipment.find(e => e.instanceId === itemId);
-      if (mythEquipment) {
-        // 将神话装备转换为 InventoryItem 格式
-        item = {
-          id: mythEquipment.instanceId,
-          name: mythEquipment.name,
-          type: mythEquipment.slot === 'weapon' ? 'weapon' :
-            mythEquipment.slot === 'accessory' ? 'accessory' : 'armor',
-          rarity: mythEquipment.rarity,
-          description: mythEquipment.description,
-          enhanceLevel: mythEquipment.enhanceLevel,
-          quantity: 1,
-        } as InventoryItem;
+    // 先在已装备的装备中查找（player.equipment 是 Map）
+    let equipmentInstance: EquipmentInstance | undefined;
+    for (const [, equip] of this.player.equipment) {
+      if (equip.instanceId === itemId) {
+        equipmentInstance = equip;
+        break;
       }
+    }
+
+    // 如果没找到，在背包的装备中查找
+    if (!equipmentInstance) {
+      equipmentInstance = this.inventory.equipment.find(e => e.instanceId === itemId);
+    }
+
+    let item: InventoryItem | null = null;
+
+    if (equipmentInstance) {
+      // 将装备转换为 InventoryItem 格式
+      let mappedType: ItemType;
+      switch (equipmentInstance.slot) {
+        case EquipmentSlot.WEAPON:
+          mappedType = ItemType.WEAPON;
+          break;
+        case EquipmentSlot.ACCESSORY:
+          mappedType = ItemType.ACCESSORY;
+          break;
+        default:
+          mappedType = ItemType.ARMOR;
+      }
+      item = {
+        id: equipmentInstance.instanceId,
+        name: equipmentInstance.name,
+        type: mappedType,
+        rarity: equipmentInstance.rarity,
+        description: equipmentInstance.description,
+        enhanceLevel: equipmentInstance.enhanceLevel,
+        quantity: 1,
+      } as InventoryItem;
+    } else {
+      // 在普通物品中查找
+      item = this.inventory.getItem(itemId);
     }
 
     if (!item) {
@@ -1651,14 +1715,14 @@ export class GameManager {
         currentLevel: 0,
         targetLevel: 0,
         successRate: 0,
-        materialCost: [],
+        stoneCost: 0,
+        hasEnoughStones: false,
         goldCost: 0,
         hasEnoughGold: false,
         failureDowngrade: false,
         attributePreview: {
           attack: { current: 0, after: 0 },
           defense: { current: 0, after: 0 },
-          agility: { current: 0, after: 0 },
           speed: { current: 0, after: 0 },
           maxHp: { current: 0, after: 0 },
         },
@@ -1672,14 +1736,14 @@ export class GameManager {
         currentLevel: item.enhanceLevel || 0,
         targetLevel: 0,
         successRate: 0,
-        materialCost: [],
+        stoneCost: 0,
+        hasEnoughStones: false,
         goldCost: 0,
         hasEnoughGold: false,
         failureDowngrade: false,
         attributePreview: {
           attack: { current: 0, after: 0 },
           defense: { current: 0, after: 0 },
-          agility: { current: 0, after: 0 },
           speed: { current: 0, after: 0 },
           maxHp: { current: 0, after: 0 },
         },
@@ -1697,79 +1761,135 @@ export class GameManager {
         currentLevel,
         targetLevel: 0,
         successRate: 0,
-        materialCost: [],
+        stoneCost: 0,
+        hasEnoughStones: false,
         goldCost: 0,
         hasEnoughGold: false,
         failureDowngrade: false,
         attributePreview: {
           attack: { current: 0, after: 0 },
           defense: { current: 0, after: 0 },
-          agility: { current: 0, after: 0 },
           speed: { current: 0, after: 0 },
           maxHp: { current: 0, after: 0 },
         },
       };
     }
 
-    // 计算材料需求（强化石）
-    const materialCost = [{
-      materialId: ENHANCE_STONE_ID,
-      name: ENHANCE_MATERIAL_NAMES[ENHANCE_STONE_ID] || '强化石',
-      quantity: config.stoneCost,
-      hasEnough: this.inventory.hasItem(ENHANCE_STONE_ID, config.stoneCost),
-    }];
+    // 检查强化石数量
+    const stoneItem = this.inventory.getItem(ENHANCE_STONE_ID);
+    const hasEnoughStones = (stoneItem?.quantity || 0) >= config.stoneCost;
 
-    // 计算当前强化属性
-    const currentBonus = calculateEnhanceBonus(item);
+    // equipmentInstance 已经在前面查找过了
+    let attributePreview = {
+      attack: { current: 0, after: 0 },
+      defense: { current: 0, after: 0 },
+      speed: { current: 0, after: 0 },
+      maxHp: { current: 0, after: 0 },
+      dodge: { current: 0, after: 0 },
+      hit: { current: 0, after: 0 },
+    };
 
-    // 计算强化后属性（模拟）
-    const mockItem = { ...item, enhanceLevel: targetLevel };
-    const afterBonus = calculateEnhanceBonus(mockItem);
+    if (equipmentInstance) {
+      // 使用新的装备属性计算器（实时根据强化等级计算）
+      const currentStats = calculateEquipmentStats(equipmentInstance);
+      const afterStats = calculateEnhancedStatsPreview(equipmentInstance, targetLevel);
+
+      attributePreview = {
+        attack: { current: currentStats.attack, after: afterStats.attack },
+        defense: { current: currentStats.defense, after: afterStats.defense },
+        speed: { current: Math.round(currentStats.speed * 100) / 100, after: Math.round(afterStats.speed * 100) / 100 },
+        maxHp: { current: currentStats.hp, after: afterStats.hp },
+        dodge: { current: currentStats.dodge, after: afterStats.dodge },
+        hit: { current: currentStats.hit, after: afterStats.hit },
+      };
+    }
 
     return {
-      canEnhance: true,
+      canEnhance: hasEnoughStones,
+      reason: !hasEnoughStones ? '强化石不足' : undefined,
       currentLevel,
       targetLevel,
       successRate: config.successRate,
-      materialCost,
-      goldCost: config.goldCost,
-      hasEnoughGold: this.trainCoins >= config.goldCost,
+      stoneCost: config.stoneCost,
+      hasEnoughStones,
+      goldCost: 0,
+      hasEnoughGold: true,
       failureDowngrade: config.failureDowngrade,
-      attributePreview: {
-        attack: { current: currentBonus.attack, after: afterBonus.attack },
-        defense: { current: currentBonus.defense, after: afterBonus.defense },
-        agility: { current: currentBonus.agility, after: afterBonus.agility },
-        speed: { current: currentBonus.speed, after: afterBonus.speed },
-        maxHp: { current: currentBonus.maxHp, after: afterBonus.maxHp },
-      },
+      attributePreview,
     };
   }
 
   // 强化装备
   enhanceItem(itemId: string, useProtection: boolean = false): EnhanceResult {
-    // 先在普通物品中查找
-    let item = this.inventory.getItem(itemId);
+    // 先在已装备的装备中查找（player.equipment 是 Map）
+    let item: InventoryItem | null = null;
     let isMythEquipment = false;
     let mythEquipmentIndex = -1;
+    let isEquippedEquipment = false;
+    let equippedSlot: EquipmentSlot | null = null;
 
-    // 如果没找到，在神话装备中查找
+    for (const [slot, equip] of this.player.equipment) {
+      if (equip.instanceId === itemId) {
+        equippedSlot = slot;
+        isEquippedEquipment = true;
+        // 将已装备转换为 InventoryItem 格式
+        let mappedType: ItemType;
+        switch (equip.slot) {
+          case EquipmentSlot.WEAPON:
+            mappedType = ItemType.WEAPON;
+            break;
+          case EquipmentSlot.ACCESSORY:
+            mappedType = ItemType.ACCESSORY;
+            break;
+          default:
+            mappedType = ItemType.ARMOR;
+        }
+        item = {
+          id: equip.instanceId,
+          name: equip.name,
+          type: mappedType,
+          rarity: equip.rarity,
+          description: equip.description,
+          enhanceLevel: equip.enhanceLevel,
+          quantity: 1,
+        } as InventoryItem;
+        break;
+      }
+    }
+
+    // 如果没找到，在背包的装备中查找
     if (!item) {
       mythEquipmentIndex = this.inventory.equipment.findIndex(e => e.instanceId === itemId);
       if (mythEquipmentIndex !== -1) {
         const mythEquipment = this.inventory.equipment[mythEquipmentIndex];
         isMythEquipment = true;
         // 将神话装备转换为 InventoryItem 格式
+        let mappedType: ItemType;
+        switch (mythEquipment.slot) {
+          case EquipmentSlot.WEAPON:
+            mappedType = ItemType.WEAPON;
+            break;
+          case EquipmentSlot.ACCESSORY:
+            mappedType = ItemType.ACCESSORY;
+            break;
+          default:
+            mappedType = ItemType.ARMOR;
+        }
         item = {
           id: mythEquipment.instanceId,
           name: mythEquipment.name,
-          type: mythEquipment.slot === 'weapon' ? 'weapon' :
-            mythEquipment.slot === 'accessory' ? 'accessory' : 'armor',
+          type: mappedType,
           rarity: mythEquipment.rarity,
           description: mythEquipment.description,
           enhanceLevel: mythEquipment.enhanceLevel,
           quantity: 1,
         } as InventoryItem;
       }
+    }
+
+    // 如果没找到，在普通物品中查找
+    if (!item) {
+      item = this.inventory.getItem(itemId);
     }
 
     if (!item) {
@@ -1875,52 +1995,100 @@ export class GameManager {
     // 判定成功/失败
     const success = Math.random() < config.successRate;
 
+    // 获取装备实例（用于计算属性变化）
+    let equipmentInstance: EquipmentInstance | undefined;
+    if (isEquippedEquipment && equippedSlot) {
+      equipmentInstance = this.player.equipment.get(equippedSlot);
+    } else if (isMythEquipment && mythEquipmentIndex !== -1) {
+      equipmentInstance = this.inventory.equipment[mythEquipmentIndex];
+    }
+
     if (success) {
       // 强化成功
       const newLevel = currentLevel + 1;
 
-      // 如果是神话装备，更新原始数据
-      if (isMythEquipment && mythEquipmentIndex !== -1) {
-        this.inventory.equipment[mythEquipmentIndex].enhanceLevel = newLevel;
+      // 计算属性增益（使用新的计算器）
+      let attributeGains = { attack: 0, defense: 0, speed: 0, maxHp: 0, dodge: 0, hit: 0 };
+      if (equipmentInstance) {
+        const currentStats = calculateEquipmentStats(equipmentInstance);
+        const afterStats = calculateEnhancedStatsPreview(equipmentInstance, newLevel);
+        attributeGains = {
+          attack: afterStats.attack - currentStats.attack,
+          defense: afterStats.defense - currentStats.defense,
+          speed: afterStats.speed - currentStats.speed,
+          maxHp: afterStats.hp - currentStats.hp,
+          dodge: afterStats.dodge - currentStats.dodge,
+          hit: afterStats.hit - currentStats.hit,
+        };
+      }
+
+      // 处理已装备装备 - 只更新等级，不修改 stats
+      if (isEquippedEquipment && equippedSlot && equipmentInstance) {
+        equipmentInstance.enhanceLevel = newLevel;
+        this.addLog('强化', `${item.name}强化成功！达到+${newLevel}`);
+
+        return {
+          type: EnhanceResultType.SUCCESS,
+          success: true,
+          message: `强化成功！${item.name}达到+${newLevel}`,
+          previousLevel: currentLevel,
+          currentLevel: newLevel,
+          consumedMaterials,
+          consumedGold: config.goldCost,
+          usedProtection: useProtection,
+          attributeGains,
+        };
+      }
+      // 处理背包装备 - 只更新等级，不修改 stats
+      else if (isMythEquipment && mythEquipmentIndex !== -1 && equipmentInstance) {
+        equipmentInstance.enhanceLevel = newLevel;
+        this.addLog('强化', `${item.name}强化成功！达到+${newLevel}`);
+
+        return {
+          type: EnhanceResultType.SUCCESS,
+          success: true,
+          message: `强化成功！${item.name}达到+${newLevel}`,
+          previousLevel: currentLevel,
+          currentLevel: newLevel,
+          consumedMaterials,
+          consumedGold: config.goldCost,
+          usedProtection: useProtection,
+          attributeGains,
+        };
       } else if (item) {
         // 普通装备，更新 items 数组中的数据
         const normalItem = this.inventory.items.find(i => i.id === itemId);
         if (normalItem) {
           normalItem.enhanceLevel = newLevel;
         }
+
+        this.addLog('强化', `${item.name}强化成功！达到+${newLevel}`);
+
+        return {
+          type: EnhanceResultType.SUCCESS,
+          success: true,
+          message: `强化成功！${item.name}达到+${newLevel}`,
+          previousLevel: currentLevel,
+          currentLevel: newLevel,
+          consumedMaterials,
+          consumedGold: config.goldCost,
+          usedProtection: useProtection,
+          attributeGains: { attack: 0, defense: 0, speed: 0, maxHp: 0, dodge: 0, hit: 0 },
+        };
       }
-
-      // 计算属性提升
-      const attributeGains = {
-        attack: config.attackBonus,
-        defense: config.defenseBonus,
-        agility: config.agilityBonus,
-        speed: config.speedBonus,
-        maxHp: config.maxHpBonus,
-      };
-
-      this.addLog('强化', `${item.name}强化成功！达到+${item.enhanceLevel}`);
-
-      return {
-        type: EnhanceResultType.SUCCESS,
-        success: true,
-        message: `强化成功！${item.name}达到+${item.enhanceLevel}`,
-        previousLevel: currentLevel,
-        currentLevel: item.enhanceLevel,
-        consumedMaterials,
-        consumedGold: config.goldCost,
-        usedProtection: useProtection,
-        attributeGains,
-      };
     } else {
       // 强化失败
       if (config.failureDowngrade && !useProtection) {
         // 降级
         const newLevel = Math.max(0, currentLevel - 1);
 
-        // 如果是神话装备，更新原始数据
-        if (isMythEquipment && mythEquipmentIndex !== -1) {
-          this.inventory.equipment[mythEquipmentIndex].enhanceLevel = newLevel;
+        // 处理已装备装备降级 - 只更新等级
+        if (isEquippedEquipment && equippedSlot && equipmentInstance) {
+          equipmentInstance.enhanceLevel = newLevel;
+        }
+        // 处理背包装备降级 - 只更新等级
+        else if (isMythEquipment && mythEquipmentIndex !== -1 && equipmentInstance) {
+          equipmentInstance.enhanceLevel = newLevel;
         } else if (item) {
           // 普通装备，更新 items 数组中的数据
           const normalItem = this.inventory.items.find(i => i.id === itemId);
@@ -1956,6 +2124,18 @@ export class GameManager {
         };
       }
     }
+
+    // 默认返回（不应该到达这里）
+    return {
+      type: EnhanceResultType.FAILURE,
+      success: false,
+      message: '强化处理异常',
+      previousLevel: currentLevel,
+      currentLevel,
+      consumedMaterials,
+      consumedGold: 0,
+      usedProtection: false,
+    };
   }
 
   // ==================== 神话装备系统 ====================

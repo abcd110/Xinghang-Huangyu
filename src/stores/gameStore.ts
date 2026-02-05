@@ -30,8 +30,8 @@ interface GameStore {
     treasureCoins?: number;
   };
   useItem: (itemId: string) => { success: boolean; message: string };
-  equipItem: (itemId: string) => { success: boolean; message: string };
-  unequipItem: (itemId: string) => { success: boolean; message: string };
+  equipItem: (itemId: string) => Promise<{ success: boolean; message: string }>;
+  unequipItem: (itemId: string) => Promise<{ success: boolean; message: string }>;
 
   // 任务系统
   claimQuestReward: (questId: string) => { success: boolean; message: string };
@@ -50,7 +50,7 @@ interface GameStore {
   getDecomposePreview: (itemId: string) => { success: boolean; preview?: any; message?: string };
 
   // 升华系统
-  sublimateItem: (itemId: string) => { success: boolean; message: string; levelUp?: boolean };
+  sublimateItem: (itemId: string) => Promise<{ success: boolean; message: string; levelUp?: boolean }>;
 
   // 装备强化系统
   enhanceItem: (itemId: string, useProtection?: boolean) => import('../core/EnhanceSystem').EnhanceResult;
@@ -157,19 +157,19 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   // 装备物品
-  equipItem: (itemId: string) => {
+  equipItem: async (itemId: string) => {
     const { gameManager } = get();
     const result = gameManager.equipItem(itemId);
-    get().saveGame();
+    await get().saveGame();
     set({ logs: gameManager.logs });
     return result;
   },
 
   // 卸下装备
-  unequipItem: (itemId: string) => {
+  unequipItem: async (itemId: string) => {
     const { gameManager } = get();
     const result = gameManager.unequipItem(itemId);
-    get().saveGame();
+    await get().saveGame();
     set({ logs: gameManager.logs });
     return result;
   },
@@ -226,10 +226,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   // 装备升华
-  sublimateItem: (itemId: string) => {
+  sublimateItem: async (itemId: string) => {
     const { gameManager } = get();
     const result = gameManager.sublimateItem(itemId);
-    get().saveGame();
+    await get().saveGame();
     set({ logs: gameManager.logs });
     return result;
   },

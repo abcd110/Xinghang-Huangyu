@@ -3,6 +3,7 @@ import { useGameStore } from '../stores/gameStore';
 import { EquipmentSlot, EquipmentRarity } from '../data/equipmentTypes';
 import { equipmentSystem } from '../core/EquipmentSystem';
 import { ItemRarity } from '../data/types';
+import { calculateEquipmentStats, calculateSublimationStatsPreview } from '../core/EquipmentStatCalculator';
 
 interface SublimationScreenProps {
   onBack: () => void;
@@ -36,7 +37,7 @@ const RARITY_NAMES: Record<ItemRarity, string> = {
 };
 
 export default function SublimationScreen({ onBack }: SublimationScreenProps) {
-  const { gameManager } = useGameStore();
+  const { gameManager, saveGame } = useGameStore();
   const player = gameManager.player;
 
   const [selectedSlot, setSelectedSlot] = useState<EquipmentSlot | null>(null);
@@ -75,6 +76,9 @@ export default function SublimationScreen({ onBack }: SublimationScreenProps) {
           ? `升华成功！${selectedEquipment.name} 达到 升华+${updated.sublimationLevel}`
           : '升华失败，装备未提升'
       });
+
+      // 保存游戏
+      await saveGame();
     } else {
       setResult({
         success: false,
@@ -292,38 +296,67 @@ export default function SublimationScreen({ onBack }: SublimationScreenProps) {
             }}>
               <h4 style={{ color: '#9ca3af', fontSize: '12px', marginBottom: '8px' }}>当前属性</h4>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px', fontSize: '13px' }}>
-                {selectedEquipment.stats.attack !== undefined && selectedEquipment.stats.attack > 0 && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: '#9ca3af' }}>攻击</span>
-                    <span style={{ color: '#f87171' }}>
-                      {Math.floor(selectedEquipment.stats.attack * (1 + selectedEquipment.enhanceLevel * 0.1) * (1 + selectedEquipment.sublimationLevel * 0.05))}
-                    </span>
-                  </div>
-                )}
-                {selectedEquipment.stats.defense !== undefined && selectedEquipment.stats.defense > 0 && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: '#9ca3af' }}>防御</span>
-                    <span style={{ color: '#60a5fa' }}>
-                      {Math.floor(selectedEquipment.stats.defense * (1 + selectedEquipment.enhanceLevel * 0.1) * (1 + selectedEquipment.sublimationLevel * 0.05))}
-                    </span>
-                  </div>
-                )}
-                {selectedEquipment.stats.hp !== undefined && selectedEquipment.stats.hp > 0 && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: '#9ca3af' }}>生命</span>
-                    <span style={{ color: '#ef4444' }}>
-                      {Math.floor(selectedEquipment.stats.hp * (1 + selectedEquipment.enhanceLevel * 0.1) * (1 + selectedEquipment.sublimationLevel * 0.05))}
-                    </span>
-                  </div>
-                )}
-                {selectedEquipment.stats.penetration !== undefined && selectedEquipment.stats.penetration > 0 && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: '#9ca3af' }}>穿透</span>
-                    <span style={{ color: '#fb923c' }}>
-                      {Math.floor(selectedEquipment.stats.penetration * (1 + selectedEquipment.enhanceLevel * 0.1) * (1 + selectedEquipment.sublimationLevel * 0.05))}
-                    </span>
-                  </div>
-                )}
+                {(() => {
+                  const stats = calculateEquipmentStats(selectedEquipment);
+                  const items = [];
+                  if (stats.attack > 0) {
+                    items.push(
+                      <div key="attack" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: '#9ca3af' }}>攻击</span>
+                        <span style={{ color: '#f87171' }}>{stats.attack}</span>
+                      </div>
+                    );
+                  }
+                  if (stats.defense > 0) {
+                    items.push(
+                      <div key="defense" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: '#9ca3af' }}>防御</span>
+                        <span style={{ color: '#60a5fa' }}>{stats.defense}</span>
+                      </div>
+                    );
+                  }
+                  if (stats.hp > 0) {
+                    items.push(
+                      <div key="hp" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: '#9ca3af' }}>生命</span>
+                        <span style={{ color: '#ef4444' }}>{stats.hp}</span>
+                      </div>
+                    );
+                  }
+                  if (stats.speed > 0) {
+                    items.push(
+                      <div key="speed" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: '#9ca3af' }}>攻速</span>
+                        <span style={{ color: '#fbbf24' }}>{stats.speed.toFixed(1)}</span>
+                      </div>
+                    );
+                  }
+                  if (stats.dodge > 0) {
+                    items.push(
+                      <div key="dodge" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: '#9ca3af' }}>闪避</span>
+                        <span style={{ color: '#a78bfa' }}>{stats.dodge}</span>
+                      </div>
+                    );
+                  }
+                  if (stats.hit > 0) {
+                    items.push(
+                      <div key="hit" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: '#9ca3af' }}>命中</span>
+                        <span style={{ color: '#34d399' }}>{stats.hit}</span>
+                      </div>
+                    );
+                  }
+                  if (stats.penetration > 0) {
+                    items.push(
+                      <div key="penetration" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: '#9ca3af' }}>穿透</span>
+                        <span style={{ color: '#fb923c' }}>{stats.penetration}</span>
+                      </div>
+                    );
+                  }
+                  return items;
+                })()}
               </div>
             </div>
 

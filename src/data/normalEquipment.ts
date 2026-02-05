@@ -63,7 +63,7 @@ export const RARITY_NAMES: Record<ItemRarity, string> = {
   [ItemRarity.MYTHIC]: '神话',
 };
 
-// 部位基础属性模板 - 基于数值模拟
+// 部位基础属性模板
 const SLOT_BASE_TEMPLATES: Record<EquipmentSlot, EquipmentBaseStats> = {
   [EquipmentSlot.HEAD]: {
     defense: 2,
@@ -77,46 +77,23 @@ const SLOT_BASE_TEMPLATES: Record<EquipmentSlot, EquipmentBaseStats> = {
   [EquipmentSlot.LEGS]: {
     defense: 1,
     maxHp: 8,
-    dodgeRate: 2,
+    dodgeRate: 1,
   },
   [EquipmentSlot.FEET]: {
     defense: 1,
     maxHp: 6,
-    dodgeRate: 1,
-    speed: 2,
+    dodgeRate: 2,
   },
   [EquipmentSlot.WEAPON]: {
     attack: 5,
   },
   [EquipmentSlot.ACCESSORY]: {
-    defense: 1,
     maxHp: 4,
+    speed: 0.5,
   },
 };
 
-// 品质附加属性
-const QUALITY_BONUS_STATS: Record<ItemRarity, Partial<EquipmentBaseStats>> = {
-  [ItemRarity.COMMON]: {},
-  [ItemRarity.UNCOMMON]: {
-    damageReduction: 2,
-  },
-  [ItemRarity.RARE]: {
-    damageReduction: 3,
-    hitRate: 2,
-  },
-  [ItemRarity.EPIC]: {
-    damageReduction: 5,
-    hitRate: 4,
-    defense: 1,
-  },
-  [ItemRarity.LEGENDARY]: {
-    damageReduction: 8,
-    hitRate: 6,
-    defense: 2,
-    maxHp: 10,
-  },
-  [ItemRarity.MYTHIC]: {},
-};
+// 品质只保留倍率，无附加属性
 
 // 制式装备名称映射
 const SLOT_STANDARD_NAMES: Record<EquipmentSlot, string> = {
@@ -135,72 +112,65 @@ function generateEquipmentName(slot: EquipmentSlot, rarity: ItemRarity, material
   return `${rarityName}${standardName}`;
 }
 
-// 计算装备属性
+// 计算装备属性（只应用品质倍率，无等级系数）
 function calculateEquipmentStats(
   slot: EquipmentSlot,
-  rarity: ItemRarity,
-  level: number
+  rarity: ItemRarity
 ): EquipmentBaseStats {
   const baseTemplate = SLOT_BASE_TEMPLATES[slot];
   const qualityMultiplier = QUALITY_MULTIPLIERS[rarity];
-  const levelMultiplier = 1 + (level - 1) * 0.08;
 
   const stats: EquipmentBaseStats = {};
 
-  // 基础属性乘以品质倍率和等级系数
+  // 基础属性乘以品质倍率
   Object.entries(baseTemplate).forEach(([key, value]) => {
     if (value !== undefined) {
-      (stats as any)[key] = Math.floor(value * qualityMultiplier * levelMultiplier);
-    }
-  });
-
-  // 添加品质附加属性
-  const bonusStats = QUALITY_BONUS_STATS[rarity];
-  Object.entries(bonusStats).forEach(([key, value]) => {
-    if (value !== undefined) {
-      const current = (stats as any)[key] || 0;
-      (stats as any)[key] = current + value;
+      // speed 属性保留1位小数，其他属性取整
+      if (key === 'speed') {
+        (stats as any)[key] = Math.round(value * qualityMultiplier * 10) / 10;
+      } else {
+        (stats as any)[key] = Math.floor(value * qualityMultiplier);
+      }
     }
   });
 
   return stats;
 }
 
-// 生成装备描述
+// 生成装备描述（移除百分比符号）
 function generateEquipmentDescription(slot: EquipmentSlot, stats: EquipmentBaseStats): string {
   const descriptions: string[] = [];
 
   if (stats.attack) descriptions.push(`攻击+${stats.attack}`);
   if (stats.defense) descriptions.push(`防御+${stats.defense}`);
   if (stats.maxHp) descriptions.push(`生命+${stats.maxHp}`);
-  if (stats.speed) descriptions.push(`攻速+${stats.speed}%`);
-  if (stats.critRate) descriptions.push(`暴击+${stats.critRate}%`);
-  if (stats.dodgeRate) descriptions.push(`闪避+${stats.dodgeRate}%`);
+  if (stats.speed) descriptions.push(`攻速+${stats.speed}`);
+  if (stats.critRate) descriptions.push(`暴击+${stats.critRate}`);
+  if (stats.dodgeRate) descriptions.push(`闪避+${stats.dodgeRate}`);
   if (stats.hitRate) descriptions.push(`命中+${stats.hitRate}`);
-  if (stats.penetration) descriptions.push(`穿透+${stats.penetration}%`);
-  if (stats.damageReduction) descriptions.push(`减伤+${stats.damageReduction}%`);
-  if (stats.lifeSteal) descriptions.push(`吸血+${stats.lifeSteal}%`);
+  if (stats.penetration) descriptions.push(`穿透+${stats.penetration}`);
+  if (stats.damageReduction) descriptions.push(`减伤+${stats.damageReduction}`);
+  if (stats.lifeSteal) descriptions.push(`吸血+${stats.lifeSteal}`);
 
   return descriptions.join('，');
 }
 
-// 生成指定部位和品质的装备
+// 生成指定部位和品质的装备（移除等级参数）
 export function generateEquipment(
   slot: EquipmentSlot,
   rarity: ItemRarity,
-  level: number,
   materialIndex: number = 0
 ): NormalEquipment {
-  const id = `eq_${slot}_${rarity}_${level}_${materialIndex}`;
+  const id = `eq_${slot}_${rarity}_${materialIndex}`;
   const name = generateEquipmentName(slot, rarity, materialIndex);
-  const baseStats = calculateEquipmentStats(slot, rarity, level);
+  const baseStats = calculateEquipmentStats(slot, rarity);
 
   return {
     id,
     name,
     slot,
     rarity,
-    level,
+    level: 1,
     baseStats,
     description: generateEquipmentDescription(slot, baseStats),
   };

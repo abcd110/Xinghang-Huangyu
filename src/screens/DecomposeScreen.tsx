@@ -30,6 +30,7 @@ interface DecomposableItem {
   rarity: ItemRarity;
   sublimationLevel?: number;
   isMythic: boolean;
+  isCrafted: boolean;
   originalItem: InventoryItem | EquipmentInstance;
 }
 
@@ -57,6 +58,7 @@ export default function DecomposeScreen({ onBack }: DecomposeScreenProps) {
             rarity: item.rarity,
             sublimationLevel: item.sublimationLevel,
             isMythic: false,
+            isCrafted: true,
             originalItem: item,
           });
         }
@@ -87,9 +89,10 @@ export default function DecomposeScreen({ onBack }: DecomposeScreenProps) {
             id: equip.instanceId,
             name: equip.name,
             type: mappedType,
-            rarity: ItemRarity.MYTHIC,
+            rarity: equip.rarity,
             sublimationLevel: equip.sublimationLevel,
-            isMythic: true,
+            isMythic: equip.rarity === ItemRarity.MYTHIC,
+            isCrafted: equip.isCrafted || false,
             originalItem: equip,
           });
         }
@@ -99,7 +102,7 @@ export default function DecomposeScreen({ onBack }: DecomposeScreenProps) {
     // 修复：缺失return，导致无可用分解物品
     return items;
   }, [getInventory, refreshKey]);
- 
+
   const handleSelectItem = (item: DecomposableItem) => {
     // 修复：拼写错误etResult → setResult
     setResult(null);
@@ -121,7 +124,7 @@ export default function DecomposeScreen({ onBack }: DecomposeScreenProps) {
     // 修复：拼写错误onst → const
     const decomposeResult = decomposeItem(selectedItem.id);
     setResult(decomposeResult);
-  
+
     if (decomposeResult.success) {
       setSelectedItem(null);
       setPreview(null);
@@ -254,7 +257,7 @@ export default function DecomposeScreen({ onBack }: DecomposeScreenProps) {
                         fontSize: '12px',
                         marginTop: '2px'
                       }}>
-                        {TYPE_NAMES[item.type]} · {item.isMythic ? '神话' : '制造'}
+                        {TYPE_NAMES[item.type]} · {item.isCrafted ? '制造' : '神话'}
                       </div>
                     </div>
                     {item.isMythic && (

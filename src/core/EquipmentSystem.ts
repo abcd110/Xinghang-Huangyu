@@ -7,6 +7,7 @@ import {
   EquipmentSlot
 } from '../data/equipmentTypes';
 import { getEquipmentById, getSetBonus } from '../data/mythologyEquipmentIndex';
+import { calculateEquipmentStats } from './EquipmentStatCalculator';
 
 export interface CalculatedStats {
   attack: number;
@@ -30,6 +31,7 @@ export interface EquipmentInstance extends MythologyEquipment {
   equipped: boolean;
   enhanceLevel: number;
   sublimationLevel: number;
+  isCrafted: boolean; // 是否为制造装备（非神话装备）
 }
 
 export interface BattleContext {
@@ -89,24 +91,22 @@ export class EquipmentSystem {
     equippedItems.forEach(item => {
       if (!item.equipped) return;
 
-      const enhanceMultiplier = 1 + (item.enhanceLevel * 0.1);
-      // 升华倍率：每级1.2倍叠乘
-      const sublimationMultiplier = Math.pow(1.2, item.sublimationLevel);
-      const totalMultiplier = enhanceMultiplier * sublimationMultiplier;
+      // 使用新的装备属性计算器（实时根据强化等级计算）
+      const calculatedStats = calculateEquipmentStats(item);
 
-      if (item.stats.attack) baseStats.attack += item.stats.attack * totalMultiplier;
-      if (item.stats.defense) baseStats.defense += item.stats.defense * totalMultiplier;
-      if (item.stats.hp) baseStats.hp += item.stats.hp * totalMultiplier;
-      if (item.stats.hit) baseStats.hit += item.stats.hit * totalMultiplier;
-      if (item.stats.dodge) baseStats.dodge += item.stats.dodge * totalMultiplier;
-      if (item.stats.speed) baseStats.speed += item.stats.speed * totalMultiplier;
-      if (item.stats.crit) baseStats.crit += item.stats.crit * totalMultiplier;
-      if (item.stats.critDamage) baseStats.critDamage += item.stats.critDamage * totalMultiplier;
-      if (item.stats.penetration) baseStats.penetration += item.stats.penetration * totalMultiplier;
-      if (item.stats.penetrationPercent) baseStats.penetrationPercent += item.stats.penetrationPercent * totalMultiplier;
-      if (item.stats.trueDamage) baseStats.trueDamage += item.stats.trueDamage * totalMultiplier;
-      if (item.stats.guard) baseStats.guard += item.stats.guard * totalMultiplier;
-      if (item.stats.luck) baseStats.luck += item.stats.luck * totalMultiplier;
+      baseStats.attack += calculatedStats.attack;
+      baseStats.defense += calculatedStats.defense;
+      baseStats.hp += calculatedStats.hp;
+      baseStats.hit += calculatedStats.hit;
+      baseStats.dodge += calculatedStats.dodge;
+      baseStats.speed += calculatedStats.speed;
+      baseStats.crit += calculatedStats.crit;
+      baseStats.critDamage += calculatedStats.critDamage;
+      baseStats.penetration += calculatedStats.penetration;
+      baseStats.penetrationPercent += calculatedStats.penetrationPercent;
+      baseStats.trueDamage += calculatedStats.trueDamage;
+      baseStats.guard += calculatedStats.guard;
+      baseStats.luck += calculatedStats.luck;
     });
 
     const equipmentIds = equippedItems.filter(i => i.equipped).map(i => i.id);
@@ -131,7 +131,7 @@ export class EquipmentSystem {
       hp: Math.floor(baseStats.hp * (1 + percentBonuses.hp)),
       hit: Math.floor(baseStats.hit * (1 + percentBonuses.hit)),
       dodge: Math.floor(baseStats.dodge * (1 + percentBonuses.dodge)),
-      speed: Math.floor(baseStats.speed * (1 + percentBonuses.speed)),
+      speed: baseStats.speed * (1 + percentBonuses.speed),
       crit: Math.floor(baseStats.crit * (1 + percentBonuses.crit)),
       critDamage: Math.floor(baseStats.critDamage * (1 + percentBonuses.critDamage)),
       penetration: Math.floor(baseStats.penetration * (1 + percentBonuses.penetration)),

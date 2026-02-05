@@ -15,8 +15,14 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
   const recentLogs = showAllLogs ? (logs || []) : (logs || []).slice(0, 6);
 
   const handleRest = () => {
-    rest();
+    const result = rest();
+    if (!result.success) {
+      alert(result.message);
+    }
   };
+
+  // 检查是否可以休息
+  const canRest = player.hunger >= 20 && player.thirst >= 10;
 
   // 预警颜色
   const getWarningColor = (value: number, max: number) => {
@@ -154,9 +160,10 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
           />
           <ActionButton
             icon="🛌"
-            label="休息"
-            color="#1e40af"
+            label={canRest ? "休息" : "饥饿/口渴不足"}
+            color={canRest ? "#1e40af" : "#4b5563"}
             onClick={handleRest}
+            disabled={!canRest}
           />
           <ActionButton
             icon="⚔️"
@@ -278,16 +285,19 @@ function ActionButton({
   icon,
   label,
   color,
-  onClick
+  onClick,
+  disabled = false
 }: {
   icon: string;
   label: string;
   color: string;
   onClick: () => void;
+  disabled?: boolean;
 }) {
   return (
     <button
       onClick={onClick}
+      disabled={disabled}
       style={{
         backgroundColor: color,
         border: `1px solid ${color}`,
@@ -298,7 +308,8 @@ function ActionButton({
         alignItems: 'center',
         justifyContent: 'center',
         gap: '6px',
-        cursor: 'pointer',
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        opacity: disabled ? 0.6 : 1,
         transition: 'transform 0.1s'
       }}
     >

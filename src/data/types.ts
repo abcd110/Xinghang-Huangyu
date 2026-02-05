@@ -269,7 +269,7 @@ export interface MythologyLocation extends BaseLocation {
   isUnlocked: boolean;             // 是否已解锁
   isCompleted: boolean;            // 是否已攻略
   explorationProgress: number;     // 探索进度 0-100
-  
+
   // 新增：类似普通站台的探索系统配置
   enemyTypes: string[];            // 普通敌人类型（小怪）
   eliteEnemyTypes: string[];       // 精英敌人类型

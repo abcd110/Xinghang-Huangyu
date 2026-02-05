@@ -4,6 +4,7 @@ import { ItemType, ItemRarity, TYPE_NAMES } from '../data/types';
 import type { InventoryItem } from '../data/types';
 import type { EquipmentInstance } from '../core/EquipmentSystem';
 import { EquipmentSlot } from '../data/equipmentTypes';
+import { calculateEquipmentStats } from '../core/EquipmentStatCalculator';
 
 interface InventoryScreenProps {
   onBack: () => void;
@@ -59,12 +60,9 @@ export default function InventoryScreen({ onBack, onNavigate }: InventoryScreenP
   // 强制刷新
   const forceRefresh = () => setRefreshKey(prev => prev + 1);
 
-  // 根据分类筛选物品
+  // 根据分类筛选物品（非装备类物品）
   const filteredItems = inventory.items.filter(item => {
     if (selectedCategory === 'all') return true;
-    if (selectedCategory === 'equipment') {
-      return item.type === ItemType.WEAPON || item.type === ItemType.ARMOR || item.type === ItemType.ACCESSORY;
-    }
     if (selectedCategory === 'consumable') {
       return item.type === ItemType.CONSUMABLE;
     }
@@ -74,10 +72,10 @@ export default function InventoryScreen({ onBack, onNavigate }: InventoryScreenP
     if (selectedCategory === 'misc') {
       return item.type === ItemType.SPECIAL || item.type === ItemType.SKILL_BOOK;
     }
-    return true;
+    return false; // 装备类物品不再在 items 中显示
   });
 
-  // 获取神话装备
+  // 获取所有装备（制造的装备和神话装备统一存储在 equipment 中）
   const filteredEquipment = selectedCategory === 'all' || selectedCategory === 'equipment'
     ? inventory.equipment
     : [];
@@ -86,17 +84,17 @@ export default function InventoryScreen({ onBack, onNavigate }: InventoryScreenP
   const totalItems = inventory.items.length + inventory.equipment.length;
   const emptySlots = Math.max(0, inventory.maxSlots - totalItems);
 
-  const handleItemAction = (action: string) => {
+  const handleItemAction = async (action: string) => {
     if (!selectedItem) return;
 
     if (action === 'use') {
       useItem(selectedItem.id);
       setSelectedItem(null);
     } else if (action === 'equip') {
-      equipItem(selectedItem.id);
+      await equipItem(selectedItem.id);
       setSelectedItem(null);
     } else if (action === 'unequip') {
-      unequipItem(selectedItem.id);
+      await unequipItem(selectedItem.id);
       setSelectedItem(null);
     } else if (action === 'discard') {
       inventory.removeItem(selectedItem.id, 1);
@@ -105,7 +103,7 @@ export default function InventoryScreen({ onBack, onNavigate }: InventoryScreenP
       if (onNavigate) {
         onNavigate('sublimation');
       } else {
-        sublimateItem(selectedItem.id);
+        await sublimateItem(selectedItem.id);
       }
       setSelectedItem(null);
     } else if (action === 'enhance') {
@@ -456,7 +454,7 @@ function ItemDetailModal({
 }: {
   item: InventoryItem;
   onClose: () => void;
-  onAction: (action: string) => void;
+  onAction: (action: string) => Promise<void>;
   isEquipment: boolean;
   isConsumable: boolean;
 }) {
@@ -609,7 +607,7 @@ function ItemDetailModal({
             <>
               {item.equipped ? (
                 <button
-                  onClick={() => onAction('unequip')}
+                  onClick={async () => await onAction('unequip')}
                   style={{
                     padding: '12px',
                     backgroundColor: '#374151',
@@ -624,7 +622,7 @@ function ItemDetailModal({
                 </button>
               ) : (
                 <button
-                  onClick={() => onAction('equip')}
+                  onClick={async () => await onAction('equip')}
                   style={{
                     padding: '12px',
                     backgroundColor: '#d97706',
@@ -639,7 +637,7 @@ function ItemDetailModal({
                 </button>
               )}
               <button
-                onClick={() => onAction('sublimate')}
+                onClick={async () => await onAction('sublimate')}
                 style={{
                   padding: '12px',
                   backgroundColor: '#9333ea',
@@ -711,14 +709,14 @@ interface EnhancePreviewData {
   currentLevel: number;
   targetLevel: number;
   successRate: number;
-  materialCost: { materialId: string; name: string; quantity: number; hasEnough: boolean }[];
+  stoneCost: number;
+  hasEnoughStones: boolean;
   goldCost: number;
   hasEnoughGold: boolean;
   failureDowngrade: boolean;
   attributePreview: {
     attack: { current: number; after: number };
     defense: { current: number; after: number };
-    agility: { current: number; after: number };
     speed: { current: number; after: number };
     maxHp: { current: number; after: number };
   };
@@ -846,28 +844,28 @@ function EnhancePreviewModal({
               }}>
                 <p style={{ color: '#9ca3af', fontSize: '12px', marginBottom: '8px' }}>属性提升</p>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', fontSize: '12px' }}>
-                  {preview.attributePreview.attack.after > 0 && (
+                  {preview.attributePreview.attack.after > preview.attributePreview.attack.current && (
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ color: '#9ca3af' }}>攻击</span>
-                      <span style={{ color: '#4ade80' }}>+{preview.attributePreview.attack.after}</span>
+                      <span style={{ color: '#4ade80' }}>+{preview.attributePreview.attack.after - preview.attributePreview.attack.current}</span>
                     </div>
                   )}
-                  {preview.attributePreview.defense.after > 0 && (
+                  {preview.attributePreview.defense.after > preview.attributePreview.defense.current && (
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ color: '#9ca3af' }}>防御</span>
-                      <span style={{ color: '#4ade80' }}>+{preview.attributePreview.defense.after}</span>
+                      <span style={{ color: '#4ade80' }}>+{preview.attributePreview.defense.after - preview.attributePreview.defense.current}</span>
                     </div>
                   )}
-                  {preview.attributePreview.agility.after > 0 && (
+                  {preview.attributePreview.speed.after > preview.attributePreview.speed.current && (
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ color: '#9ca3af' }}>敏捷</span>
-                      <span style={{ color: '#4ade80' }}>+{preview.attributePreview.agility.after}</span>
+                      <span style={{ color: '#9ca3af' }}>攻速</span>
+                      <span style={{ color: '#4ade80' }}>+{preview.attributePreview.speed.after - preview.attributePreview.speed.current}</span>
                     </div>
                   )}
-                  {preview.attributePreview.maxHp.after > 0 && (
+                  {preview.attributePreview.maxHp.after > preview.attributePreview.maxHp.current && (
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ color: '#9ca3af' }}>生命</span>
-                      <span style={{ color: '#4ade80' }}>+{preview.attributePreview.maxHp.after}</span>
+                      <span style={{ color: '#4ade80' }}>+{preview.attributePreview.maxHp.after - preview.attributePreview.maxHp.current}</span>
                     </div>
                   )}
                 </div>
@@ -882,18 +880,10 @@ function EnhancePreviewModal({
               }}>
                 <p style={{ color: '#9ca3af', fontSize: '12px', marginBottom: '8px' }}>所需材料</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '12px' }}>
-                  {preview.materialCost.map((cost: { materialId: string; name: string; quantity: number; hasEnough: boolean }, index: number) => (
-                    <div key={index} style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ color: '#d1d5db' }}>{cost.name}</span>
-                      <span style={{ color: cost.hasEnough ? '#4ade80' : '#ef4444' }}>
-                        x{cost.quantity}
-                      </span>
-                    </div>
-                  ))}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', paddingTop: '4px', borderTop: '1px solid #374151' }}>
-                    <span style={{ color: '#d1d5db' }}>列车币</span>
-                    <span style={{ color: preview.hasEnoughGold ? '#4ade80' : '#ef4444' }}>
-                      {preview.goldCost}
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#d1d5db' }}>强化石</span>
+                    <span style={{ color: preview.hasEnoughStones ? '#4ade80' : '#ef4444' }}>
+                      x{preview.stoneCost}
                     </span>
                   </div>
                 </div>
@@ -1006,54 +996,59 @@ function EquipmentDetailModal({
           <div style={{ backgroundColor: '#1f2937', borderRadius: '8px', padding: '12px', marginBottom: '16px' }}>
             <h4 style={{ color: '#9ca3af', fontSize: '12px', marginBottom: '8px' }}>基础属性</h4>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '14px' }}>
-              {equipment.stats.attack !== undefined && equipment.stats.attack > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: '#9ca3af' }}>攻击力</span>
-                  <span style={{ color: '#f87171' }}>
-                    {Math.floor(equipment.stats.attack * (1 + equipment.enhanceLevel * 0.1))}
-                  </span>
-                </div>
-              )}
-              {equipment.stats.defense !== undefined && equipment.stats.defense > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: '#9ca3af' }}>防御力</span>
-                  <span style={{ color: '#60a5fa' }}>
-                    {Math.floor(equipment.stats.defense * (1 + equipment.enhanceLevel * 0.1))}
-                  </span>
-                </div>
-              )}
-              {equipment.stats.hp !== undefined && equipment.stats.hp > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: '#9ca3af' }}>生命值</span>
-                  <span style={{ color: '#ef4444' }}>
-                    {Math.floor(equipment.stats.hp * (1 + equipment.enhanceLevel * 0.1))}
-                  </span>
-                </div>
-              )}
-              {equipment.stats.hit !== undefined && equipment.stats.hit > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: '#9ca3af' }}>命中</span>
-                  <span style={{ color: '#fbbf24' }}>
-                    {Math.floor(equipment.stats.hit * (1 + equipment.enhanceLevel * 0.1))}
-                  </span>
-                </div>
-              )}
-              {equipment.stats.dodge !== undefined && equipment.stats.dodge > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: '#9ca3af' }}>闪避</span>
-                  <span style={{ color: '#4ade80' }}>
-                    {Math.floor(equipment.stats.dodge * (1 + equipment.enhanceLevel * 0.1))}
-                  </span>
-                </div>
-              )}
-              {equipment.stats.speed !== undefined && equipment.stats.speed > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: '#9ca3af' }}>攻速</span>
-                  <span style={{ color: '#c084fc' }}>
-                    {Math.floor(equipment.stats.speed * (1 + equipment.enhanceLevel * 0.1))}
-                  </span>
-                </div>
-              )}
+              {(() => {
+                const stats = calculateEquipmentStats(equipment);
+                const items = [];
+                if (stats.attack > 0) {
+                  items.push(
+                    <div key="attack" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: '#9ca3af' }}>攻击力</span>
+                      <span style={{ color: '#f87171' }}>{stats.attack}</span>
+                    </div>
+                  );
+                }
+                if (stats.defense > 0) {
+                  items.push(
+                    <div key="defense" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: '#9ca3af' }}>防御力</span>
+                      <span style={{ color: '#60a5fa' }}>{stats.defense}</span>
+                    </div>
+                  );
+                }
+                if (stats.hp > 0) {
+                  items.push(
+                    <div key="hp" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: '#9ca3af' }}>生命值</span>
+                      <span style={{ color: '#ef4444' }}>{stats.hp}</span>
+                    </div>
+                  );
+                }
+                if (stats.hit > 0) {
+                  items.push(
+                    <div key="hit" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: '#9ca3af' }}>命中</span>
+                      <span style={{ color: '#fbbf24' }}>{stats.hit}</span>
+                    </div>
+                  );
+                }
+                if (stats.dodge > 0) {
+                  items.push(
+                    <div key="dodge" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: '#9ca3af' }}>闪避</span>
+                      <span style={{ color: '#4ade80' }}>{stats.dodge}</span>
+                    </div>
+                  );
+                }
+                if (stats.speed > 0) {
+                  items.push(
+                    <div key="speed" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: '#9ca3af' }}>攻速</span>
+                      <span style={{ color: '#c084fc' }}>{stats.speed.toFixed(1)}</span>
+                    </div>
+                  );
+                }
+                return items;
+              })()}
             </div>
           </div>
 

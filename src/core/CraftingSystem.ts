@@ -1,5 +1,4 @@
-import type { InventoryItem } from '../data/types';
-import { ItemType, ItemRarity } from '../data/types';
+import { ItemRarity, ItemType } from '../data/types';
 import { EquipmentSlot } from '../data/equipmentTypes';
 import { generateEquipment, RARITY_NAMES } from '../data/normalEquipment';
 import type { EquipmentInstance } from './EquipmentSystem';
@@ -23,7 +22,6 @@ import {
 export interface CraftingResult {
   success: boolean;
   message: string;
-  item?: InventoryItem;
   equipment?: EquipmentInstance;
   quality?: ItemRarity;
   qualityRates?: Record<ItemRarity, number>;
@@ -119,8 +117,9 @@ export class CraftingSystem {
     const rolledQuality = rollCraftingQuality(selection.baseMaterialQuality, selection.secondaryMaterialQuality);
     const qualityRates = calculateCraftingQuality(selection.baseMaterialQuality, selection.secondaryMaterialQuality);
 
-    // 生成装备（固定等级1，品质由材料决定）
-    const equipment = generateEquipment(slot, rolledQuality, 1);
+    // 生成装备（品质由材料决定，无等级设定）
+    const equipment = generateEquipment(slot, rolledQuality);
+    console.log('Generated equipment:', equipment.name, 'baseStats:', equipment.baseStats);
 
     // 将slot映射到ItemType
     let itemType: ItemType;
@@ -141,38 +140,46 @@ export class CraftingSystem {
         itemType = ItemType.WEAPON;
     }
 
-    // 创建InventoryItem（普通装备作为普通物品存储）
-    const inventoryItem: InventoryItem = {
+    // 创建 EquipmentInstance 格式的装备
+    console.log('Creating EquipmentInstance, baseStats.speed:', equipment.baseStats.speed);
+    const equipmentInstance: EquipmentInstance = {
       id: equipment.id,
       name: equipment.name,
-      type: itemType,
+      slot: slot,
       rarity: equipment.rarity,
+      level: 1,
+      stationId: 'crafted',
+      stationNumber: 0,
       description: equipment.description,
+      stats: {
+        attack: equipment.baseStats.attack || 0,
+        defense: equipment.baseStats.defense || 0,
+        hp: equipment.baseStats.maxHp || 0,
+        speed: equipment.baseStats.speed || 0,
+        hit: equipment.baseStats.hitRate || 0,
+        dodge: equipment.baseStats.dodgeRate || 0,
+        crit: equipment.baseStats.critRate || 0,
+        critDamage: equipment.baseStats.critDamage || 0,
+        penetration: 0,
+        trueDamage: 0,
+      },
+      effects: [],
+      instanceId: `crafted_${equipment.id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       quantity: 1,
       equipped: false,
       enhanceLevel: 0,
       sublimationLevel: 0,
-      sublimationProgress: 0,
-      isSublimated: false,
-      slot: slot, // 记录装备槽位
-      // 装备属性
-      attack: equipment.baseStats.attack,
-      defense: equipment.baseStats.defense,
-      maxHp: equipment.baseStats.maxHp,
-      speed: equipment.baseStats.speed,
-      critRate: equipment.baseStats.critRate,
-      critDamage: equipment.baseStats.critDamage,
-      dodgeRate: equipment.baseStats.dodgeRate,
-      hitRate: equipment.baseStats.hitRate,
+      isCrafted: true,
     };
 
-    // 直接添加到背包的items数组（因为装备ID不在ITEMS定义中，不能使用addItem）
-    inventory.items.push(inventoryItem);
+    // 添加到 equipment 数组
+    inventory.equipment.push(equipmentInstance);
+    console.log('Created EquipmentInstance:', equipmentInstance.name, 'stats:', equipmentInstance.stats);
 
     return {
       success: true,
       message: `成功制造了 [${RARITY_NAMES[rolledQuality]}] ${equipment.name}!`,
-      item: inventoryItem,
+      equipment: equipmentInstance,
       quality: rolledQuality,
       qualityRates,
     };

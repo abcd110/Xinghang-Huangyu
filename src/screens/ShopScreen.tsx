@@ -6,58 +6,276 @@ interface ShopScreenProps {
   onBack: () => void;
 }
 
-export default function ShopScreen({ onBack }: ShopScreenProps) {
-  const { gameManager, buyItem } = useGameStore();
-  const shopItems = Array.from(gameManager.shopItems.values());
+interface QuantityModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: (quantity: number) => void;
+  itemName: string;
+  price: number;
+  maxQuantity: number;
+  currentCoins: number;
+}
 
-  const handleBuy = (itemId: string) => {
-    const result = buyItem(itemId, 1);
-    alert(result.message);
+function QuantityModal({ isOpen, onClose, onConfirm, itemName, price, maxQuantity, currentCoins }: QuantityModalProps) {
+  const [quantity, setQuantity] = useState(1);
+
+  if (!isOpen) return null;
+
+  const maxAffordable = Math.floor(currentCoins / price);
+  const actualMax = Math.min(maxQuantity, maxAffordable);
+  const totalPrice = quantity * price;
+
+  const handleConfirm = () => {
+    if (quantity > 0 && quantity <= actualMax) {
+      onConfirm(quantity);
+      setQuantity(1);
+    }
+  };
+
+  const handleClose = () => {
+    setQuantity(1);
+    onClose();
   };
 
   return (
-    <div className="min-h-screen bg-wasteland-900 pb-24">
-      <header className="sticky top-0 z-10 bg-wasteland-800/95 backdrop-blur border-b border-rust-500/30 px-4 py-3">
-        <div className="flex items-center justify-between">
-          <button onClick={onBack} className="flex items-center gap-1 text-gray-400 hover:text-white">
-            <span className="text-lg">←</span>
-            <span className="text-sm">返回</span>
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.7)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 100
+    }}>
+      <div style={{
+        backgroundColor: '#2d2d2d',
+        borderRadius: '16px',
+        padding: '24px',
+        width: '90%',
+        maxWidth: '320px',
+        border: '1px solid #4b5563'
+      }}>
+        <h3 style={{ color: 'white', fontWeight: 'bold', fontSize: '18px', margin: '0 0 16px 0', textAlign: 'center' }}>
+          购买 {itemName}
+        </h3>
+
+        <div style={{ marginBottom: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+            <span style={{ color: '#9ca3af', fontSize: '14px' }}>单价</span>
+            <span style={{ color: '#fbbf24', fontSize: '14px' }}>💰 {price}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
+            <span style={{ color: '#9ca3af', fontSize: '14px' }}>总价</span>
+            <span style={{ color: '#fbbf24', fontSize: '14px', fontWeight: 'bold' }}>💰 {totalPrice}</span>
+          </div>
+
+          {/* 数量选择 */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', marginBottom: '8px' }}>
+            <button
+              onClick={() => setQuantity(Math.max(1, quantity - 1))}
+              style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '8px',
+                border: 'none',
+                backgroundColor: '#374151',
+                color: 'white',
+                fontSize: '20px',
+                cursor: 'pointer'
+              }}
+            >
+              -
+            </button>
+            <input
+              type="number"
+              value={quantity}
+              onChange={(e) => {
+                const val = parseInt(e.target.value) || 1;
+                setQuantity(Math.max(1, Math.min(actualMax, val)));
+              }}
+              style={{
+                width: '80px',
+                height: '40px',
+                textAlign: 'center',
+                fontSize: '18px',
+                fontWeight: 'bold',
+                color: 'white',
+                backgroundColor: '#1f2937',
+                border: '1px solid #4b5563',
+                borderRadius: '8px'
+              }}
+            />
+            <button
+              onClick={() => setQuantity(Math.min(actualMax, quantity + 1))}
+              style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '8px',
+                border: 'none',
+                backgroundColor: '#374151',
+                color: 'white',
+                fontSize: '20px',
+                cursor: 'pointer'
+              }}
+            >
+              +
+            </button>
+          </div>
+
+          <div style={{ textAlign: 'center' }}>
+            <button
+              onClick={() => setQuantity(actualMax)}
+              style={{
+                fontSize: '12px',
+                color: '#9ca3af',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                textDecoration: 'underline'
+              }}
+            >
+              最大数量: {actualMax}
+            </button>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <button
+            onClick={handleClose}
+            style={{
+              flex: 1,
+              padding: '12px',
+              backgroundColor: '#374151',
+              color: '#9ca3af',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontWeight: 'bold'
+            }}
+          >
+            取消
           </button>
-          <h1 className="text-white font-bold text-lg">商店</h1>
-          <div className="flex items-center gap-1 text-yellow-400">
+          <button
+            onClick={handleConfirm}
+            disabled={quantity < 1 || quantity > actualMax}
+            style={{
+              flex: 1,
+              padding: '12px',
+              backgroundColor: quantity < 1 || quantity > actualMax ? '#4b5563' : '#d97706',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: quantity < 1 || quantity > actualMax ? 'not-allowed' : 'pointer',
+              fontWeight: 'bold'
+            }}
+          >
+            确认购买
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function ShopScreen({ onBack }: ShopScreenProps) {
+  const { gameManager, buyItem } = useGameStore();
+  const shopItems = Array.from(gameManager.shopItems.values());
+  const [selectedItem, setSelectedItem] = useState<{ itemId: string; name: string; price: number; stock: number } | null>(null);
+
+  const handleBuy = (itemId: string, quantity: number) => {
+    const result = buyItem(itemId, quantity);
+    alert(result.message);
+    setSelectedItem(null);
+  };
+
+  const openQuantityModal = (itemId: string, name: string, price: number, stock: number) => {
+    setSelectedItem({ itemId, name, price, stock });
+  };
+
+  return (
+    <div style={{ minHeight: '100vh', backgroundColor: '#1a1a1a', paddingBottom: '96px' }}>
+      <header style={{
+        position: 'sticky',
+        top: 0,
+        zIndex: 10,
+        backgroundColor: 'rgba(45, 45, 45, 0.95)',
+        backdropFilter: 'blur(10px)',
+        borderBottom: '1px solid rgba(75, 85, 99, 0.3)',
+        padding: '12px 16px'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <button
+            onClick={onBack}
+            style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer' }}
+          >
+            <span style={{ fontSize: '18px' }}>←</span>
+            <span style={{ fontSize: '14px' }}>返回</span>
+          </button>
+          <h1 style={{ color: 'white', fontWeight: 'bold', fontSize: '18px' }}>商店</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#fbbf24' }}>
             <span>💰</span>
-            <span className="font-bold">{gameManager.trainCoins}</span>
+            <span style={{ fontWeight: 'bold' }}>{gameManager.trainCoins}</span>
           </div>
         </div>
       </header>
 
-      <main className="px-4 py-4">
-        <section className="grid grid-cols-2 gap-3">
+      <main style={{ padding: '16px' }}>
+        <section style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(2, 1fr)',
+          gap: '12px'
+        }}>
           {shopItems.map(shopItem => {
             const inventoryItem = gameManager.inventory.getItem(shopItem.itemId);
             const canAfford = gameManager.trainCoins >= shopItem.price;
             const hasStock = shopItem.stock > 0;
+            const maxAffordable = Math.floor(gameManager.trainCoins / shopItem.price);
+            const canBuyAny = canAfford && hasStock;
 
             return (
-              <div key={shopItem.itemId} className="bg-wasteland-800 rounded-xl p-3 border border-wasteland-700">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-2xl">{inventoryItem ? TYPE_ICONS[inventoryItem.type] : '📦'}</span>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-white text-sm truncate">{shopItem.name}</h3>
-                    <p className="text-xs text-gray-500">限购: {shopItem.stock}/{shopItem.dailyLimit}</p>
+              <div
+                key={shopItem.itemId}
+                style={{
+                  backgroundColor: '#2d2d2d',
+                  borderRadius: '12px',
+                  padding: '12px',
+                  border: '1px solid #374151'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '24px' }}>{inventoryItem ? TYPE_ICONS[inventoryItem.type] : '📦'}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <h3 style={{ fontWeight: 'bold', color: 'white', fontSize: '14px', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {shopItem.name}
+                    </h3>
+                    <p style={{ fontSize: '12px', color: '#6b7280', margin: '4px 0 0 0' }}>
+                      限购: {shopItem.stock}/{shopItem.dailyLimit}
+                    </p>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between">
-                  <span className={`font-bold ${canAfford ? 'text-yellow-400' : 'text-red-400'}`}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontWeight: 'bold', color: canAfford ? '#fbbf24' : '#ef4444' }}>
                     💰 {shopItem.price}
                   </span>
                   <button
-                    onClick={() => handleBuy(shopItem.itemId)}
-                    disabled={!canAfford || !hasStock}
-                    className="px-3 py-1.5 bg-rust-500 hover:bg-rust-400 disabled:bg-wasteland-700 disabled:text-gray-500 text-white text-sm rounded-lg transition-colors"
+                    onClick={() => openQuantityModal(shopItem.itemId, shopItem.name, shopItem.price, shopItem.stock)}
+                    disabled={!canBuyAny}
+                    style={{
+                      padding: '6px 12px',
+                      backgroundColor: !canBuyAny ? '#374151' : '#d97706',
+                      color: !canBuyAny ? '#6b7280' : 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      cursor: !canBuyAny ? 'not-allowed' : 'pointer',
+                      fontSize: '14px',
+                      fontWeight: 'bold'
+                    }}
                   >
-                    {!hasStock ? '售罄' : '购买'}
+                    {!hasStock ? '售罄' : !canAfford ? '金币不足' : '购买'}
                   </button>
                 </div>
               </div>
@@ -66,12 +284,31 @@ export default function ShopScreen({ onBack }: ShopScreenProps) {
         </section>
 
         {/* 提示 */}
-        <div className="mt-4 p-3 bg-wasteland-800 rounded-lg border border-wasteland-700">
-          <p className="text-xs text-gray-400">
+        <div style={{
+          marginTop: '16px',
+          padding: '12px',
+          backgroundColor: '#2d2d2d',
+          borderRadius: '8px',
+          border: '1px solid #374151'
+        }}>
+          <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>
             💡 商店每日刷新，限购商品会在第二天重置
           </p>
         </div>
       </main>
+
+      {/* 数量选择弹窗 */}
+      {selectedItem && (
+        <QuantityModal
+          isOpen={!!selectedItem}
+          onClose={() => setSelectedItem(null)}
+          onConfirm={(quantity) => handleBuy(selectedItem.itemId, quantity)}
+          itemName={selectedItem.name}
+          price={selectedItem.price}
+          maxQuantity={selectedItem.stock}
+          currentCoins={gameManager.trainCoins}
+        />
+      )}
     </div>
   );
 }

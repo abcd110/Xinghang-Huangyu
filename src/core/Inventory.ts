@@ -2,6 +2,7 @@ import type { InventoryItem } from '../data/types';
 import { ItemType } from '../data/types';
 import { createItem } from '../data/items';
 import type { EquipmentInstance } from './EquipmentSystem';
+import { EquipmentSlot } from '../data/equipmentTypes';
 
 export class Inventory {
   items: InventoryItem[];
@@ -223,5 +224,89 @@ export class Inventory {
   // 序列化
   serialize(): { items: InventoryItem[]; equipment: EquipmentInstance[] } {
     return { items: this.items, equipment: this.equipment };
+  }
+
+  // 数据迁移：将旧格式的装备从 items 迁移到 equipment
+  migrateOldEquipment(): { migrated: number; errors: string[] } {
+    const result = { migrated: 0, errors: [] as string[] };
+    const itemsToRemove: number[] = [];
+
+    // 遍历所有 items，找出装备类型的物品
+    this.items.forEach((item, index) => {
+      // 检查是否为装备类型
+      if (item.type !== ItemType.WEAPON &&
+        item.type !== ItemType.ARMOR &&
+        item.type !== ItemType.ACCESSORY) {
+        return;
+      }
+
+      try {
+        // 映射装备槽位
+        let slot: EquipmentSlot;
+        if (item.slot) {
+          switch (item.slot) {
+            case 'head': slot = EquipmentSlot.HEAD; break;
+            case 'body': slot = EquipmentSlot.BODY; break;
+            case 'legs': slot = EquipmentSlot.LEGS; break;
+            case 'feet': slot = EquipmentSlot.FEET; break;
+            case 'weapon': slot = EquipmentSlot.WEAPON; break;
+            case 'accessory': slot = EquipmentSlot.ACCESSORY; break;
+            default: slot = EquipmentSlot.WEAPON; break;
+          }
+        } else {
+          switch (item.type) {
+            case ItemType.WEAPON: slot = EquipmentSlot.WEAPON; break;
+            case ItemType.ARMOR: slot = EquipmentSlot.BODY; break;
+            case ItemType.ACCESSORY: slot = EquipmentSlot.ACCESSORY; break;
+            default: slot = EquipmentSlot.WEAPON; break;
+          }
+        }
+
+        // 创建新的 EquipmentInstance
+        const equipmentInstance: EquipmentInstance = {
+          id: item.id,
+          name: item.name,
+          slot: slot,
+          rarity: item.rarity,
+          level: 1,
+          stationId: 'migrated',
+          stationNumber: 0,
+          description: item.description || '',
+          stats: {
+            attack: item.attack || 0,
+            defense: item.defense || 0,
+            hp: item.maxHp || 0,
+            speed: item.speed || 0,
+            hit: item.hitRate || 0,
+            dodge: item.dodgeRate || 0,
+            crit: item.critRate || 0,
+            critDamage: item.critDamage || 0,
+            penetration: item.penetration || 0,
+            trueDamage: item.trueDamage || 0,
+          },
+          effects: item.effects || [],
+          instanceId: `migrated_${item.id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          quantity: item.quantity,
+          equipped: item.equipped || false,
+          enhanceLevel: item.enhanceLevel || 0,
+          sublimationLevel: item.sublimationLevel || 0,
+          isCrafted: true,
+        };
+
+        // 添加到 equipment 数组
+        this.equipment.push(equipmentInstance);
+        itemsToRemove.push(index);
+        result.migrated++;
+      } catch (error) {
+        result.errors.push(`迁移装备 ${item.name} (${item.id}) 失败: ${error}`);
+      }
+    });
+
+    // 从 items 中删除已迁移的装备（从后往前删除，避免索引错乱）
+    for (let i = itemsToRemove.length - 1; i >= 0; i--) {
+      this.items.splice(itemsToRemove[i], 1);
+    }
+
+    return result;
   }
 }

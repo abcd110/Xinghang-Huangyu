@@ -5,6 +5,7 @@ import { ItemRarity, ItemType } from '../data/types';
 import { ALL_MYTHOLOGY_EQUIPMENT, getEquipmentByStation, createEquipmentInstance } from '../data/mythologyEquipmentIndex';
 import { ITEMS } from '../data/items';
 import { ALL_CRAFTING_MATERIALS, CraftingMaterialType, MaterialQuality, MATERIAL_QUALITY_NAMES } from '../data/craftingMaterials';
+import { ENHANCE_STONE_ID } from '../core/EnhanceSystem';
 
 interface TestScreenProps {
   onBack: () => void;
@@ -125,6 +126,13 @@ export default function TestScreen({ onBack }: TestScreenProps) {
     gameManager.trainCoins += amount;
     forceRefresh();
     showMessage(`已获得 ${amount.toLocaleString()} 列车币`);
+  };
+
+  // 添加强化石
+  const addEnhanceStones = (quantity: number) => {
+    gameManager.inventory.addItem(ENHANCE_STONE_ID, quantity);
+    forceRefresh();
+    showMessage(`已获得强化石 x${quantity}`);
   };
 
   // 计算属性值 - 每级提升10%（基于初始数值，叠乘）
@@ -647,6 +655,65 @@ export default function TestScreen({ onBack }: TestScreenProps) {
         {/* 材料标签 */}
         {activeTab === 'materials' && (
           <div>
+            {/* 强化石快速获取 */}
+            <div style={{
+              backgroundColor: '#2d2d2d',
+              borderRadius: '12px',
+              padding: '16px',
+              marginBottom: '16px'
+            }}>
+              <h3 style={{ color: 'white', fontSize: '14px', marginBottom: '12px' }}>
+                🔷 强化石
+              </h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                <button
+                  onClick={() => addEnhanceStones(10)}
+                  style={{
+                    padding: '12px',
+                    backgroundColor: '#3b82f6',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontWeight: 'bold',
+                    fontSize: '13px'
+                  }}
+                >
+                  +10
+                </button>
+                <button
+                  onClick={() => addEnhanceStones(100)}
+                  style={{
+                    padding: '12px',
+                    backgroundColor: '#2563eb',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontWeight: 'bold',
+                    fontSize: '13px'
+                  }}
+                >
+                  +100
+                </button>
+                <button
+                  onClick={() => addEnhanceStones(999)}
+                  style={{
+                    padding: '12px',
+                    backgroundColor: '#1d4ed8',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontWeight: 'bold',
+                    fontSize: '13px'
+                  }}
+                >
+                  +999
+                </button>
+              </div>
+            </div>
+
             {/* 全部材料 */}
             <div style={{
               backgroundColor: '#2d2d2d',

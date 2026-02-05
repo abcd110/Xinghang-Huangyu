@@ -1,13 +1,14 @@
 // 神话站台专属装备数据
 // 基于《装备数值设定_膨胀版_自动战斗版》
 
-import { ItemRarity } from './types';
+import { ItemRarity, InventoryItem, ItemType } from './types';
 import {
   EquipmentSlot,
   EffectTrigger,
   EffectType,
   type MythologyEquipment,
 } from './equipmentTypes';
+import type { EquipmentInstance } from '../core/EquipmentSystem';
 
 // 站台1-8装备（新手期-进阶期）
 export const MYTHOLOGY_EQUIPMENT: Record<string, MythologyEquipment> = {
@@ -1353,8 +1354,9 @@ export function getEquipmentBySlot(slot: EquipmentSlot): MythologyEquipment[] {
 // 创建装备实例
 export function createEquipmentInstance(
   equipmentId: string,
-  quantity: number = 1
-): (MythologyEquipment & { instanceId: string; quantity: number; equipped: boolean; enhanceLevel: number; sublimationLevel: number }) | null {
+  quantity: number = 1,
+  isCrafted: boolean = false
+): (MythologyEquipment & { instanceId: string; quantity: number; equipped: boolean; enhanceLevel: number; sublimationLevel: number; isCrafted: boolean }) | null {
   const template = getEquipmentTemplate(equipmentId);
   if (!template) return null;
 
@@ -1365,17 +1367,83 @@ export function createEquipmentInstance(
     equipped: false,
     enhanceLevel: 0,
     sublimationLevel: 0,
+    isCrafted,
   };
 }
 
 // 获取套装效果
 export function getSetBonus(equipmentList: MythologyEquipment[]): Map<number, number> {
   const setCounts = new Map<number, number>();
-  
+
   equipmentList.forEach(equip => {
     const count = setCounts.get(equip.stationNumber) || 0;
     setCounts.set(equip.stationNumber, count + 1);
   });
-  
+
   return setCounts;
+}
+
+// 将制造的装备转换为 EquipmentInstance 格式
+export function convertCraftedItemToEquipmentInstance(
+  item: InventoryItem
+): EquipmentInstance | null {
+  // 只处理装备类型的物品
+  if (item.type !== ItemType.WEAPON &&
+    item.type !== ItemType.ARMOR &&
+    item.type !== ItemType.ACCESSORY) {
+    return null;
+  }
+
+  // 映射装备槽位
+  let slot: EquipmentSlot;
+  if (item.slot) {
+    // 使用 item.slot 字段
+    switch (item.slot) {
+      case 'head': slot = EquipmentSlot.HEAD; break;
+      case 'body': slot = EquipmentSlot.BODY; break;
+      case 'legs': slot = EquipmentSlot.LEGS; break;
+      case 'feet': slot = EquipmentSlot.FEET; break;
+      case 'weapon': slot = EquipmentSlot.WEAPON; break;
+      case 'accessory': slot = EquipmentSlot.ACCESSORY; break;
+      default: slot = EquipmentSlot.WEAPON; break;
+    }
+  } else {
+    // 根据 type 映射
+    switch (item.type) {
+      case ItemType.WEAPON: slot = EquipmentSlot.WEAPON; break;
+      case ItemType.ARMOR: slot = EquipmentSlot.BODY; break;
+      case ItemType.ACCESSORY: slot = EquipmentSlot.ACCESSORY; break;
+      default: slot = EquipmentSlot.WEAPON; break;
+    }
+  }
+
+  return {
+    id: item.id,
+    name: item.name,
+    slot: slot,
+    rarity: item.rarity,
+    level: 1, // 制造装备默认等级1
+    stationId: 'crafted', // 标记为制造装备
+    stationNumber: 0, // 制造装备没有站台编号
+    description: item.description,
+    stats: {
+      attack: item.attack || 0,
+      defense: item.defense || 0,
+      hp: item.maxHp || 0,
+      speed: item.speed || 0,
+      hit: item.hitRate || 0,
+      dodge: item.dodgeRate || 0,
+      crit: item.critRate || 0,
+      critDamage: item.critDamage || 0,
+      penetration: item.penetration || 0,
+      trueDamage: item.trueDamage || 0,
+    },
+    effects: item.effects || [],
+    instanceId: `crafted_${item.id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    quantity: item.quantity,
+    equipped: item.equipped,
+    enhanceLevel: item.enhanceLevel || 0,
+    sublimationLevel: item.sublimationLevel || 0,
+    isCrafted: true,
+  };
 }

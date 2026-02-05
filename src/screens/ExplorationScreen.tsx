@@ -7,6 +7,8 @@ interface ExplorationScreenProps {
   onBack: () => void;
   onStartBattle: (locationId: string, isBoss?: boolean, isElite?: boolean) => void;
   initialLocationId?: string | null;
+  returnToActionSelect?: boolean;
+  onActionSelectHandled?: () => void;
 }
 
 type ExplorationPhase = 'select' | 'driving' | 'action_select' | 'collecting' | 'complete';
@@ -18,7 +20,7 @@ interface ExplorationState {
   driveTimeRemaining: number;
 }
 
-export default function ExplorationScreen({ onBack, onStartBattle, initialLocationId }: ExplorationScreenProps) {
+export default function ExplorationScreen({ onBack, onStartBattle, initialLocationId, returnToActionSelect, onActionSelectHandled }: ExplorationScreenProps) {
   const { gameManager } = useGameStore();
   const [exploration, setExploration] = useState<ExplorationState>({
     phase: initialLocationId ? 'action_select' : 'select',
@@ -27,6 +29,19 @@ export default function ExplorationScreen({ onBack, onStartBattle, initialLocati
     driveTimeRemaining: 0,
   });
   const [logs, setLogs] = useState<string[]>([]);
+
+  // 处理从战斗返回时切换到行动选择界面
+  useEffect(() => {
+    if (returnToActionSelect && initialLocationId && onActionSelectHandled) {
+      setExploration({
+        phase: 'action_select',
+        locationId: initialLocationId,
+        collectedItems: [],
+        driveTimeRemaining: 0,
+      });
+      onActionSelectHandled();
+    }
+  }, [returnToActionSelect, initialLocationId, onActionSelectHandled]);
 
   const addLog = useCallback((message: string) => {
     setLogs(prev => [...prev.slice(-5), message]);

@@ -5,6 +5,7 @@ import { EquipmentInstance } from '../core/EquipmentSystem';
 import { getSetBonus } from '../data/mythologyEquipmentIndex';
 import { ItemType } from '../data/types';
 import type { InventoryItem } from '../data/types';
+import { calculateEquipmentStats } from '../core/EquipmentStatCalculator';
 
 interface PlayerScreenProps {
   onBack: () => void;
@@ -45,7 +46,7 @@ const RARITY_COLORS = {
 };
 
 export default function PlayerScreen({ onBack }: PlayerScreenProps) {
-  const { gameManager } = useGameStore();
+  const { gameManager, saveGame } = useGameStore();
   const player = gameManager.player;
   const [selectedItem, setSelectedItem] = useState<EquipmentInstance | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<EquipmentSlot | null>(null);
@@ -66,6 +67,7 @@ export default function PlayerScreen({ onBack }: PlayerScreenProps) {
 
   // 处理装备槽位点击
   const handleSlotClick = (slot: EquipmentSlot, item: EquipmentInstance | undefined) => {
+    console.log('handleSlotClick, slot:', slot, 'item:', item, 'item.stats:', item?.stats);
     if (item) {
       // 已装备，显示详情
       setSelectedItem(item);
@@ -78,29 +80,44 @@ export default function PlayerScreen({ onBack }: PlayerScreenProps) {
   };
 
   // 从背包装备
-  const handleEquipFromBackpack = (equipment: EquipmentInstance) => {
+  const handleEquipFromBackpack = async (equipment: EquipmentInstance) => {
+    console.log('handleEquipFromBackpack START, equipment.stats.speed:', equipment.stats.speed, 'instanceId:', equipment.instanceId);
     if (selectedSlot) {
       // 从背包移除
       gameManager.inventory.removeEquipment(equipment.instanceId);
+      console.log('After removeEquipment, equipment.stats.speed:', equipment.stats.speed);
+
       // 卸下该槽位已有装备（如果有）
       const existing = player.getEquipmentBySlot(selectedSlot);
+      console.log('existing equipment:', existing?.name, 'existing.stats.speed:', existing?.stats.speed);
+
       if (existing) {
         player.unequipMythologyItem(selectedSlot);
+        console.log('After unequip, existing.stats.speed:', existing.stats.speed);
         // 将卸下的装备放回背包
         existing.equipped = false;
         gameManager.inventory.addEquipment(existing);
+        console.log('After addEquipment(existing), existing.stats.speed:', existing.stats.speed);
       }
+
       // 装备新物品
+      console.log('Before equipMythologyItem, equipment.stats.speed:', equipment.stats.speed);
       equipment.equipped = true;
       player.equipMythologyItem(equipment);
+      console.log('After equipMythologyItem, equipment.stats.speed:', equipment.stats.speed);
+
+      // 保存游戏
+      await saveGame();
+
       forceRefresh();
       setShowBackpack(false);
       setSelectedSlot(null);
     }
+    console.log('handleEquipFromBackpack END');
   };
 
   // 卸下装备
-  const handleUnequip = () => {
+  const handleUnequip = async () => {
     if (selectedSlot) {
       const item = player.unequipMythologyItem(selectedSlot);
       if (item) {
@@ -108,6 +125,10 @@ export default function PlayerScreen({ onBack }: PlayerScreenProps) {
         item.equipped = false;
         gameManager.inventory.addEquipment(item);
       }
+
+      // 保存游戏
+      await saveGame();
+
       forceRefresh();
       setSelectedItem(null);
       setSelectedSlot(null);
@@ -188,9 +209,44 @@ export default function PlayerScreen({ onBack }: PlayerScreenProps) {
         }}>
           <div style={{ display: 'flex', gap: '8px', justifyContent: 'space-between' }}>
             {Object.values(EquipmentSlot).map(slot => {
-              // 从新装备系统获取装备
-              const equippedItem = player.getEquipmentBySlot(slot);
-              let unifiedItem: UnifiedEquipment | null = convertNewItemToUnified(equippedItem);
+              // 优先从新装备系统（神话装备）获取
+              const mythEquippedItem = player.getEquipmentBySlot(slot);
+              console.log('Rendering slot:', slot, 'mythEquippedItem:', mythEquippedItem?.name, 'mythEquippedItem.stats.speed:', mythEquippedItem?.stats.speed);
+              // 从旧装备系统获取
+              const oldEquippedItems = gameManager.inventory.getEquippedItems();
+              let unifiedItem: UnifiedEquipment | null = null;
+              let equippedItem: EquipmentInstance | undefined = mythEquippedItem;
+
+              if (mythEquippedItem) {
+                // 使用神话装备
+                unifiedItem = convertNewItemToUnified(mythEquippedItem);
+              } else {
+                // 检查旧装备系统
+                let oldItem: InventoryItem | null = null;
+                switch (slot) {
+                  case EquipmentSlot.WEAPON:
+                    oldItem = oldEquippedItems.weapon;
+                    break;
+                  case EquipmentSlot.HEAD:
+                    oldItem = oldEquippedItems.head;
+                    break;
+                  case EquipmentSlot.BODY:
+                    oldItem = oldEquippedItems.body;
+                    break;
+                  case EquipmentSlot.LEGS:
+                    oldItem = oldEquippedItems.legs;
+                    break;
+                  case EquipmentSlot.FEET:
+                    oldItem = oldEquippedItems.feet;
+                    break;
+                  case EquipmentSlot.ACCESSORY:
+                    oldItem = oldEquippedItems.accessory;
+                    break;
+                }
+                if (oldItem) {
+                  unifiedItem = convertOldItemToUnified(oldItem);
+                }
+              }
 
               return (
                 <EquipmentSlotItem
@@ -276,7 +332,7 @@ export default function PlayerScreen({ onBack }: PlayerScreenProps) {
           }}>
             <StatItem label="命中" value={Math.floor(player.totalHit)} color="#fbbf24" flex={1} />
             <StatItem label="闪避" value={Math.floor(player.totalDodge)} color="#4ade80" flex={1} />
-            <StatItem label="攻速" value={player.totalAttackSpeed.toFixed(2)} color="#c084fc" flex={1} />
+            <StatItem label="攻速" value={player.totalAttackSpeed.toFixed(1)} color="#c084fc" flex={1} />
             <StatItem label="真伤" value={`${Math.floor(player.totalTrueDamage)}%`} color="#ec4899" flex={1} />
           </div>
 
@@ -310,7 +366,7 @@ export default function PlayerScreen({ onBack }: PlayerScreenProps) {
               <EquipmentBonusItem label="生命" value={player.equipmentStats.hp} color="#ef4444" />
               <EquipmentBonusItem label="命中" value={player.equipmentStats.hit} color="#fbbf24" />
               <EquipmentBonusItem label="闪避" value={player.equipmentStats.dodge} color="#4ade80" />
-              <EquipmentBonusItem label="攻速" value={player.equipmentStats.speed} color="#c084fc" />
+              <EquipmentBonusItem label="攻速" value={player.equipmentStats.speed.toFixed(1)} color="#c084fc" />
               <EquipmentBonusItem label="暴击" value={player.equipmentStats.crit} color="#ef4444" />
               <EquipmentBonusItem label="穿透" value={player.equipmentStats.penetration} color="#fb923c" />
             </div>
@@ -381,70 +437,86 @@ export default function PlayerScreen({ onBack }: PlayerScreenProps) {
             }}>
               <h4 style={{ color: '#9ca3af', fontSize: '12px', marginBottom: '8px' }}>基础属性</h4>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px', fontSize: '13px' }}>
-                {selectedItem.stats.attack !== undefined && selectedItem.stats.attack > 0 && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: '#9ca3af' }}>攻击</span>
-                    <span style={{ color: '#f87171' }}>
-                      {Math.floor(selectedItem.stats.attack * (1 + selectedItem.enhanceLevel * 0.1) * (1 + selectedItem.sublimationLevel * 0.05))}
-                    </span>
-                  </div>
-                )}
-                {selectedItem.stats.defense !== undefined && selectedItem.stats.defense > 0 && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: '#9ca3af' }}>防御</span>
-                    <span style={{ color: '#60a5fa' }}>
-                      {Math.floor(selectedItem.stats.defense * (1 + selectedItem.enhanceLevel * 0.1) * (1 + selectedItem.sublimationLevel * 0.05))}
-                    </span>
-                  </div>
-                )}
-                {selectedItem.stats.hp !== undefined && selectedItem.stats.hp > 0 && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: '#9ca3af' }}>生命</span>
-                    <span style={{ color: '#ef4444' }}>
-                      {Math.floor(selectedItem.stats.hp * (1 + selectedItem.enhanceLevel * 0.1) * (1 + selectedItem.sublimationLevel * 0.05))}
-                    </span>
-                  </div>
-                )}
-                {selectedItem.stats.hit !== undefined && selectedItem.stats.hit > 0 && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: '#9ca3af' }}>命中</span>
-                    <span style={{ color: '#fbbf24' }}>
-                      {Math.floor(selectedItem.stats.hit * (1 + selectedItem.enhanceLevel * 0.1) * (1 + selectedItem.sublimationLevel * 0.05))}
-                    </span>
-                  </div>
-                )}
-                {selectedItem.stats.dodge !== undefined && selectedItem.stats.dodge > 0 && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: '#9ca3af' }}>闪避</span>
-                    <span style={{ color: '#4ade80' }}>
-                      {Math.floor(selectedItem.stats.dodge * (1 + selectedItem.enhanceLevel * 0.1) * (1 + selectedItem.sublimationLevel * 0.05))}
-                    </span>
-                  </div>
-                )}
-                {selectedItem.stats.speed !== undefined && selectedItem.stats.speed > 0 && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: '#9ca3af' }}>攻速</span>
-                    <span style={{ color: '#c084fc' }}>
-                      {Math.floor(selectedItem.stats.speed * (1 + selectedItem.enhanceLevel * 0.1) * (1 + selectedItem.sublimationLevel * 0.05))}
-                    </span>
-                  </div>
-                )}
-                {selectedItem.stats.crit !== undefined && selectedItem.stats.crit > 0 && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: '#9ca3af' }}>暴击</span>
-                    <span style={{ color: '#ef4444' }}>
-                      {Math.floor(selectedItem.stats.crit * (1 + selectedItem.enhanceLevel * 0.1) * (1 + selectedItem.sublimationLevel * 0.05))}
-                    </span>
-                  </div>
-                )}
-                {selectedItem.stats.penetration !== undefined && selectedItem.stats.penetration > 0 && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: '#9ca3af' }}>穿透</span>
-                    <span style={{ color: '#fb923c' }}>
-                      {Math.floor(selectedItem.stats.penetration * (1 + selectedItem.enhanceLevel * 0.1) * (1 + selectedItem.sublimationLevel * 0.05))}
-                    </span>
-                  </div>
-                )}
+                {(() => {
+                  // 使用新的装备属性计算器（实时根据强化等级计算）
+                  const calculatedStats = calculateEquipmentStats(selectedItem);
+
+                  const stats = [];
+
+                  if (calculatedStats.attack > 0) {
+                    stats.push(
+                      <div key="attack" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: '#9ca3af' }}>攻击</span>
+                        <span style={{ color: '#f87171' }}>{calculatedStats.attack}</span>
+                      </div>
+                    );
+                  }
+
+                  if (calculatedStats.defense > 0) {
+                    stats.push(
+                      <div key="defense" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: '#9ca3af' }}>防御</span>
+                        <span style={{ color: '#60a5fa' }}>{calculatedStats.defense}</span>
+                      </div>
+                    );
+                  }
+
+                  if (calculatedStats.hp > 0) {
+                    stats.push(
+                      <div key="hp" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: '#9ca3af' }}>生命</span>
+                        <span style={{ color: '#ef4444' }}>{calculatedStats.hp}</span>
+                      </div>
+                    );
+                  }
+
+                  if (calculatedStats.hit > 0) {
+                    stats.push(
+                      <div key="hit" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: '#9ca3af' }}>命中</span>
+                        <span style={{ color: '#fbbf24' }}>{calculatedStats.hit}</span>
+                      </div>
+                    );
+                  }
+
+                  if (calculatedStats.dodge > 0) {
+                    stats.push(
+                      <div key="dodge" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: '#9ca3af' }}>闪避</span>
+                        <span style={{ color: '#4ade80' }}>{calculatedStats.dodge}</span>
+                      </div>
+                    );
+                  }
+
+                  if (calculatedStats.speed > 0) {
+                    stats.push(
+                      <div key="speed" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: '#9ca3af' }}>攻速</span>
+                        <span style={{ color: '#c084fc' }}>{calculatedStats.speed.toFixed(1)}</span>
+                      </div>
+                    );
+                  }
+
+                  if (calculatedStats.crit > 0) {
+                    stats.push(
+                      <div key="crit" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: '#9ca3af' }}>暴击</span>
+                        <span style={{ color: '#ef4444' }}>{calculatedStats.crit}</span>
+                      </div>
+                    );
+                  }
+
+                  if (calculatedStats.penetration > 0) {
+                    stats.push(
+                      <div key="penetration" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: '#9ca3af' }}>穿透</span>
+                        <span style={{ color: '#fb923c' }}>{calculatedStats.penetration}</span>
+                      </div>
+                    );
+                  }
+
+                  return stats;
+                })()}
               </div>
             </div>
 

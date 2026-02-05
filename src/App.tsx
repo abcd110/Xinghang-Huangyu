@@ -78,6 +78,7 @@ function App() {
   const [battleParams, setBattleParams] = useState<BattleParams | null>(null);
   const [mythologyLocationId, setMythologyLocationId] = useState<string | null>(null);
   const [mythologyBattlePending, setMythologyBattlePending] = useState(false);
+  const [returnToActionSelect, setReturnToActionSelect] = useState(false);
   const { saveGame } = useGameStore();
 
   const handleStartGame = () => {
@@ -115,21 +116,23 @@ function App() {
       return;
     } else if (action === 'return_collect') {
       // 返回收集物资 - 回到探索页面的选择行动界面
+      setReturnToActionSelect(true);
       // 检查是否是从神话站台来的
       if (battleParams?.locationId?.startsWith('myth_')) {
         setCurrentScreen('mythology_explore');
       } else {
-        setCurrentScreen('exploration');
+        setCurrentScreen('normal-stations');
       }
       // 保存游戏
       await saveGame();
     } else if (action === 'boss_defeated') {
       // BOSS击败 - 回到探索页面，标记BOSS已击败
+      setReturnToActionSelect(true);
       // 检查是否是从神话站台来的
       if (battleParams?.locationId?.startsWith('myth_')) {
         setCurrentScreen('mythology_explore');
       } else {
-        setCurrentScreen('exploration');
+        setCurrentScreen('normal-stations');
       }
       // 保存游戏
       await saveGame();
@@ -151,7 +154,18 @@ function App() {
       case 'exploration':
         return <ExplorationSelectScreen onBack={handleBack} onNavigate={handleNavigate} />;
       case 'normal-stations':
-        return <ExplorationScreen onBack={() => setCurrentScreen('exploration')} onStartBattle={handleStartBattle} initialLocationId={battleParams?.locationId} />;
+        return (
+          <ExplorationScreen
+            onBack={() => {
+              setReturnToActionSelect(false);
+              setCurrentScreen('exploration');
+            }}
+            onStartBattle={handleStartBattle}
+            initialLocationId={battleParams?.locationId}
+            returnToActionSelect={returnToActionSelect}
+            onActionSelectHandled={() => setReturnToActionSelect(false)}
+          />
+        );
       case 'battle':
         return battleParams ? (
           <BattleScreen

@@ -24,6 +24,22 @@ export default function EnhanceScreen({ onBack }: EnhanceScreenProps) {
   const [refreshKey, setRefreshKey] = useState(0);
   const inventory = getInventory();
 
+  // 调试：打印 inventory.equipment
+  useEffect(() => {
+    console.log('[EnhanceScreen] inventory.equipment:', inventory.equipment);
+    console.log('[EnhanceScreen] inventory.equipment length:', inventory.equipment?.length);
+    if (inventory.equipment?.length > 0) {
+      inventory.equipment.forEach((equip: any, index: number) => {
+        console.log(`[EnhanceScreen] equipment[${index}]:`, {
+          instanceId: equip.instanceId,
+          name: equip.name,
+          slot: equip.slot,
+          equipped: equip.equipped,
+        });
+      });
+    }
+  }, [inventory]);
+
   const [selectedSlot, setSelectedSlot] = useState<EquipmentSlot | null>(null);
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
   const [preview, setPreview] = useState<EnhancePreview | null>(null);
@@ -35,17 +51,67 @@ export default function EnhanceScreen({ onBack }: EnhanceScreenProps) {
     setRefreshKey(prev => prev + 1);
   }, []);
 
-  // 获取槽位中的装备（优先检查已装备的神话装备，然后检查背包中的装备）
+  // 获取槽位中的装备（优先检查已装备的装备）
   const getEquipmentInSlot = (slot: EquipmentSlot): InventoryItem | null => {
-    // 1. 检查已装备的神话装备
+    // 1. 优先检查已装备的装备
     const equippedMythology = player.getEquipmentBySlot(slot);
     if (equippedMythology) {
-      return equippedMythology as unknown as InventoryItem;
+      // 正确转换神话装备为 InventoryItem 格式，确保 id 使用 instanceId
+      let mappedType: ItemType;
+      switch (equippedMythology.slot) {
+        case EquipmentSlot.WEAPON:
+          mappedType = ItemType.WEAPON;
+          break;
+        case EquipmentSlot.ACCESSORY:
+          mappedType = ItemType.ACCESSORY;
+          break;
+        default:
+          mappedType = ItemType.ARMOR;
+      }
+      return {
+        id: equippedMythology.instanceId,
+        name: equippedMythology.name,
+        type: mappedType,
+        rarity: equippedMythology.rarity,
+        description: equippedMythology.description,
+        enhanceLevel: equippedMythology.enhanceLevel,
+        quantity: 1,
+        slot: slot,
+      } as InventoryItem;
     }
 
-    // 2. 检查背包中的装备（未装备的）
-    // 装备可能通过 slot 字段或 type 字段标识
-    const itemInInventory = inventory.items.find(item => {
+    // 2. 如果没有已装备的装备，检查背包中的装备（未装备的）
+    const equipmentInInventory = inventory.equipment?.find((equip: any) => {
+      return equip.slot === slot && !equip.equipped;
+    });
+
+    if (equipmentInInventory) {
+      // 转换 EquipmentInstance 为 InventoryItem 格式
+      let mappedType: ItemType;
+      switch (equipmentInInventory.slot) {
+        case EquipmentSlot.WEAPON:
+          mappedType = ItemType.WEAPON;
+          break;
+        case EquipmentSlot.ACCESSORY:
+          mappedType = ItemType.ACCESSORY;
+          break;
+        default:
+          mappedType = ItemType.ARMOR;
+      }
+      return {
+        id: equipmentInInventory.instanceId,
+        name: equipmentInInventory.name,
+        type: mappedType,
+        rarity: equipmentInInventory.rarity,
+        description: equipmentInInventory.description,
+        enhanceLevel: equipmentInInventory.enhanceLevel,
+        quantity: 1,
+        slot: slot,
+      } as InventoryItem;
+    }
+
+    // 3. 检查旧格式的装备（兼容旧数据）
+    const itemInInventory = inventory.items?.find((item: any) => {
       // 检查 slot 字段（制造系统添加的）
       if (item.slot === slot) return true;
 
@@ -76,7 +142,10 @@ export default function EnhanceScreen({ onBack }: EnhanceScreenProps) {
   // 当选择物品时更新预览
   const updatePreview = useCallback(() => {
     if (selectedItem) {
+      console.log('[updatePreview] selectedItem:', selectedItem);
+      console.log('[updatePreview] 调用 getEnhancePreview with id:', selectedItem.id);
       const previewData = getEnhancePreview(selectedItem.id);
+      console.log('[updatePreview] previewData:', previewData);
       setPreview(previewData);
     } else {
       setPreview(null);
@@ -184,22 +253,6 @@ export default function EnhanceScreen({ onBack }: EnhanceScreenProps) {
         overflowY: 'auto',
         padding: '16px'
       }}>
-        {/* 金币显示 */}
-        <div style={{
-          backgroundColor: '#2d2d2d',
-          borderRadius: '12px',
-          padding: '12px 16px',
-          marginBottom: '16px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between'
-        }}>
-          <span style={{ color: '#9ca3af', fontSize: '14px' }}>持有列车币</span>
-          <span style={{ color: '#fbbf24', fontWeight: 'bold', fontSize: '16px' }}>
-            💰 {gameManager.trainCoins}
-          </span>
-        </div>
-
         {/* 装备槽位选择 */}
         <div style={{
           backgroundColor: '#2d2d2d',
@@ -302,150 +355,162 @@ export default function EnhanceScreen({ onBack }: EnhanceScreenProps) {
               </div>
             </div>
 
-            {preview.canEnhance ? (
-              <>
-                {/* 成功率 */}
-                <div style={{
-                  backgroundColor: '#1f2937',
-                  borderRadius: '8px',
-                  padding: '12px',
-                  marginBottom: '12px'
+            {/* 成功率 */}
+            <div style={{
+              backgroundColor: '#1f2937',
+              borderRadius: '8px',
+              padding: '12px',
+              marginBottom: '12px'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <span style={{ color: '#9ca3af', fontSize: '14px' }}>强化成功率</span>
+                <span style={{
+                  color: getSuccessRateColor(preview.successRate),
+                  fontWeight: 'bold',
+                  fontSize: '20px'
                 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <span style={{ color: '#9ca3af', fontSize: '14px' }}>强化成功率</span>
-                    <span style={{
-                      color: getSuccessRateColor(preview.successRate),
-                      fontWeight: 'bold',
-                      fontSize: '20px'
-                    }}>
-                      {Math.round(preview.successRate * 100)}%
+                  {Math.round(preview.successRate * 100)}%
+                </span>
+              </div>
+              <div style={{
+                backgroundColor: '#374151',
+                borderRadius: '9999px',
+                height: '8px',
+                overflow: 'hidden'
+              }}>
+                <div style={{
+                  height: '100%',
+                  backgroundColor: getSuccessRateColor(preview.successRate),
+                  width: `${preview.successRate * 100}%`
+                }} />
+              </div>
+            </div>
+
+            {/* 当前属性 */}
+            <div style={{
+              backgroundColor: '#1f2937',
+              borderRadius: '8px',
+              padding: '12px',
+              marginBottom: '12px'
+            }}>
+              <h4 style={{ color: '#9ca3af', fontSize: '12px', marginBottom: '8px' }}>当前属性 → 强化后</h4>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px', fontSize: '13px' }}>
+                {(preview.attributePreview.attack.current > 0 || preview.attributePreview.attack.after > 0) ? (
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#9ca3af' }}>攻击</span>
+                    <span style={{ color: '#f87171' }}>
+                      {preview.attributePreview.attack.current} → {preview.attributePreview.attack.after}
                     </span>
                   </div>
-                  <div style={{
-                    backgroundColor: '#374151',
-                    borderRadius: '9999px',
-                    height: '8px',
-                    overflow: 'hidden'
-                  }}>
-                    <div style={{
-                      height: '100%',
-                      backgroundColor: getSuccessRateColor(preview.successRate),
-                      width: `${preview.successRate * 100}%`
-                    }} />
+                ) : null}
+                {(preview.attributePreview.defense.current > 0 || preview.attributePreview.defense.after > 0) ? (
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#9ca3af' }}>防御</span>
+                    <span style={{ color: '#60a5fa' }}>
+                      {preview.attributePreview.defense.current} → {preview.attributePreview.defense.after}
+                    </span>
                   </div>
-                </div>
-
-                {/* 当前属性 */}
-                <div style={{
-                  backgroundColor: '#1f2937',
-                  borderRadius: '8px',
-                  padding: '12px',
-                  marginBottom: '12px'
-                }}>
-                  <h4 style={{ color: '#9ca3af', fontSize: '12px', marginBottom: '8px' }}>当前属性</h4>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px', fontSize: '13px' }}>
-                    {preview.attributePreview.attack.current > 0 ? (
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ color: '#9ca3af' }}>攻击</span>
-                        <span style={{ color: '#f87171' }}>{preview.attributePreview.attack.current}</span>
-                      </div>
-                    ) : null}
-                    {preview.attributePreview.defense.current > 0 ? (
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ color: '#9ca3af' }}>防御</span>
-                        <span style={{ color: '#60a5fa' }}>{preview.attributePreview.defense.current}</span>
-                      </div>
-                    ) : null}
-                    {preview.attributePreview.agility.current > 0 ? (
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ color: '#9ca3af' }}>敏捷</span>
-                        <span style={{ color: '#4ade80' }}>{preview.attributePreview.agility.current}</span>
-                      </div>
-                    ) : null}
-                    {preview.attributePreview.speed.current > 0 ? (
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ color: '#9ca3af' }}>攻速</span>
-                        <span style={{ color: '#fbbf24' }}>{preview.attributePreview.speed.current}</span>
-                      </div>
-                    ) : null}
-                    {preview.attributePreview.maxHp.current > 0 ? (
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ color: '#9ca3af' }}>生命</span>
-                        <span style={{ color: '#ef4444' }}>{preview.attributePreview.maxHp.current}</span>
-                      </div>
-                    ) : null}
+                ) : null}
+                {(preview.attributePreview.maxHp.current > 0 || preview.attributePreview.maxHp.after > 0) ? (
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#9ca3af' }}>生命</span>
+                    <span style={{ color: '#ef4444' }}>
+                      {preview.attributePreview.maxHp.current} → {preview.attributePreview.maxHp.after}
+                    </span>
                   </div>
-                </div>
-
-                {/* 强化费用 */}
-                <div style={{
-                  backgroundColor: '#1f2937',
-                  borderRadius: '8px',
-                  padding: '12px',
-                  marginBottom: '12px'
-                }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {/* 强化石 */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ color: '#9ca3af', fontSize: '14px' }}>强化石</span>
-                      <span style={{
-                        color: preview.materialCost[0]?.hasEnough ? '#4ade80' : '#ef4444',
-                        fontWeight: 'bold'
-                      }}>
-                        {preview.materialCost[0]?.quantity || 0} 个
-                      </span>
-                    </div>
-                    {/* 列车币 */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ color: '#9ca3af', fontSize: '14px' }}>列车币</span>
-                      <span style={{ color: '#fbbf24', fontWeight: 'bold' }}>
-                        {preview.goldCost}
-                      </span>
-                    </div>
+                ) : null}
+                {(preview.attributePreview.speed.current > 0 || preview.attributePreview.speed.after > 0) ? (
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#9ca3af' }}>攻速</span>
+                    <span style={{ color: '#fbbf24' }}>
+                      {preview.attributePreview.speed.current} → {preview.attributePreview.speed.after}
+                    </span>
                   </div>
-                </div>
+                ) : null}
+                {(preview.attributePreview.dodge.current > 0 || preview.attributePreview.dodge.after > 0) ? (
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#9ca3af' }}>闪避</span>
+                    <span style={{ color: '#a78bfa' }}>
+                      {preview.attributePreview.dodge.current} → {preview.attributePreview.dodge.after}
+                    </span>
+                  </div>
+                ) : null}
+                {(preview.attributePreview.hit.current > 0 || preview.attributePreview.hit.after > 0) ? (
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#9ca3af' }}>命中</span>
+                    <span style={{ color: '#34d399' }}>
+                      {preview.attributePreview.hit.current} → {preview.attributePreview.hit.after}
+                    </span>
+                  </div>
+                ) : null}
+              </div>
+            </div>
 
-                {/* 强化按钮 */}
-                <button
-                  onClick={handleEnhance}
-                  disabled={isEnhancing || !preview.hasEnoughGold || !preview.materialCost[0]?.hasEnough}
-                  style={{
-                    width: '100%',
-                    padding: '14px',
-                    backgroundColor: isEnhancing || !preview.hasEnoughGold || !preview.materialCost[0]?.hasEnough ? '#374151' : '#d97706',
-                    color: isEnhancing || !preview.hasEnoughGold || !preview.materialCost[0]?.hasEnough ? '#6b7280' : 'white',
+            {/* 强化费用 */}
+            <div style={{
+              backgroundColor: '#1f2937',
+              borderRadius: '8px',
+              padding: '12px',
+              marginBottom: '12px'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ color: '#9ca3af', fontSize: '14px' }}>强化石消耗</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ color: '#9ca3af', fontSize: '12px' }}>
+                    拥有: {gameManager.inventory.getItem('mat_enhance_stone')?.quantity || 0}
+                  </span>
+                  <span style={{
+                    color: preview.hasEnoughStones ? '#4ade80' : '#ef4444',
                     fontWeight: 'bold',
-                    borderRadius: '10px',
-                    border: 'none',
-                    cursor: isEnhancing || !preview.hasEnoughGold || !preview.materialCost[0]?.hasEnough ? 'not-allowed' : 'pointer',
-                    fontSize: '15px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px'
-                  }}
-                >
-                  {isEnhancing ? (
-                    <>
-                      <span>⚡</span>
-                      <span>强化中...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>🔨</span>
-                      <span>开始强化</span>
-                    </>
-                  )}
-                </button>
-              </>
+                    fontSize: '14px'
+                  }}>
+                    需要: {preview.stoneCost || 0} 个
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* 强化按钮 */}
+            {preview.canEnhance ? (
+              <button
+                onClick={handleEnhance}
+                disabled={isEnhancing || !preview.hasEnoughStones}
+                style={{
+                  width: '100%',
+                  padding: '14px',
+                  backgroundColor: isEnhancing || !preview.hasEnoughStones ? '#374151' : '#d97706',
+                  color: isEnhancing || !preview.hasEnoughStones ? '#6b7280' : 'white',
+                  fontWeight: 'bold',
+                  borderRadius: '10px',
+                  border: 'none',
+                  cursor: isEnhancing || !preview.hasEnoughStones ? 'not-allowed' : 'pointer',
+                  fontSize: '15px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px'
+                }}
+              >
+                {isEnhancing ? (
+                  <>
+                    <span>⚡</span>
+                    <span>强化中...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>🔨</span>
+                    <span>开始强化</span>
+                  </>
+                )}
+              </button>
             ) : (
               <div style={{
-                backgroundColor: '#1f2937',
-                borderRadius: '8px',
-                padding: '16px',
+                backgroundColor: '#374151',
+                borderRadius: '10px',
+                padding: '14px',
                 textAlign: 'center'
               }}>
-                <p style={{ color: '#9ca3af', fontSize: '14px' }}>
+                <p style={{ color: '#ef4444', fontSize: '14px', fontWeight: 'bold', margin: 0 }}>
                   {preview.reason || '无法强化'}
                 </p>
               </div>
@@ -516,20 +581,23 @@ export default function EnhanceScreen({ onBack }: EnhanceScreenProps) {
               }}>
                 <p style={{ color: '#9ca3af', fontSize: '12px', marginBottom: '8px' }}>获得属性提升</p>
                 <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '8px' }}>
-                  {result.attributeGains.attack && result.attributeGains.attack > 0 && (
-                    <span style={{ color: '#f87171', fontSize: '13px' }}>攻击 +{result.attributeGains.attack}</span>
+                  {result.attributeGains.attack > 0 && (
+                    <span style={{ color: '#f87171', fontSize: '13px' }}>攻击 +{Math.floor(result.attributeGains.attack)}</span>
                   )}
-                  {result.attributeGains.defense && result.attributeGains.defense > 0 && (
-                    <span style={{ color: '#60a5fa', fontSize: '13px' }}>防御 +{result.attributeGains.defense}</span>
+                  {result.attributeGains.defense > 0 && (
+                    <span style={{ color: '#60a5fa', fontSize: '13px' }}>防御 +{Math.floor(result.attributeGains.defense)}</span>
                   )}
-                  {result.attributeGains.agility && result.attributeGains.agility > 0 && (
-                    <span style={{ color: '#4ade80', fontSize: '13px' }}>敏捷 +{result.attributeGains.agility}</span>
+                  {result.attributeGains.speed > 0 && (
+                    <span style={{ color: '#fbbf24', fontSize: '13px' }}>攻速 +{result.attributeGains.speed.toFixed(1)}</span>
                   )}
-                  {result.attributeGains.speed && result.attributeGains.speed > 0 && (
-                    <span style={{ color: '#fbbf24', fontSize: '13px' }}>攻速 +{result.attributeGains.speed}</span>
+                  {result.attributeGains.maxHp > 0 && (
+                    <span style={{ color: '#ef4444', fontSize: '13px' }}>生命 +{Math.floor(result.attributeGains.maxHp)}</span>
                   )}
-                  {result.attributeGains.maxHp && result.attributeGains.maxHp > 0 && (
-                    <span style={{ color: '#f87171', fontSize: '13px' }}>生命 +{result.attributeGains.maxHp}</span>
+                  {result.attributeGains.dodge > 0 && (
+                    <span style={{ color: '#a78bfa', fontSize: '13px' }}>闪避 +{Math.floor(result.attributeGains.dodge)}</span>
+                  )}
+                  {result.attributeGains.hit > 0 && (
+                    <span style={{ color: '#34d399', fontSize: '13px' }}>命中 +{Math.floor(result.attributeGains.hit)}</span>
                   )}
                 </div>
               </div>

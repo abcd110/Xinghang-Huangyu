@@ -38,7 +38,7 @@ const MATERIAL_TYPE_NAMES: Record<CraftingMaterialType, string> = {
 };
 
 export default function CraftingScreen({ onBack }: CraftingScreenProps) {
-  const { gameManager } = useGameStore();
+  const { gameManager, saveGame } = useGameStore();
   const [selectedSlot, setSelectedSlot] = useState<EquipmentSlot>(EquipmentSlot.WEAPON);
   const [selectedBaseMaterial, setSelectedBaseMaterial] = useState<string | null>(null);
   const [selectedSecondaryMaterial, setSelectedSecondaryMaterial] = useState<string | null>(null);
@@ -83,7 +83,7 @@ export default function CraftingScreen({ onBack }: CraftingScreenProps) {
     return craftingSystem.getQualityPreview(selection);
   }, [selection, selectedBaseMaterial, selectedSecondaryMaterial]);
 
-  const handleCraft = () => {
+  const handleCraft = async () => {
     if (!recipe || !canCraft) return;
     const result = craftingSystem.craft(selectedSlot, selection, inventory, gameManager.player);
     setCraftingResult({
@@ -94,8 +94,8 @@ export default function CraftingScreen({ onBack }: CraftingScreenProps) {
     if (result.success) {
       setSelectedBaseMaterial(null);
       setSelectedSecondaryMaterial(null);
-      // 触发背包刷新
-      gameManager.saveGame();
+      // 保存游戏
+      await saveGame();
     }
     setTimeout(() => setCraftingResult(null), 4000);
   };
