@@ -41,6 +41,7 @@ export default function BattleScreen({ locationId, isBoss, isElite, onBack, onBa
   const startBattle = useGameStore(state => state.startBattle);
   const endBattleVictory = useGameStore(state => state.endBattleVictory);
   const attemptEscape = useGameStore(state => state.attemptEscape);
+  const saveGame = useGameStore(state => state.saveGame);
 
   // 同步 ref
   useEffect(() => {
@@ -354,7 +355,7 @@ export default function BattleScreen({ locationId, isBoss, isElite, onBack, onBa
   };
 
   // 继续狩猎 - 直接开始新战斗
-  const handleContinueHunt = () => {
+  const handleContinueHunt = async () => {
     // 检查体力
     if (gameManager.player.stamina < 10) {
       addLog('体力不足，无法继续狩猎');
@@ -369,6 +370,9 @@ export default function BattleScreen({ locationId, isBoss, isElite, onBack, onBa
     const progressGain = isElite ? 15 : 10;
     const newHuntProgress = Math.min(80, progress.huntProgress + progressGain);
     gameManager.updateLocationProgress(locationId, { huntProgress: newHuntProgress });
+
+    // 保存游戏
+    await saveGame();
 
     // 重置状态并重新开始战斗
     clearAllTimers();
@@ -405,12 +409,15 @@ export default function BattleScreen({ locationId, isBoss, isElite, onBack, onBa
   };
 
   // 返回收集物资
-  const handleReturnCollect = () => {
+  const handleReturnCollect = async () => {
     // 更新狩猎进度
     const progress = gameManager.getLocationProgress(locationId);
     const progressGain = isElite ? 15 : 10;
     const newHuntProgress = Math.min(80, progress.huntProgress + progressGain);
     gameManager.updateLocationProgress(locationId, { huntProgress: newHuntProgress });
+
+    // 保存游戏
+    await saveGame();
 
     if (onBattleEnd) {
       onBattleEnd('return_collect');
@@ -420,9 +427,12 @@ export default function BattleScreen({ locationId, isBoss, isElite, onBack, onBa
   };
 
   // BOSS击败后返回
-  const handleBossDefeated = () => {
+  const handleBossDefeated = async () => {
     // 标记BOSS已击败
     gameManager.updateLocationProgress(locationId, { bossDefeated: true });
+
+    // 保存游戏
+    await saveGame();
 
     if (onBattleEnd) {
       onBattleEnd('boss_defeated');

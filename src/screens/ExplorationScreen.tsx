@@ -21,7 +21,7 @@ interface ExplorationState {
 }
 
 export default function ExplorationScreen({ onBack, onStartBattle, initialLocationId, returnToActionSelect, onActionSelectHandled }: ExplorationScreenProps) {
-  const { gameManager } = useGameStore();
+  const { gameManager, saveGame } = useGameStore();
   const [exploration, setExploration] = useState<ExplorationState>({
     phase: initialLocationId ? 'action_select' : 'select',
     locationId: initialLocationId || null,
@@ -174,7 +174,7 @@ export default function ExplorationScreen({ onBack, onStartBattle, initialLocati
   };
 
   // 扫荡
-  const doSweep = () => {
+  const doSweep = async () => {
     if (!exploration.locationId) return;
 
     // 消耗时间和体力
@@ -233,57 +233,61 @@ export default function ExplorationScreen({ onBack, onStartBattle, initialLocati
       gameManager.inventory.addItem(reward.itemId, reward.quantity);
       addLog(`获得: ${reward.name} x${reward.quantity}`);
     });
+
+    // 保存游戏
+    await saveGame();
   };
 
   // 物资收集阶段 - 每3秒一次
   useEffect(() => {
     if (exploration.phase !== 'collecting') return;
 
-    const timer = setInterval(() => {
+    const timer = setInterval(async () => {
+      // 检查体力是否足够
+      if (gameManager.player.stamina < 5) {
+        addLog('⚠️ 体力不足，停止收集');
+        setExploration(prev => ({
+          ...prev,
+          phase: 'action_select',
+        }));
+        return;
+      }
+
+      // 消耗时间和体力
+      gameManager.advanceTime(10);
+      gameManager.player.stamina -= 5;
+
+      // 增加进度
+      const progress = gameManager.getLocationProgress(exploration.locationId!);
+      const newMaterialProgress = Math.min(20, progress.materialProgress + 5);
+      gameManager.updateLocationProgress(exploration.locationId!, {
+        materialProgress: newMaterialProgress
+      });
+
+      // 随机获得制造材料（所有站台都可以掉落全部6种材料）
+      const location = LOCATIONS.find(l => l.id === exploration.locationId);
+      const locationIndex = LOCATIONS.findIndex(l => l.id === exploration.locationId);
+      const stationNumber = locationIndex + 1;
+
+      // 随机选择材料类型（全部6种材料）
+      const randomMaterialIndex = Math.floor(Math.random() * ALL_MATERIAL_BASE_IDS.length);
+      const selectedBaseMaterial = ALL_MATERIAL_BASE_IDS[randomMaterialIndex];
+
+      // 根据站台决定材料品质
+      const rolledQuality = rollMaterialQuality(stationNumber);
+      const qualityName = MATERIAL_QUALITY_NAMES[rolledQuality];
+
+      // 生成带品质的材料ID
+      const itemIdToAdd = generateMaterialId(selectedBaseMaterial.id.replace('craft_', '') as any, rolledQuality);
+      const itemName = rolledQuality === 1
+        ? selectedBaseMaterial.name
+        : `${qualityName}${selectedBaseMaterial.name}`;
+
+      // 添加到背包
+      gameManager.inventory.addItem(itemIdToAdd, 1);
+
+      // 记录收集的物品
       setExploration(prev => {
-        // 检查体力是否足够
-        if (gameManager.player.stamina < 5) {
-          addLog('⚠️ 体力不足，停止收集');
-          return {
-            ...prev,
-            phase: 'action_select',
-          };
-        }
-
-        // 消耗时间和体力
-        gameManager.advanceTime(10);
-        gameManager.player.stamina -= 5;
-
-        // 增加进度
-        const progress = gameManager.getLocationProgress(prev.locationId!);
-        const newMaterialProgress = Math.min(20, progress.materialProgress + 5);
-        gameManager.updateLocationProgress(prev.locationId!, {
-          materialProgress: newMaterialProgress
-        });
-
-        // 随机获得制造材料（所有站台都可以掉落全部6种材料）
-        const location = LOCATIONS.find(l => l.id === prev.locationId);
-        const locationIndex = LOCATIONS.findIndex(l => l.id === prev.locationId);
-        const stationNumber = locationIndex + 1;
-
-        // 随机选择材料类型（全部6种材料）
-        const randomMaterialIndex = Math.floor(Math.random() * ALL_MATERIAL_BASE_IDS.length);
-        const selectedBaseMaterial = ALL_MATERIAL_BASE_IDS[randomMaterialIndex];
-
-        // 根据站台决定材料品质
-        const rolledQuality = rollMaterialQuality(stationNumber);
-        const qualityName = MATERIAL_QUALITY_NAMES[rolledQuality];
-
-        // 生成带品质的材料ID
-        const itemIdToAdd = generateMaterialId(selectedBaseMaterial.id.replace('craft_', '') as any, rolledQuality);
-        const itemName = rolledQuality === 1
-          ? selectedBaseMaterial.name
-          : `${qualityName}${selectedBaseMaterial.name}`;
-
-        // 添加到背包
-        gameManager.inventory.addItem(itemIdToAdd, 1);
-
-        // 记录收集的物品
         const newCollectedItems = [...prev.collectedItems];
         const existingItem = newCollectedItems.find(item => item.name === itemName);
         if (existingItem) {
@@ -291,23 +295,25 @@ export default function ExplorationScreen({ onBack, onStartBattle, initialLocati
         } else {
           newCollectedItems.push({ name: itemName, quantity: 1 });
         }
-
-        addLog(`获得: ${itemName} x1`);
-
-        // 检查是否满进度（只提示，不自动返回）
-        if (newMaterialProgress >= 20) {
-          addLog('✅ 物资收集进度已满！可继续收集');
-        }
-
         return {
           ...prev,
           collectedItems: newCollectedItems,
         };
       });
+
+      addLog(`获得: ${itemName} x1`);
+
+      // 检查是否满进度（只提示，不自动返回）
+      if (newMaterialProgress >= 20) {
+        addLog('✅ 物资收集进度已满！可继续收集');
+      }
+
+      // 保存游戏
+      await saveGame();
     }, 3000);
 
     return () => clearInterval(timer);
-  }, [exploration.phase, addLog, gameManager]);
+  }, [exploration.phase, exploration.locationId, addLog, gameManager, saveGame]);
 
   // 结束探索
   const finishExploration = () => {
