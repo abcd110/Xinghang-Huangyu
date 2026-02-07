@@ -46,8 +46,10 @@ export interface CraftingMaterial {
 
 // 生成材料ID
 export function generateMaterialId(type: CraftingMaterialType, quality: MaterialQuality): string {
-  const qualityPrefix = quality === MaterialQuality.NORMAL ? '' : `${MATERIAL_QUALITY_NAMES[quality]}`;
-  return `craft_${qualityPrefix}${type}`.toLowerCase();
+  if (quality === MaterialQuality.NORMAL) {
+    return `craft_${type}`;
+  }
+  return `craft_${type}_${quality}`;
 }
 
 // 基础材料模板

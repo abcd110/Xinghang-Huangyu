@@ -645,6 +645,30 @@ export const REGULAR_LOCATIONS: RegularLocation[] = [
 // 为了保持向后兼容，导出 LOCATIONS 别名
 export const LOCATIONS = REGULAR_LOCATIONS;
 
+// 从locationId提取站台编号
+function getStationNumberFromLocationId(locationId: string): number {
+  const match = locationId.match(/loc_(\d+)/);
+  if (match) {
+    return parseInt(match[1], 10);
+  }
+  return 1;
+}
+
+// 检查是否为制造材料的基础ID
+function isCraftingMaterialBaseId(itemId: string): boolean {
+  return ALL_MATERIAL_BASE_IDS.some(m => m.id === itemId);
+}
+
+// 为材料添加品质后缀
+function addQualityToMaterialId(baseId: string, quality: MaterialQuality): string {
+  if (quality === MaterialQuality.NORMAL) {
+    return baseId;
+  }
+  // 从基础ID中提取类型 (craft_iron -> iron)
+  const type = baseId.replace('craft_', '');
+  return `craft_${type}_${quality}`;
+}
+
 // 探索奖励计算函数 - 基于新膨胀版系统
 export function calculateExplorationRewards(
   locationId: string,
@@ -654,6 +678,7 @@ export function calculateExplorationRewards(
   const location = REGULAR_LOCATIONS.find(l => l.id === locationId);
   if (!location) return [];
 
+  const stationNumber = getStationNumberFromLocationId(locationId);
   const rewards: { itemId: string; quantity: number; name: string }[] = [];
 
   // 基础奖励
@@ -668,11 +693,23 @@ export function calculateExplorationRewards(
     for (const loot of lootTable) {
       random -= loot.weight;
       if (random <= 0) {
-        const existing = rewards.find(r => r.itemId === loot.itemId);
+        // 如果是制造材料，添加品质
+        let finalItemId = loot.itemId;
+        let finalName = loot.name;
+        if (isCraftingMaterialBaseId(loot.itemId)) {
+          const quality = rollMaterialQuality(stationNumber);
+          finalItemId = addQualityToMaterialId(loot.itemId, quality);
+          const qualityName = MATERIAL_QUALITY_NAMES[quality];
+          finalName = quality === MaterialQuality.NORMAL 
+            ? loot.name 
+            : `${qualityName}${loot.name}`;
+        }
+        
+        const existing = rewards.find(r => r.itemId === finalItemId);
         if (existing) {
           existing.quantity += 1;
         } else {
-          rewards.push({ itemId: loot.itemId, quantity: 1, name: loot.name });
+          rewards.push({ itemId: finalItemId, quantity: 1, name: finalName });
         }
         break;
       }
@@ -688,11 +725,23 @@ export function calculateExplorationRewards(
     for (const loot of rareLootTable) {
       random -= loot.weight;
       if (random <= 0) {
-        const existing = rewards.find(r => r.itemId === loot.itemId);
+        // 如果是制造材料，添加品质
+        let finalItemId = loot.itemId;
+        let finalName = loot.name;
+        if (isCraftingMaterialBaseId(loot.itemId)) {
+          const quality = rollMaterialQuality(stationNumber);
+          finalItemId = addQualityToMaterialId(loot.itemId, quality);
+          const qualityName = MATERIAL_QUALITY_NAMES[quality];
+          finalName = quality === MaterialQuality.NORMAL 
+            ? loot.name 
+            : `${qualityName}${loot.name}`;
+        }
+        
+        const existing = rewards.find(r => r.itemId === finalItemId);
         if (existing) {
           existing.quantity += 1;
         } else {
-          rewards.push({ itemId: loot.itemId, quantity: 1, name: loot.name });
+          rewards.push({ itemId: finalItemId, quantity: 1, name: finalName });
         }
         break;
       }
@@ -708,11 +757,25 @@ export function calculateExplorationRewards(
     for (const loot of epicLootTable) {
       random -= loot.weight;
       if (random <= 0) {
-        const existing = rewards.find(r => r.itemId === loot.itemId);
+        // 如果是制造材料，添加品质（Boss战利品品质更高）
+        let finalItemId = loot.itemId;
+        let finalName = loot.name;
+        if (isCraftingMaterialBaseId(loot.itemId)) {
+          // Boss奖励品质+1（最高传说）
+          let quality = rollMaterialQuality(stationNumber);
+          quality = Math.min(quality + 1, MaterialQuality.LEGENDARY) as MaterialQuality;
+          finalItemId = addQualityToMaterialId(loot.itemId, quality);
+          const qualityName = MATERIAL_QUALITY_NAMES[quality];
+          finalName = quality === MaterialQuality.NORMAL 
+            ? loot.name 
+            : `${qualityName}${loot.name}`;
+        }
+        
+        const existing = rewards.find(r => r.itemId === finalItemId);
         if (existing) {
           existing.quantity += 1;
         } else {
-          rewards.push({ itemId: loot.itemId, quantity: 1, name: loot.name });
+          rewards.push({ itemId: finalItemId, quantity: 1, name: finalName });
         }
         break;
       }
