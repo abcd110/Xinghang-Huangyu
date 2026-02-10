@@ -1,8 +1,8 @@
 import { useGameStore } from '../stores/gameStore';
 import { useState, useEffect } from 'react';
-import { AutoCollectMode, MODE_INFO, getCollectRobot } from '../data/autoCollectTypes';
+import { AutoCollectMode, MODE_INFO, getCollectRobot, CollectRobot } from '../data/autoCollectTypes';
 import restPodImage from '../assets/images/休整.png';
-import 探索背景Img from '../assets/images/探索背景.png';
+import 舰桥背景Img from '../assets/images/舰桥背景.png';
 
 interface HomeScreenProps {
   onNavigate: (screen: string) => void;
@@ -39,13 +39,9 @@ const animationStyles = `
     0%, 100% { text-shadow: 0 0 10px currentColor; }
     50% { text-shadow: 0 0 20px currentColor, 0 0 30px currentColor; }
   }
-  @keyframes progress-flow {
-    0% { background-position: 0% 0%; }
-    100% { background-position: 100% 0%; }
-  }
-  @keyframes data-stream {
-    0% { transform: translateX(-100%); }
-    100% { transform: translateX(100%); }
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
   }
 `;
 
@@ -181,14 +177,6 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
   // 检查是否可以休整
   const canRest = player.hunger >= 10 && player.thirst >= 10;
 
-  // 预警颜色
-  const getWarningColor = (value: number, max: number) => {
-    const ratio = value / max;
-    if (ratio < 0.2) return '#ef4444';
-    if (ratio < 0.4) return '#f59e0b';
-    return '#00d4ff';
-  };
-
   // 处理🚀点击
   const handleRocketClick = () => {
     const newCount = rocketClickCount + 1;
@@ -234,7 +222,7 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundImage: `url(${探索背景Img})`,
+          backgroundImage: `url(${舰桥背景Img})`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
           zIndex: 0
@@ -369,7 +357,7 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
           </div>
         </header>
 
-        {/* 状态栏 */}
+        {/* 状态栏 - 新布局 */}
         <div style={{
           flexShrink: 0,
           padding: '12px 16px',
@@ -381,35 +369,35 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
             gridTemplateColumns: 'repeat(5, 1fr)',
             gap: '8px'
           }}>
-            <StatusBar
+            <StatusCard
               label="生命"
               value={player.hp}
               max={player.totalMaxHp}
               color="#ef4444"
               icon="❤️"
             />
-            <StatusBar
+            <StatusCard
               label="体力"
               value={player.stamina}
               max={player.maxStamina}
               color="#00d4ff"
               icon="⚡"
             />
-            <StatusBar
+            <StatusCard
               label="神能"
               value={player.spirit}
               max={player.maxSpirit}
               color="#8b5cf6"
               icon="🧠"
             />
-            <StatusBar
+            <StatusCard
               label="能量"
               value={player.hunger}
               max={100}
               color="#fb923c"
               icon="🔋"
             />
-            <StatusBar
+            <StatusCard
               label="冷却"
               value={player.thirst}
               max={100}
@@ -429,6 +417,7 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
           onStop={handleStopCollect}
           onClaim={handleClaimRewards}
           onOpenSettings={() => setShowCollectModal(true)}
+          defeatedBossCount={gameManager.autoCollectSystem.defeatedBosses.size}
         />
 
         {/* 核心操作区 */}
@@ -597,8 +586,8 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
   );
 }
 
-// 状态条组件
-function StatusBar({ label, value, max, color, icon }: {
+// 新状态卡片组件 - 垂直布局
+function StatusCard({ label, value, max, color, icon }: {
   label: string;
   value: number;
   max: number;
@@ -610,25 +599,50 @@ function StatusBar({ label, value, max, color, icon }: {
 
   return (
     <div style={{
-      background: 'rgba(0, 0, 0, 0.4)',
-      border: `1px solid ${displayColor}40`,
-      borderRadius: '8px',
-      padding: '8px',
+      background: 'rgba(0, 0, 0, 0.5)',
+      border: `1px solid ${displayColor}50`,
+      borderRadius: '10px',
+      padding: '10px 8px',
       display: 'flex',
       flexDirection: 'column',
-      gap: '4px'
+      gap: '6px',
+      position: 'relative',
+      overflow: 'hidden'
     }}>
+      {/* 顶部发光条 */}
+      <div style={{
+        position: 'absolute',
+        top: 0,
+        left: '15%',
+        right: '15%',
+        height: '2px',
+        background: `linear-gradient(90deg, transparent 0%, ${displayColor} 50%, transparent 100%)`,
+        opacity: 0.8
+      }} />
+
+      {/* 图标和标签 */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'space-between',
+        gap: '4px',
         fontSize: '11px'
       }}>
-        <span style={{ color: displayColor }}>{icon} {label}</span>
-        <span style={{ color: '#ffffff', fontWeight: 'bold' }}>
-          {value}/{max}
-        </span>
+        <span style={{ color: displayColor, fontSize: '12px' }}>{icon}</span>
+        <span style={{ color: displayColor, fontWeight: 'bold' }}>{label}</span>
       </div>
+
+      {/* 数值 */}
+      <div style={{
+        color: '#ffffff',
+        fontSize: '14px',
+        fontWeight: 'bold',
+        fontFamily: 'monospace',
+        letterSpacing: '1px'
+      }}>
+        {value}<span style={{ color: '#71717a', fontSize: '11px' }}>/{max}</span>
+      </div>
+
+      {/* 进度条 */}
       <div style={{
         height: '4px',
         background: 'rgba(255,255,255,0.1)',
@@ -638,7 +652,7 @@ function StatusBar({ label, value, max, color, icon }: {
         <div style={{
           height: '100%',
           width: `${ratio * 100}%`,
-          background: displayColor,
+          background: `linear-gradient(90deg, ${displayColor}80, ${displayColor})`,
           borderRadius: '2px',
           boxShadow: `0 0 8px ${displayColor}`,
           transition: 'width 0.3s ease'
@@ -658,6 +672,7 @@ function AutoCollectPanel({
   onStop,
   onClaim,
   onOpenSettings,
+  defeatedBossCount,
 }: {
   isCollecting: boolean;
   duration: string;
@@ -667,9 +682,64 @@ function AutoCollectPanel({
   onStop: () => void;
   onClaim: () => void;
   onOpenSettings: () => void;
+  defeatedBossCount: number;
 }) {
   const robot = getCollectRobot(robotId);
   const modeInfo = MODE_INFO[mode];
+
+  // 计算收益预估
+  const calculateEstimatedRewards = () => {
+    if (!robot || !isCollecting) return null;
+
+    // 解析时长字符串 "HH:MM:SS" 或 "MM:SS"
+    const parts = duration.split(':').map(Number);
+    let hours = 0;
+    if (parts.length === 3) {
+      hours = parts[0] + parts[1] / 60 + parts[2] / 3600;
+    } else if (parts.length === 2) {
+      hours = parts[0] / 60 + parts[1] / 3600;
+    }
+
+    const base = robot.baseRewards;
+    let goldRate = base.gold;
+    let expRate = base.exp;
+    let materialRate = base.materialsPerHour;
+    let stoneRate = base.enhanceStonesPerHour;
+
+    // 根据模式调整收益
+    switch (mode) {
+      case AutoCollectMode.GATHER:
+        goldRate *= 1.5;
+        materialRate *= 1.5;
+        break;
+      case AutoCollectMode.COMBAT:
+        expRate *= 1.5;
+        stoneRate *= 1.5;
+        break;
+      case AutoCollectMode.BALANCED:
+        goldRate *= 1.2;
+        expRate *= 1.2;
+        materialRate *= 1.2;
+        stoneRate *= 1.2;
+        break;
+    }
+
+    // 应用星球首领加成
+    const bossMultiplier = 1 + defeatedBossCount * 0.2;
+    goldRate *= bossMultiplier;
+    expRate *= bossMultiplier;
+    materialRate *= bossMultiplier;
+    stoneRate *= bossMultiplier;
+
+    return {
+      gold: Math.floor(goldRate * hours),
+      exp: Math.floor(expRate * hours),
+      materials: Math.floor(materialRate * hours),
+      stones: Math.floor(stoneRate * hours),
+    };
+  };
+
+  const estimated = calculateEstimatedRewards();
 
   return (
     <div style={{
@@ -775,6 +845,7 @@ function AutoCollectPanel({
           position: 'relative',
           zIndex: 2
         }}>
+          {/* 时长 */}
           <div style={{
             display: 'flex',
             justifyContent: 'space-between',
@@ -784,7 +855,7 @@ function AutoCollectPanel({
             <span style={{ color: '#a1a1aa', fontSize: '12px' }}>已采集时长</span>
             <span style={{
               color: '#00d4ff',
-              fontSize: '18px',
+              fontSize: '20px',
               fontWeight: 'bold',
               fontFamily: 'monospace',
               textShadow: '0 0 10px rgba(0, 212, 255, 0.5)'
@@ -792,14 +863,58 @@ function AutoCollectPanel({
               {duration}
             </span>
           </div>
+
+          {/* 机器人和模式 */}
           <div style={{
             display: 'flex',
             justifyContent: 'space-between',
-            fontSize: '12px'
+            fontSize: '12px',
+            marginBottom: '8px'
           }}>
             <span style={{ color: '#a1a1aa' }}>{robot?.icon} {robot?.name}</span>
             <span style={{ color: '#ffffff' }}>{modeInfo.icon} {modeInfo.name}</span>
           </div>
+
+          {/* 收益预估 */}
+          {estimated && (
+            <div style={{
+              borderTop: '1px solid rgba(0, 212, 255, 0.2)',
+              paddingTop: '8px',
+              marginTop: '8px'
+            }}>
+              <div style={{
+                color: '#f59e0b',
+                fontSize: '11px',
+                marginBottom: '6px',
+                fontWeight: 'bold'
+              }}>
+                📊 当前预估收益
+              </div>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(4, 1fr)',
+                gap: '4px',
+                fontSize: '11px'
+              }}>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ color: '#00d4ff', fontWeight: 'bold' }}>{estimated.gold}</div>
+                  <div style={{ color: '#71717a', fontSize: '10px' }}>信用点</div>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ color: '#00d4ff', fontWeight: 'bold' }}>{estimated.exp}</div>
+                  <div style={{ color: '#71717a', fontSize: '10px' }}>经验</div>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ color: '#00d4ff', fontWeight: 'bold' }}>{estimated.materials}</div>
+                  <div style={{ color: '#71717a', fontSize: '10px' }}>材料</div>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ color: '#00d4ff', fontWeight: 'bold' }}>{estimated.stones}</div>
+                  <div style={{ color: '#71717a', fontSize: '10px' }}>强化石</div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         <div style={{
@@ -1019,6 +1134,7 @@ function AutoCollectModal({
   const [selectedMode, setSelectedMode] = useState<AutoCollectMode>(currentMode || AutoCollectMode.BALANCED);
 
   const selectedLoc = availableLocations.find(loc => loc.id === selectedLocation);
+  const robot = getCollectRobot(selectedLocation);
 
   const handleModeChange = (mode: AutoCollectMode) => {
     if (isCollecting && mode !== selectedMode) {
@@ -1026,6 +1142,54 @@ function AutoCollectModal({
     }
     setSelectedMode(mode);
   };
+
+  // 计算每小时收益
+  const calculateHourlyRewards = (robot: CollectRobot | null, mode: AutoCollectMode, bossCount: number) => {
+    if (!robot) return null;
+
+    const base = robot.baseRewards;
+    let goldRate = base.gold;
+    let expRate = base.exp;
+    let materialRate = base.materialsPerHour;
+    let stoneRate = base.enhanceStonesPerHour;
+
+    // 模式加成
+    let modeBonus = '';
+    switch (mode) {
+      case AutoCollectMode.GATHER:
+        goldRate *= 1.5;
+        materialRate *= 1.5;
+        modeBonus = '信用点+50%, 材料+50%';
+        break;
+      case AutoCollectMode.COMBAT:
+        expRate *= 1.5;
+        stoneRate *= 1.5;
+        modeBonus = '经验+50%, 强化石+50%';
+        break;
+      case AutoCollectMode.BALANCED:
+        goldRate *= 1.2;
+        expRate *= 1.2;
+        materialRate *= 1.2;
+        stoneRate *= 1.2;
+        modeBonus = '全属性+20%';
+        break;
+    }
+
+    // 星球首领加成
+    const bossMultiplier = 1 + bossCount * 0.2;
+    const bossBonus = bossCount > 0 ? `+${Math.round((bossMultiplier - 1) * 100)}%` : null;
+
+    return {
+      gold: Math.round(goldRate * bossMultiplier),
+      exp: Math.round(expRate * bossMultiplier),
+      materials: Math.round(materialRate * bossMultiplier),
+      stones: Math.round(stoneRate * bossMultiplier),
+      modeBonus,
+      bossBonus
+    };
+  };
+
+  const hourlyRewards = calculateHourlyRewards(robot, selectedMode, defeatedBossCount);
 
   return (
     <div style={{
@@ -1047,7 +1211,7 @@ function AutoCollectModal({
         border: '1px solid rgba(0, 212, 255, 0.4)',
         width: '100%',
         maxWidth: '400px',
-        maxHeight: '80vh',
+        maxHeight: '85vh',
         overflow: 'auto',
         boxShadow: '0 0 40px rgba(0, 212, 255, 0.3)'
       }}>
@@ -1065,7 +1229,7 @@ function AutoCollectModal({
             fontWeight: 'bold',
             letterSpacing: '2px'
           }}>
-            🚀 采集设置
+            ⚙️ 采集设置
           </span>
           <button
             onClick={onClose}
@@ -1112,10 +1276,15 @@ function AutoCollectModal({
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '20px' }}>{loc.icon}</span>
-                    <span style={{ color: '#ffffff', fontSize: '14px', fontWeight: 'bold' }}>
-                      {loc.name}
-                    </span>
+                    <span style={{ fontSize: '24px' }}>{loc.icon}</span>
+                    <div>
+                      <div style={{ color: '#ffffff', fontSize: '14px', fontWeight: 'bold' }}>
+                        {loc.name}
+                      </div>
+                      <div style={{ color: '#71717a', fontSize: '11px', marginTop: '2px' }}>
+                        {loc.description}
+                      </div>
+                    </div>
                   </div>
                 </button>
               ))}
@@ -1150,11 +1319,108 @@ function AutoCollectModal({
                   }}
                 >
                   <div style={{ fontSize: '20px', marginBottom: '4px' }}>{MODE_INFO[mode].icon}</div>
-                  <div style={{ color: selectedMode === mode ? '#00d4ff' : '#ffffff', fontSize: '12px' }}>
+                  <div style={{ color: selectedMode === mode ? '#00d4ff' : '#ffffff', fontSize: '12px', fontWeight: 'bold' }}>
                     {MODE_INFO[mode].name}
                   </div>
                 </button>
               ))}
+            </div>
+            <div style={{
+              marginTop: '8px',
+              padding: '8px 12px',
+              background: 'rgba(0, 212, 255, 0.1)',
+              borderRadius: '8px',
+              border: '1px solid rgba(0, 212, 255, 0.2)'
+            }}>
+              <span style={{ color: '#00d4ff', fontSize: '12px' }}>
+                {MODE_INFO[selectedMode].description}
+              </span>
+            </div>
+          </div>
+
+          {/* 采集效率信息 */}
+          {hourlyRewards && (
+            <div style={{
+              background: 'rgba(16, 185, 129, 0.1)',
+              borderRadius: '12px',
+              padding: '16px',
+              marginBottom: '16px',
+              border: '1px solid rgba(16, 185, 129, 0.3)'
+            }}>
+              <div style={{
+                color: '#10b981',
+                fontSize: '13px',
+                fontWeight: 'bold',
+                marginBottom: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}>
+                📊 每小时采集效率
+              </div>
+
+              {/* 基础收益 */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(4, 1fr)',
+                gap: '8px',
+                marginBottom: '12px'
+              }}>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ color: '#00d4ff', fontSize: '16px', fontWeight: 'bold' }}>{hourlyRewards.gold}</div>
+                  <div style={{ color: '#71717a', fontSize: '10px' }}>信用点</div>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ color: '#00d4ff', fontSize: '16px', fontWeight: 'bold' }}>{hourlyRewards.exp}</div>
+                  <div style={{ color: '#71717a', fontSize: '10px' }}>经验</div>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ color: '#00d4ff', fontSize: '16px', fontWeight: 'bold' }}>{hourlyRewards.materials}</div>
+                  <div style={{ color: '#71717a', fontSize: '10px' }}>材料</div>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ color: '#00d4ff', fontSize: '16px', fontWeight: 'bold' }}>{hourlyRewards.stones}</div>
+                  <div style={{ color: '#71717a', fontSize: '10px' }}>强化石</div>
+                </div>
+              </div>
+
+              {/* 加成信息 */}
+              <div style={{
+                borderTop: '1px solid rgba(16, 185, 129, 0.2)',
+                paddingTop: '10px'
+              }}>
+                <div style={{ marginBottom: '6px' }}>
+                  <span style={{ color: '#f59e0b', fontSize: '11px' }}>🎯 模式加成: </span>
+                  <span style={{ color: '#fbbf24', fontSize: '11px' }}>{hourlyRewards.modeBonus}</span>
+                </div>
+                {hourlyRewards.bossBonus && (
+                  <div>
+                    <span style={{ color: '#c084fc', fontSize: '11px' }}>🏆 星球首领加成: </span>
+                    <span style={{ color: '#d8b4fe', fontSize: '11px' }}>{hourlyRewards.bossBonus} (已击败{defeatedBossCount}个首领)</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* 今日剩余时间 */}
+          <div style={{
+            background: 'rgba(0, 212, 255, 0.1)',
+            borderRadius: '12px',
+            padding: '12px',
+            marginBottom: '16px',
+            border: '1px solid rgba(0, 212, 255, 0.3)'
+          }}>
+            <div style={{
+              color: '#00d4ff',
+              fontSize: '12px',
+              fontWeight: 'bold',
+              marginBottom: '4px'
+            }}>
+              ⏱️ 今日挂机时间
+            </div>
+            <div style={{ color: '#a1a1aa', fontSize: '12px' }}>
+              剩余 {remainingDailyHours.toFixed(1)} 小时 / 每日上限 24 小时
             </div>
           </div>
 
@@ -1174,7 +1440,7 @@ function AutoCollectModal({
               boxShadow: '0 0 20px rgba(0, 212, 255, 0.4)'
             }}
           >
-            ▶️ 开始自动采集
+            ▶️ {isCollecting ? '应用设置' : '开始自动采集'}
           </button>
         </div>
       </div>
