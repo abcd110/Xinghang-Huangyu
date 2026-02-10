@@ -5,11 +5,23 @@ import type { InventoryItem } from '../data/types';
 import type { EquipmentInstance } from '../core/EquipmentSystem';
 import { EquipmentSlot } from '../data/equipmentTypes';
 import { calculateEquipmentStats } from '../core/EquipmentStatCalculator';
+import 舰桥背景 from '../assets/images/舰桥背景.png';
 
 interface InventoryScreenProps {
   onBack: () => void;
   onNavigate?: (screen: string) => void;
 }
+
+// 科幻风格颜色配置
+const SCIFI_COLORS = {
+  primary: '#00d4ff',
+  secondary: '#7c3aed',
+  warning: '#f59e0b',
+  danger: '#ef4444',
+  success: '#22c55e',
+  background: 'rgba(0, 20, 40, 0.85)',
+  border: 'rgba(0, 212, 255, 0.3)',
+};
 
 const RARITY_COLORS_MAP: Record<ItemRarity, string> = {
   [ItemRarity.COMMON]: '#9ca3af',
@@ -105,10 +117,10 @@ function extractEquipmentName(fullName: string): { quality: string; name: string
 // 合并后的分类
 const CATEGORIES = [
   { id: 'all', label: '全部' },
-  { id: 'equipment', label: '装备' }, // 武器/防具/饰品 + 神话装备
+  { id: 'equipment', label: '装备' },
   { id: 'consumable', label: '消耗品' },
   { id: 'material', label: '材料' },
-  { id: 'misc', label: '道具' }, // 特殊/技能书
+  { id: 'misc', label: '道具' },
 ];
 
 export default function InventoryScreen({ onBack, onNavigate }: InventoryScreenProps) {
@@ -119,12 +131,8 @@ export default function InventoryScreen({ onBack, onNavigate }: InventoryScreenP
   const [selectedEquipment, setSelectedEquipment] = useState<EquipmentInstance | null>(null);
   const [showEnhancePreview, setShowEnhancePreview] = useState(false);
   const [enhancePreview, setEnhancePreview] = useState<ReturnType<typeof getEnhancePreview> | null>(null);
-  const [refreshKey, setRefreshKey] = useState(0);
 
-  // 强制刷新
-  const forceRefresh = () => setRefreshKey(prev => prev + 1);
-
-  // 根据分类筛选物品（非装备类物品）
+  // 根据分类筛选物品
   const filteredItems = inventory.items.filter(item => {
     if (selectedCategory === 'all') return true;
     if (selectedCategory === 'consumable') {
@@ -136,10 +144,10 @@ export default function InventoryScreen({ onBack, onNavigate }: InventoryScreenP
     if (selectedCategory === 'misc') {
       return item.type === ItemType.SPECIAL || item.type === ItemType.SKILL_BOOK;
     }
-    return false; // 装备类物品不再在 items 中显示
+    return false;
   });
 
-  // 获取所有装备（制造的装备和神话装备统一存储在 equipment 中）
+  // 获取所有装备
   const filteredEquipment = selectedCategory === 'all' || selectedCategory === 'equipment'
     ? inventory.equipment
     : [];
@@ -190,16 +198,42 @@ export default function InventoryScreen({ onBack, onNavigate }: InventoryScreenP
   return (
     <div style={{
       height: '100vh',
-      backgroundColor: '#0a0e27',
+      position: 'relative',
+      overflow: 'hidden',
       display: 'flex',
-      flexDirection: 'column'
+      flexDirection: 'column',
     }}>
-      {/* 顶部标题栏 - 固定 */}
+      {/* 背景 */}
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        backgroundImage: `url(${舰桥背景})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        zIndex: 0,
+      }} />
+      
+      {/* 扫描线效果 */}
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        background: 'linear-gradient(180deg, transparent 0%, rgba(0, 212, 255, 0.03) 50%, transparent 100%)',
+        backgroundSize: '100% 4px',
+        animation: 'scanline 8s linear infinite',
+        pointerEvents: 'none',
+        zIndex: 1,
+      }} />
+
+      {/* 顶部标题栏 - 玻璃拟态 */}
       <header style={{
         flexShrink: 0,
-        backgroundColor: '#1a1f3a',
-        borderBottom: '1px solid #2a3050',
-        padding: '12px 16px'
+        position: 'relative',
+        zIndex: 10,
+        background: 'rgba(0, 20, 40, 0.85)',
+        backdropFilter: 'blur(12px)',
+        borderBottom: '1px solid rgba(0, 212, 255, 0.3)',
+        padding: '12px 16px',
+        boxShadow: '0 0 20px rgba(0, 212, 255, 0.1)',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <button
@@ -207,34 +241,63 @@ export default function InventoryScreen({ onBack, onNavigate }: InventoryScreenP
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '4px',
+              gap: '6px',
               color: '#a1a1aa',
-              background: 'none',
-              border: 'none',
+              background: 'rgba(0, 212, 255, 0.1)',
+              border: '1px solid rgba(0, 212, 255, 0.3)',
+              borderRadius: '8px',
+              padding: '8px 12px',
               cursor: 'pointer',
-              fontSize: '14px'
+              fontSize: '14px',
+              transition: 'all 0.3s ease',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(0, 212, 255, 0.2)';
+              e.currentTarget.style.boxShadow = '0 0 10px rgba(0, 212, 255, 0.3)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'rgba(0, 212, 255, 0.1)';
+              e.currentTarget.style.boxShadow = 'none';
             }}
           >
-            <span>←</span>
+            <span>◀</span>
             <span>返回</span>
           </button>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <h1 style={{ color: 'white', fontWeight: 'bold', fontSize: '18px' }}>货舱</h1>
-            <span style={{ color: '#a1a1aa', fontSize: '14px' }}>({inventory.usedSlots}/{inventory.maxSlots})</span>
+            <h1 style={{ 
+              color: '#00d4ff', 
+              fontWeight: 'bold', 
+              fontSize: '18px',
+              textShadow: '0 0 10px rgba(0, 212, 255, 0.5)',
+            }}>
+              货舱
+            </h1>
+            <span style={{ 
+              color: '#a1a1aa', 
+              fontSize: '14px',
+              background: 'rgba(0, 0, 0, 0.5)',
+              padding: '2px 8px',
+              borderRadius: '4px',
+              border: '1px solid rgba(0, 212, 255, 0.2)',
+            }}>
+              {inventory.usedSlots}/{inventory.maxSlots}
+            </span>
           </div>
-          <div style={{ width: '48px' }} />
+          <div style={{ width: '70px' }} />
         </div>
       </header>
 
-      {/* 分类标签 - 固定 */}
+      {/* 分类标签 - 科幻风格 */}
       <section style={{
         flexShrink: 0,
+        position: 'relative',
+        zIndex: 10,
         display: 'flex',
         gap: '8px',
         overflowX: 'auto',
         padding: '12px 16px',
-        backgroundColor: '#0a0e27',
-        borderBottom: '1px solid #374151'
+        background: 'rgba(0, 10, 20, 0.7)',
+        borderBottom: '1px solid rgba(0, 212, 255, 0.2)',
       }}>
         {CATEGORIES.map(cat => (
           <button
@@ -242,14 +305,22 @@ export default function InventoryScreen({ onBack, onNavigate }: InventoryScreenP
             onClick={() => setSelectedCategory(cat.id)}
             style={{
               padding: '8px 16px',
-              borderRadius: '8px',
+              borderRadius: '20px',
               fontSize: '14px',
               whiteSpace: 'nowrap',
-              backgroundColor: selectedCategory === cat.id ? '#0099cc' : '#374151',
-              color: selectedCategory === cat.id ? 'white' : '#9ca3af',
-              border: 'none',
+              background: selectedCategory === cat.id 
+                ? 'linear-gradient(135deg, rgba(0, 212, 255, 0.3), rgba(124, 58, 237, 0.3))'
+                : 'rgba(255, 255, 255, 0.05)',
+              color: selectedCategory === cat.id ? '#00d4ff' : '#9ca3af',
+              border: selectedCategory === cat.id 
+                ? '1px solid rgba(0, 212, 255, 0.6)'
+                : '1px solid rgba(255, 255, 255, 0.1)',
               cursor: 'pointer',
-              fontWeight: selectedCategory === cat.id ? 'bold' : 'normal'
+              fontWeight: selectedCategory === cat.id ? 'bold' : 'normal',
+              boxShadow: selectedCategory === cat.id 
+                ? '0 0 15px rgba(0, 212, 255, 0.3)'
+                : 'none',
+              transition: 'all 0.3s ease',
             }}
           >
             {cat.label}
@@ -261,9 +332,11 @@ export default function InventoryScreen({ onBack, onNavigate }: InventoryScreenP
       <main style={{
         flex: 1,
         overflowY: 'auto',
-        padding: '16px 12px 80px 12px'
+        padding: '16px 12px 80px 12px',
+        position: 'relative',
+        zIndex: 10,
       }}>
-        <section style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '6px' }}>
+        <section style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px' }}>
           {/* 普通物品 */}
           {filteredItems.map((item, index) => (
             <ItemSlot
@@ -287,14 +360,22 @@ export default function InventoryScreen({ onBack, onNavigate }: InventoryScreenP
         </section>
 
         {filteredItems.length === 0 && filteredEquipment.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '48px 0', color: '#6b7280' }}>
-            <div style={{ fontSize: '48px', marginBottom: '8px' }}>📦</div>
+          <div style={{ 
+            textAlign: 'center', 
+            padding: '48px 0', 
+            color: '#6b7280',
+          }}>
+            <div style={{ 
+              fontSize: '48px', 
+              marginBottom: '8px',
+              opacity: 0.5,
+            }}>📦</div>
             <p>货舱是空的</p>
           </div>
         )}
       </main>
 
-      {/* 物品详情弹窗 - 屏幕中间 */}
+      {/* 物品详情弹窗 */}
       {selectedItem && !showEnhancePreview && (
         <ItemDetailModal
           item={selectedItem}
@@ -311,7 +392,6 @@ export default function InventoryScreen({ onBack, onNavigate }: InventoryScreenP
           equipment={selectedEquipment}
           onClose={() => setSelectedEquipment(null)}
           onEquip={() => {
-            // 导航到属性界面装备
             if (onNavigate) {
               onNavigate('player');
             }
@@ -332,17 +412,23 @@ export default function InventoryScreen({ onBack, onNavigate }: InventoryScreenP
           onGoToEnhance={() => {
             setShowEnhancePreview(false);
             setSelectedItem(null);
-            // 这里可以通过导航到强化页面
           }}
         />
       )}
+
+      {/* CSS 动画 */}
+      <style>{`
+        @keyframes scanline {
+          0% { transform: translateY(-100%); }
+          100% { transform: translateY(100vh); }
+        }
+      `}</style>
     </div>
   );
 }
 
-// 物品格子
+// 物品格子 - 科幻风格
 function ItemSlot({ item, onClick }: { item: InventoryItem; onClick: () => void }) {
-  // 检查名称中是否有品质前缀
   const { quality: itemQuality } = extractEquipmentName(item.name);
   const qualityConfig = itemQuality ? QUALITY_CONFIG[itemQuality] : null;
   const rarityColor = qualityConfig ? qualityConfig.color : RARITY_COLORS_MAP[item.rarity];
@@ -353,16 +439,26 @@ function ItemSlot({ item, onClick }: { item: InventoryItem; onClick: () => void 
       onClick={onClick}
       style={{
         aspectRatio: '1',
-        backgroundColor: '#1f2937',
+        background: 'rgba(0, 20, 40, 0.7)',
         border: `2px solid ${borderColor}`,
-        borderRadius: '8px',
+        borderRadius: '10px',
         padding: '4px',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
         position: 'relative',
-        cursor: 'pointer'
+        cursor: 'pointer',
+        boxShadow: `0 0 10px ${borderColor}20`,
+        transition: 'all 0.3s ease',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.boxShadow = `0 0 20px ${borderColor}50`;
+        e.currentTarget.style.transform = 'scale(1.05)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.boxShadow = `0 0 10px ${borderColor}20`;
+        e.currentTarget.style.transform = 'scale(1)';
       }}
     >
       {/* 物品名称 */}
@@ -377,7 +473,8 @@ function ItemSlot({ item, onClick }: { item: InventoryItem; onClick: () => void 
         display: '-webkit-box',
         WebkitLineClamp: 2,
         WebkitBoxOrient: 'vertical',
-        padding: '0 2px'
+        padding: '0 2px',
+        textShadow: `0 0 5px ${rarityColor}50`,
       }}>
         {item.name}
       </span>
@@ -391,11 +488,12 @@ function ItemSlot({ item, onClick }: { item: InventoryItem; onClick: () => void 
           fontSize: '10px',
           color: 'white',
           fontWeight: 'bold',
-          backgroundColor: 'rgba(0,0,0,0.6)',
+          background: 'rgba(0, 0, 0, 0.7)',
           padding: '1px 4px',
           borderRadius: '4px',
           minWidth: '16px',
-          textAlign: 'center'
+          textAlign: 'center',
+          border: '1px solid rgba(255, 255, 255, 0.2)',
         }}>
           {item.quantity}
         </span>
@@ -408,7 +506,8 @@ function ItemSlot({ item, onClick }: { item: InventoryItem; onClick: () => void 
           top: '2px',
           left: '2px',
           fontSize: '10px',
-          color: '#4ade80'
+          color: '#4ade80',
+          textShadow: '0 0 5px #4ade80',
         }}>✓</span>
       )}
 
@@ -420,7 +519,8 @@ function ItemSlot({ item, onClick }: { item: InventoryItem; onClick: () => void 
           right: '2px',
           fontSize: '9px',
           color: '#00d4ff',
-          fontWeight: 'bold'
+          fontWeight: 'bold',
+          textShadow: '0 0 5px #00d4ff',
         }}>
           +{item.sublimationLevel}
         </span>
@@ -429,14 +529,13 @@ function ItemSlot({ item, onClick }: { item: InventoryItem; onClick: () => void 
   );
 }
 
-// 神话装备格子（带品质样式，与战甲档案一致）
+// 神话装备格子
 function EquipmentSlotComponent({ equipment, onClick }: { equipment: EquipmentInstance; onClick: () => void }) {
   const { quality, name } = extractEquipmentName(equipment.name);
   const qualityConfig = quality ? QUALITY_CONFIG[quality] : null;
   const borderColor = qualityConfig ? qualityConfig.color : RARITY_BORDERS[equipment.rarity];
   const borderWidth = qualityConfig ? qualityConfig.borderWidth : '2px';
   const boxShadow = qualityConfig ? qualityConfig.boxShadow : 'none';
-  // 完整名称：品质前缀 + 装备名
   const fullDisplayName = quality ? `${quality}${name}` : equipment.name;
 
   return (
@@ -444,9 +543,9 @@ function EquipmentSlotComponent({ equipment, onClick }: { equipment: EquipmentIn
       onClick={onClick}
       style={{
         aspectRatio: '1',
-        backgroundColor: '#1f2937',
+        background: 'rgba(0, 20, 40, 0.7)',
         border: `${borderWidth} solid ${borderColor}`,
-        borderRadius: '8px',
+        borderRadius: '10px',
         padding: '4px',
         display: 'flex',
         flexDirection: 'column',
@@ -454,10 +553,19 @@ function EquipmentSlotComponent({ equipment, onClick }: { equipment: EquipmentIn
         justifyContent: 'center',
         position: 'relative',
         cursor: 'pointer',
-        boxShadow,
+        boxShadow: `${boxShadow}, 0 0 15px ${borderColor}30`,
+        transition: 'all 0.3s ease',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.boxShadow = `${boxShadow}, 0 0 25px ${borderColor}60`;
+        e.currentTarget.style.transform = 'scale(1.05)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.boxShadow = `${boxShadow}, 0 0 15px ${borderColor}30`;
+        e.currentTarget.style.transform = 'scale(1)';
       }}
     >
-      {/* 装备名称（包含品质前缀，占满格子） */}
+      {/* 装备名称 */}
       <span style={{
         fontSize: '9px',
         color: borderColor,
@@ -472,6 +580,7 @@ function EquipmentSlotComponent({ equipment, onClick }: { equipment: EquipmentIn
         padding: '0 1px',
         wordBreak: 'break-all',
         width: '100%',
+        textShadow: `0 0 5px ${borderColor}50`,
       }}>
         {fullDisplayName}
       </span>
@@ -484,25 +593,26 @@ function EquipmentSlotComponent({ equipment, onClick }: { equipment: EquipmentIn
           right: '2px',
           fontSize: '10px',
           color: '#4ade80',
+          textShadow: '0 0 5px #4ade80',
         }}>✓</span>
       )}
     </button>
   );
 }
 
-// 空格子
+// 空格子 - 科幻风格
 function EmptySlot() {
   return (
     <div style={{
       aspectRatio: '1',
-      backgroundColor: 'rgba(31, 41, 55, 0.5)',
-      border: '2px dashed #374151',
-      borderRadius: '8px'
+      background: 'rgba(0, 20, 40, 0.3)',
+      border: '2px dashed rgba(0, 212, 255, 0.2)',
+      borderRadius: '10px',
     }} />
   );
 }
 
-// 物品详情弹窗
+// 物品详情弹窗 - 科幻风格
 function ItemDetailModal({
   item,
   onClose,
@@ -524,51 +634,76 @@ function ItemDetailModal({
     <div style={{
       position: 'fixed',
       inset: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.8)',
+      backgroundColor: 'rgba(0, 0, 0, 0.85)',
+      backdropFilter: 'blur(4px)',
       zIndex: 100,
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: '16px'
+      padding: '16px',
     }}>
       <div style={{
-        backgroundColor: '#1a1f3a',
+        background: 'rgba(0, 20, 40, 0.95)',
+        backdropFilter: 'blur(20px)',
         borderRadius: '16px',
         width: '100%',
-        maxWidth: '320px',
-        border: '1px solid #2a3050',
-        overflow: 'hidden'
+        maxWidth: '340px',
+        border: '1px solid rgba(0, 212, 255, 0.4)',
+        boxShadow: '0 0 40px rgba(0, 212, 255, 0.2), inset 0 0 40px rgba(0, 212, 255, 0.05)',
+        overflow: 'hidden',
       }}>
         {/* 头部 */}
-        <div style={{ padding: '16px', borderBottom: '1px solid #374151' }}>
+        <div style={{ 
+          padding: '16px', 
+          borderBottom: '1px solid rgba(0, 212, 255, 0.2)',
+          background: 'linear-gradient(180deg, rgba(0, 212, 255, 0.1), transparent)',
+        }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <div style={{
                 width: '56px',
                 height: '56px',
-                backgroundColor: '#1f2937',
+                background: 'rgba(0, 0, 0, 0.5)',
                 borderRadius: '12px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontSize: '28px',
-                border: `2px solid ${rarityColor}`
+                border: `2px solid ${rarityColor}`,
+                boxShadow: `0 0 15px ${rarityColor}50`,
               }}>
                 {TYPE_NAMES[item.type][0]}
               </div>
               <div>
-                <h2 style={{ color: rarityColor, fontWeight: 'bold', fontSize: '16px', margin: 0 }}>
+                <h2 style={{ 
+                  color: rarityColor, 
+                  fontWeight: 'bold', 
+                  fontSize: '16px', 
+                  margin: 0,
+                  textShadow: `0 0 10px ${rarityColor}50`,
+                }}>
                   {item.name}
                 </h2>
                 <p style={{ color: '#a1a1aa', fontSize: '12px', margin: '4px 0 0 0' }}>{TYPE_NAMES[item.type]}</p>
                 {item.sublimationLevel > 0 && (
-                  <p style={{ color: '#00d4ff', fontSize: '12px', margin: '4px 0 0 0' }}>升华等级: +{item.sublimationLevel}</p>
+                  <p style={{ color: '#00d4ff', fontSize: '12px', margin: '4px 0 0 0', textShadow: '0 0 5px #00d4ff' }}>
+                    升华等级: +{item.sublimationLevel}
+                  </p>
                 )}
               </div>
             </div>
             <button
               onClick={onClose}
-              style={{ color: '#a1a1aa', background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer' }}
+              style={{ 
+                color: '#a1a1aa', 
+                background: 'rgba(255, 255, 255, 0.1)', 
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                borderRadius: '8px',
+                width: '32px',
+                height: '32px',
+                fontSize: '16px', 
+                cursor: 'pointer',
+              }}
             >
               ✕
             </button>
@@ -579,8 +714,14 @@ function ItemDetailModal({
         <div style={{ padding: '16px', maxHeight: '50vh', overflowY: 'auto' }}>
           <p style={{ color: '#d1d5db', fontSize: '14px', marginBottom: '16px' }}>{item.description}</p>
 
-          <div style={{ backgroundColor: '#1f2937', borderRadius: '8px', padding: '12px', marginBottom: '16px' }}>
-            <h4 style={{ color: '#a1a1aa', fontSize: '12px', marginBottom: '8px' }}>物品属性</h4>
+          <div style={{ 
+            background: 'rgba(0, 0, 0, 0.4)', 
+            borderRadius: '12px', 
+            padding: '12px', 
+            marginBottom: '16px',
+            border: '1px solid rgba(0, 212, 255, 0.2)',
+          }}>
+            <h4 style={{ color: '#00d4ff', fontSize: '12px', marginBottom: '8px' }}>物品属性</h4>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '14px' }}>
               {item.attack !== undefined && item.attack > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -639,95 +780,65 @@ function ItemDetailModal({
             </div>
           </div>
 
-          <div style={{ textAlign: 'center', color: '#a1a1aa', fontSize: '14px', marginBottom: '16px' }}>
-            数量: <span style={{ color: 'white', fontWeight: 'bold' }}>{item.quantity}</span>
+          <div style={{ 
+            textAlign: 'center', 
+            color: '#a1a1aa', 
+            fontSize: '14px', 
+            marginBottom: '16px',
+            background: 'rgba(0, 0, 0, 0.3)',
+            padding: '8px',
+            borderRadius: '8px',
+          }}>
+            数量: <span style={{ color: '#00d4ff', fontWeight: 'bold' }}>{item.quantity}</span>
           </div>
         </div>
 
         {/* 操作按钮 */}
-        <div style={{ padding: '16px', borderTop: '1px solid #374151', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+        <div style={{ 
+          padding: '16px', 
+          borderTop: '1px solid rgba(0, 212, 255, 0.2)', 
+          display: 'grid', 
+          gridTemplateColumns: '1fr 1fr', 
+          gap: '8px',
+          background: 'linear-gradient(0deg, rgba(0, 212, 255, 0.05), transparent)',
+        }}>
           {isConsumable && (
-            <button
+            <SciFiButton
               onClick={() => onAction('use')}
-              style={{
-                padding: '12px',
-                backgroundColor: '#16a34a',
-                color: 'white',
-                fontWeight: 'bold',
-                borderRadius: '8px',
-                border: 'none',
-                cursor: 'pointer'
-              }}
-            >
-              使用
-            </button>
+              label="使用"
+              variant="success"
+            />
           )}
 
           {isEquipment && (
             <>
               {item.equipped ? (
-                <button
+                <SciFiButton
                   onClick={async () => await onAction('unequip')}
-                  style={{
-                    padding: '12px',
-                    backgroundColor: '#374151',
-                    color: 'white',
-                    fontWeight: 'bold',
-                    borderRadius: '8px',
-                    border: 'none',
-                    cursor: 'pointer'
-                  }}
-                >
-                  卸下
-                </button>
+                  label="卸下"
+                  variant="default"
+                />
               ) : (
-                <button
+                <SciFiButton
                   onClick={async () => await onAction('equip')}
-                  style={{
-                    padding: '12px',
-                    backgroundColor: '#0099cc',
-                    color: 'white',
-                    fontWeight: 'bold',
-                    borderRadius: '8px',
-                    border: 'none',
-                    cursor: 'pointer'
-                  }}
-                >
-                  装备
-                </button>
+                  label="装备"
+                  variant="primary"
+                />
               )}
-              <button
+              <SciFiButton
                 onClick={async () => await onAction('sublimate')}
-                style={{
-                  padding: '12px',
-                  backgroundColor: '#9333ea',
-                  color: 'white',
-                  fontWeight: 'bold',
-                  borderRadius: '8px',
-                  border: 'none',
-                  cursor: 'pointer'
-                }}
-              >
-                升华
-              </button>
-              <button
+                label="升华"
+                variant="secondary"
+              />
+              <SciFiButton
                 onClick={() => onAction('enhance')}
-                style={{
-                  padding: '12px',
-                  backgroundColor: '#2563eb',
-                  color: 'white',
-                  fontWeight: 'bold',
-                  borderRadius: '8px',
-                  border: 'none',
-                  cursor: 'pointer'
-                }}
-              >
-                强化
-              </button>
+                label="强化"
+                variant="info"
+              />
             </>
           )}
 
-          <button
+          <SciFiButton
             onClick={() => {
               if (item.quantity > 1) {
                 setShowDiscardConfirm(true);
@@ -735,201 +846,261 @@ function ItemDetailModal({
                 onAction('discard', 1);
               }
             }}
-            style={{
-              padding: '12px',
-              backgroundColor: 'rgba(220, 38, 38, 0.6)',
-              color: 'white',
-              fontWeight: 'bold',
-              borderRadius: '8px',
-              border: 'none',
-              cursor: 'pointer'
-            }}
-          >
-            丢弃
-          </button>
+            label="丢弃"
+            variant="danger"
+          />
 
-          <button
+          <SciFiButton
             onClick={onClose}
-            style={{
-              padding: '12px',
-              backgroundColor: '#374151',
-              color: '#d1d5db',
-              fontWeight: 'bold',
-              borderRadius: '8px',
-              border: 'none',
-              cursor: 'pointer'
-            }}
-          >
-            关闭
-          </button>
+            label="关闭"
+            variant="default"
+          />
         </div>
 
         {/* 丢弃数量选择弹窗 */}
         {showDiscardConfirm && (
-          <div style={{
-            position: 'absolute',
-            inset: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.9)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderRadius: '16px',
-          }}>
-            <div style={{
-              backgroundColor: '#1f2937',
-              borderRadius: '12px',
-              padding: '20px',
-              width: '80%',
-              maxWidth: '280px',
-            }}>
-              <h3 style={{ color: 'white', fontSize: '16px', margin: '0 0 16px 0', textAlign: 'center' }}>
-                选择丢弃数量
-              </h3>
-              <div style={{ color: '#a1a1aa', fontSize: '14px', textAlign: 'center', marginBottom: '16px' }}>
-                拥有: <span style={{ color: 'white', fontWeight: 'bold' }}>{item.quantity}</span>
-              </div>
-
-              {/* 数量选择 */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '20px' }}>
-                <button
-                  onClick={() => setDiscardQuantity(Math.max(1, discardQuantity - 1))}
-                  style={{
-                    width: '36px',
-                    height: '36px',
-                    borderRadius: '8px',
-                    border: 'none',
-                    backgroundColor: '#374151',
-                    color: 'white',
-                    fontSize: '18px',
-                    cursor: 'pointer',
-                  }}
-                >
-                  -
-                </button>
-                <input
-                  type="number"
-                  value={discardQuantity}
-                  onChange={(e) => {
-                    const val = parseInt(e.target.value) || 1;
-                    setDiscardQuantity(Math.max(1, Math.min(item.quantity, val)));
-                  }}
-                  style={{
-                    width: '60px',
-                    height: '36px',
-                    textAlign: 'center',
-                    backgroundColor: '#0f172a',
-                    border: '1px solid #374151',
-                    borderRadius: '8px',
-                    color: 'white',
-                    fontSize: '16px',
-                    fontWeight: 'bold',
-                  }}
-                />
-                <button
-                  onClick={() => setDiscardQuantity(Math.min(item.quantity, discardQuantity + 1))}
-                  style={{
-                    width: '36px',
-                    height: '36px',
-                    borderRadius: '8px',
-                    border: 'none',
-                    backgroundColor: '#374151',
-                    color: 'white',
-                    fontSize: '18px',
-                    cursor: 'pointer',
-                  }}
-                >
-                  +
-                </button>
-              </div>
-
-              {/* 快捷按钮 */}
-              <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-                <button
-                  onClick={() => setDiscardQuantity(1)}
-                  style={{
-                    flex: 1,
-                    padding: '8px',
-                    backgroundColor: discardQuantity === 1 ? '#0099cc' : '#374151',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    fontSize: '12px',
-                    cursor: 'pointer',
-                  }}
-                >
-                  1个
-                </button>
-                <button
-                  onClick={() => setDiscardQuantity(Math.floor(item.quantity / 2))}
-                  style={{
-                    flex: 1,
-                    padding: '8px',
-                    backgroundColor: discardQuantity === Math.floor(item.quantity / 2) ? '#0099cc' : '#374151',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    fontSize: '12px',
-                    cursor: 'pointer',
-                  }}
-                >
-                  一半
-                </button>
-                <button
-                  onClick={() => setDiscardQuantity(item.quantity)}
-                  style={{
-                    flex: 1,
-                    padding: '8px',
-                    backgroundColor: discardQuantity === item.quantity ? '#ef4444' : '#374151',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    fontSize: '12px',
-                    cursor: 'pointer',
-                  }}
-                >
-                  全部
-                </button>
-              </div>
-
-              {/* 确认按钮 */}
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button
-                  onClick={() => setShowDiscardConfirm(false)}
-                  style={{
-                    flex: 1,
-                    padding: '12px',
-                    backgroundColor: '#374151',
-                    color: '#d1d5db',
-                    border: 'none',
-                    borderRadius: '8px',
-                    fontWeight: 'bold',
-                    cursor: 'pointer',
-                  }}
-                >
-                  取消
-                </button>
-                <button
-                  onClick={() => {
-                    onAction('discard', discardQuantity);
-                    setShowDiscardConfirm(false);
-                  }}
-                  style={{
-                    flex: 1,
-                    padding: '12px',
-                    backgroundColor: '#dc2626',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '8px',
-                    fontWeight: 'bold',
-                    cursor: 'pointer',
-                  }}
-                >
-                  确认丢弃
-                </button>
-              </div>
-            </div>
-          </div>
+          <DiscardConfirmModal
+            item={item}
+            discardQuantity={discardQuantity}
+            setDiscardQuantity={setDiscardQuantity}
+            onCancel={() => setShowDiscardConfirm(false)}
+            onConfirm={() => {
+              onAction('discard', discardQuantity);
+              setShowDiscardConfirm(false);
+            }}
+          />
         )}
+      </div>
+    </div>
+  );
+}
+
+// 科幻风格按钮组件
+function SciFiButton({ 
+  onClick, 
+  label, 
+  variant = 'default' 
+}: { 
+  onClick: () => void; 
+  label: string; 
+  variant?: 'primary' | 'secondary' | 'success' | 'danger' | 'info' | 'default';
+}) {
+  const variantStyles = {
+    primary: {
+      background: 'linear-gradient(135deg, rgba(0, 212, 255, 0.3), rgba(0, 212, 255, 0.1))',
+      border: '1px solid rgba(0, 212, 255, 0.6)',
+      color: '#00d4ff',
+      shadow: '0 0 15px rgba(0, 212, 255, 0.3)',
+    },
+    secondary: {
+      background: 'linear-gradient(135deg, rgba(124, 58, 237, 0.3), rgba(124, 58, 237, 0.1))',
+      border: '1px solid rgba(124, 58, 237, 0.6)',
+      color: '#c084fc',
+      shadow: '0 0 15px rgba(124, 58, 237, 0.3)',
+    },
+    success: {
+      background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.3), rgba(34, 197, 94, 0.1))',
+      border: '1px solid rgba(34, 197, 94, 0.6)',
+      color: '#4ade80',
+      shadow: '0 0 15px rgba(34, 197, 94, 0.3)',
+    },
+    danger: {
+      background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.3), rgba(239, 68, 68, 0.1))',
+      border: '1px solid rgba(239, 68, 68, 0.6)',
+      color: '#f87171',
+      shadow: '0 0 15px rgba(239, 68, 68, 0.3)',
+    },
+    info: {
+      background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(59, 130, 246, 0.1))',
+      border: '1px solid rgba(59, 130, 246, 0.6)',
+      color: '#60a5fa',
+      shadow: '0 0 15px rgba(59, 130, 246, 0.3)',
+    },
+    default: {
+      background: 'rgba(255, 255, 255, 0.1)',
+      border: '1px solid rgba(255, 255, 255, 0.2)',
+      color: '#d1d5db',
+      shadow: 'none',
+    },
+  };
+
+  const style = variantStyles[variant];
+
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        padding: '12px',
+        background: style.background,
+        color: style.color,
+        fontWeight: 'bold',
+        borderRadius: '8px',
+        border: style.border,
+        cursor: 'pointer',
+        boxShadow: style.shadow,
+        transition: 'all 0.3s ease',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = 'translateY(-2px)';
+        e.currentTarget.style.boxShadow = style.shadow.replace('0.3', '0.5');
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = 'translateY(0)';
+        e.currentTarget.style.boxShadow = style.shadow;
+      }}
+    >
+      {label}
+    </button>
+  );
+}
+
+// 丢弃确认弹窗
+function DiscardConfirmModal({
+  item,
+  discardQuantity,
+  setDiscardQuantity,
+  onCancel,
+  onConfirm,
+}: {
+  item: InventoryItem;
+  discardQuantity: number;
+  setDiscardQuantity: (q: number) => void;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <div style={{
+      position: 'absolute',
+      inset: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.9)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: '16px',
+    }}>
+      <div style={{
+        background: 'rgba(0, 20, 40, 0.95)',
+        borderRadius: '12px',
+        padding: '20px',
+        width: '80%',
+        maxWidth: '280px',
+        border: '1px solid rgba(239, 68, 68, 0.4)',
+        boxShadow: '0 0 30px rgba(239, 68, 68, 0.2)',
+      }}>
+        <h3 style={{ color: '#f87171', fontSize: '16px', margin: '0 0 16px 0', textAlign: 'center' }}>
+          选择丢弃数量
+        </h3>
+        <div style={{ color: '#a1a1aa', fontSize: '14px', textAlign: 'center', marginBottom: '16px' }}>
+          拥有: <span style={{ color: '#00d4ff', fontWeight: 'bold' }}>{item.quantity}</span>
+        </div>
+
+        {/* 数量选择 */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '20px' }}>
+          <button
+            onClick={() => setDiscardQuantity(Math.max(1, discardQuantity - 1))}
+            style={{
+              width: '36px',
+              height: '36px',
+              borderRadius: '8px',
+              border: '1px solid rgba(0, 212, 255, 0.4)',
+              background: 'rgba(0, 212, 255, 0.1)',
+              color: '#00d4ff',
+              fontSize: '18px',
+              cursor: 'pointer',
+            }}
+          >
+            -
+          </button>
+          <input
+            type="number"
+            value={discardQuantity}
+            onChange={(e) => {
+              const val = parseInt(e.target.value) || 1;
+              setDiscardQuantity(Math.max(1, Math.min(item.quantity, val)));
+            }}
+            style={{
+              width: '60px',
+              height: '36px',
+              textAlign: 'center',
+              background: 'rgba(0, 0, 0, 0.5)',
+              border: '1px solid rgba(0, 212, 255, 0.4)',
+              borderRadius: '8px',
+              color: '#00d4ff',
+              fontSize: '16px',
+              fontWeight: 'bold',
+            }}
+          />
+          <button
+            onClick={() => setDiscardQuantity(Math.min(item.quantity, discardQuantity + 1))}
+            style={{
+              width: '36px',
+              height: '36px',
+              borderRadius: '8px',
+              border: '1px solid rgba(0, 212, 255, 0.4)',
+              background: 'rgba(0, 212, 255, 0.1)',
+              color: '#00d4ff',
+              fontSize: '18px',
+              cursor: 'pointer',
+            }}
+          >
+            +
+          </button>
+        </div>
+
+        {/* 快捷按钮 */}
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+          <button
+            onClick={() => setDiscardQuantity(1)}
+            style={{
+              flex: 1,
+              padding: '8px',
+              background: discardQuantity === 1 ? 'rgba(0, 212, 255, 0.3)' : 'rgba(255, 255, 255, 0.1)',
+              color: discardQuantity === 1 ? '#00d4ff' : '#d1d5db',
+              border: discardQuantity === 1 ? '1px solid rgba(0, 212, 255, 0.6)' : '1px solid rgba(255, 255, 255, 0.2)',
+              borderRadius: '6px',
+              fontSize: '12px',
+              cursor: 'pointer',
+            }}
+          >
+            1个
+          </button>
+          <button
+            onClick={() => setDiscardQuantity(Math.floor(item.quantity / 2))}
+            style={{
+              flex: 1,
+              padding: '8px',
+              background: discardQuantity === Math.floor(item.quantity / 2) ? 'rgba(0, 212, 255, 0.3)' : 'rgba(255, 255, 255, 0.1)',
+              color: discardQuantity === Math.floor(item.quantity / 2) ? '#00d4ff' : '#d1d5db',
+              border: discardQuantity === Math.floor(item.quantity / 2) ? '1px solid rgba(0, 212, 255, 0.6)' : '1px solid rgba(255, 255, 255, 0.2)',
+              borderRadius: '6px',
+              fontSize: '12px',
+              cursor: 'pointer',
+            }}
+          >
+            一半
+          </button>
+          <button
+            onClick={() => setDiscardQuantity(item.quantity)}
+            style={{
+              flex: 1,
+              padding: '8px',
+              background: discardQuantity === item.quantity ? 'rgba(239, 68, 68, 0.3)' : 'rgba(255, 255, 255, 0.1)',
+              color: discardQuantity === item.quantity ? '#f87171' : '#d1d5db',
+              border: discardQuantity === item.quantity ? '1px solid rgba(239, 68, 68, 0.6)' : '1px solid rgba(255, 255, 255, 0.2)',
+              borderRadius: '6px',
+              fontSize: '12px',
+              cursor: 'pointer',
+            }}
+          >
+            全部
+          </button>
+        </div>
+
+        {/* 确认按钮 */}
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <SciFiButton onClick={onCancel} label="取消" variant="default" />
+          <SciFiButton onClick={onConfirm} label="确认丢弃" variant="danger" />
+        </div>
       </div>
     </div>
   );
@@ -978,30 +1149,46 @@ function EnhancePreviewModal({
     <div style={{
       position: 'fixed',
       inset: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.8)',
+      backgroundColor: 'rgba(0, 0, 0, 0.85)',
+      backdropFilter: 'blur(4px)',
       zIndex: 100,
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: '16px'
+      padding: '16px',
     }}>
       <div style={{
-        backgroundColor: '#1a1f3a',
+        background: 'rgba(0, 20, 40, 0.95)',
+        backdropFilter: 'blur(20px)',
         borderRadius: '16px',
         width: '100%',
-        maxWidth: '320px',
-        border: '1px solid #2a3050',
-        overflow: 'hidden'
+        maxWidth: '340px',
+        border: '1px solid rgba(0, 212, 255, 0.4)',
+        boxShadow: '0 0 40px rgba(0, 212, 255, 0.2)',
+        overflow: 'hidden',
       }}>
         {/* 头部 */}
-        <div style={{ padding: '16px', borderBottom: '1px solid #374151' }}>
+        <div style={{ 
+          padding: '16px', 
+          borderBottom: '1px solid rgba(0, 212, 255, 0.2)',
+          background: 'linear-gradient(180deg, rgba(0, 212, 255, 0.1), transparent)',
+        }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <h2 style={{ color: 'white', fontWeight: 'bold', fontSize: '16px', margin: 0 }}>
+            <h2 style={{ color: '#00d4ff', fontWeight: 'bold', fontSize: '16px', margin: 0, textShadow: '0 0 10px rgba(0, 212, 255, 0.5)' }}>
               强化预览
             </h2>
             <button
               onClick={onClose}
-              style={{ color: '#a1a1aa', background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer' }}
+              style={{ 
+                color: '#a1a1aa', 
+                background: 'rgba(255, 255, 255, 0.1)', 
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                borderRadius: '8px',
+                width: '32px',
+                height: '32px',
+                fontSize: '16px', 
+                cursor: 'pointer',
+              }}
             >
               ✕
             </button>
@@ -1017,21 +1204,22 @@ function EnhancePreviewModal({
                 <div style={{
                   width: '48px',
                   height: '48px',
-                  backgroundColor: '#1f2937',
+                  background: 'rgba(0, 0, 0, 0.5)',
                   borderRadius: '8px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   fontSize: '24px',
-                  border: `2px solid ${rarityColor}`
+                  border: `2px solid ${rarityColor}`,
+                  boxShadow: `0 0 15px ${rarityColor}50`,
                 }}>
                   {TYPE_NAMES[item.type][0]}
                 </div>
                 <div>
-                  <p style={{ color: rarityColor, fontWeight: 'bold', fontSize: '14px', margin: 0 }}>
+                  <p style={{ color: rarityColor, fontWeight: 'bold', fontSize: '14px', margin: 0, textShadow: `0 0 5px ${rarityColor}50` }}>
                     {item.name}
                   </p>
-                  <p style={{ color: '#00d4ff', fontSize: '13px', margin: '4px 0 0 0' }}>
+                  <p style={{ color: '#00d4ff', fontSize: '13px', margin: '4px 0 0 0', textShadow: '0 0 5px #00d4ff' }}>
                     当前 +{preview.currentLevel} → 目标 +{preview.targetLevel}
                   </p>
                 </div>
@@ -1039,43 +1227,47 @@ function EnhancePreviewModal({
 
               {/* 成功率 */}
               <div style={{
-                backgroundColor: '#1f2937',
-                borderRadius: '8px',
+                background: 'rgba(0, 0, 0, 0.4)',
+                borderRadius: '12px',
                 padding: '12px',
-                marginBottom: '12px'
+                marginBottom: '12px',
+                border: '1px solid rgba(0, 212, 255, 0.2)',
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                   <span style={{ color: '#a1a1aa', fontSize: '13px' }}>成功率</span>
                   <span style={{
                     color: getSuccessRateColor(preview.successRate),
                     fontWeight: 'bold',
-                    fontSize: '16px'
+                    fontSize: '16px',
+                    textShadow: `0 0 10px ${getSuccessRateColor(preview.successRate)}50`,
                   }}>
                     {Math.round(preview.successRate * 100)}%
                   </span>
                 </div>
                 <div style={{
-                  backgroundColor: '#374151',
+                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
                   borderRadius: '9999px',
                   height: '6px',
-                  overflow: 'hidden'
+                  overflow: 'hidden',
                 }}>
                   <div style={{
                     height: '100%',
                     backgroundColor: getSuccessRateColor(preview.successRate),
-                    width: `${preview.successRate * 100}%`
+                    width: `${preview.successRate * 100}%`,
+                    boxShadow: `0 0 10px ${getSuccessRateColor(preview.successRate)}`,
                   }} />
                 </div>
               </div>
 
               {/* 属性变化 */}
               <div style={{
-                backgroundColor: '#1f2937',
-                borderRadius: '8px',
+                background: 'rgba(0, 0, 0, 0.4)',
+                borderRadius: '12px',
                 padding: '12px',
-                marginBottom: '12px'
+                marginBottom: '12px',
+                border: '1px solid rgba(0, 212, 255, 0.2)',
               }}>
-                <p style={{ color: '#a1a1aa', fontSize: '12px', marginBottom: '8px' }}>属性提升</p>
+                <p style={{ color: '#00d4ff', fontSize: '12px', marginBottom: '8px' }}>属性提升</p>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', fontSize: '12px' }}>
                   {preview.attributePreview.attack.after > preview.attributePreview.attack.current && (
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -1106,12 +1298,13 @@ function EnhancePreviewModal({
 
               {/* 消耗材料 */}
               <div style={{
-                backgroundColor: '#1f2937',
-                borderRadius: '8px',
+                background: 'rgba(0, 0, 0, 0.4)',
+                borderRadius: '12px',
                 padding: '12px',
-                marginBottom: '12px'
+                marginBottom: '12px',
+                border: '1px solid rgba(0, 212, 255, 0.2)',
               }}>
-                <p style={{ color: '#a1a1aa', fontSize: '12px', marginBottom: '8px' }}>所需材料</p>
+                <p style={{ color: '#00d4ff', fontSize: '12px', marginBottom: '8px' }}>所需材料</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '12px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ color: '#d1d5db' }}>强化石</span>
@@ -1123,27 +1316,12 @@ function EnhancePreviewModal({
               </div>
 
               {preview.failureDowngrade && (
-                <p style={{ color: '#ef4444', fontSize: '12px', textAlign: 'center', marginBottom: '12px' }}>
+                <p style={{ color: '#ef4444', fontSize: '12px', textAlign: 'center', marginBottom: '12px', textShadow: '0 0 5px #ef4444' }}>
                   ⚠️ 强化失败将降低1级
                 </p>
               )}
 
-              <button
-                onClick={onGoToEnhance}
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  backgroundColor: '#2563eb',
-                  color: 'white',
-                  fontWeight: 'bold',
-                  borderRadius: '8px',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: '14px'
-                }}
-              >
-                前往强化
-              </button>
+              <SciFiButton onClick={onGoToEnhance} label="前往强化" variant="primary" />
             </>
           ) : (
             <div style={{ textAlign: 'center', padding: '24px 0' }}>
@@ -1172,40 +1350,54 @@ function EquipmentDetailModal({
     <div style={{
       position: 'fixed',
       inset: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.8)',
+      backgroundColor: 'rgba(0, 0, 0, 0.85)',
+      backdropFilter: 'blur(4px)',
       zIndex: 100,
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: '16px'
+      padding: '16px',
     }}>
       <div style={{
-        backgroundColor: '#1a1f3a',
+        background: 'rgba(0, 20, 40, 0.95)',
+        backdropFilter: 'blur(20px)',
         borderRadius: '16px',
         width: '100%',
-        maxWidth: '320px',
+        maxWidth: '340px',
         border: `2px solid ${rarityColor}`,
-        overflow: 'hidden'
+        boxShadow: `0 0 40px ${rarityColor}30, inset 0 0 40px ${rarityColor}10`,
+        overflow: 'hidden',
       }}>
         {/* 头部 */}
-        <div style={{ padding: '16px', borderBottom: '1px solid #374151' }}>
+        <div style={{ 
+          padding: '16px', 
+          borderBottom: `1px solid ${rarityColor}50`,
+          background: `linear-gradient(180deg, ${rarityColor}20, transparent)`,
+        }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <div style={{
                 width: '56px',
                 height: '56px',
-                backgroundColor: '#1f2937',
+                background: 'rgba(0, 0, 0, 0.5)',
                 borderRadius: '12px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontSize: '28px',
-                border: `2px solid ${rarityColor}`
+                border: `2px solid ${rarityColor}`,
+                boxShadow: `0 0 15px ${rarityColor}50`,
               }}>
                 {SLOT_ICONS[equipment.slot]}
               </div>
               <div>
-                <h2 style={{ color: rarityColor, fontWeight: 'bold', fontSize: '16px', margin: 0 }}>
+                <h2 style={{ 
+                  color: rarityColor, 
+                  fontWeight: 'bold', 
+                  fontSize: '16px', 
+                  margin: 0,
+                  textShadow: `0 0 10px ${rarityColor}50`,
+                }}>
                   {equipment.name}
                 </h2>
                 <p style={{ color: '#a1a1aa', fontSize: '12px', margin: '4px 0 0 0' }}>
@@ -1215,7 +1407,16 @@ function EquipmentDetailModal({
             </div>
             <button
               onClick={onClose}
-              style={{ color: '#a1a1aa', background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer' }}
+              style={{ 
+                color: '#a1a1aa', 
+                background: 'rgba(255, 255, 255, 0.1)', 
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                borderRadius: '8px',
+                width: '32px',
+                height: '32px',
+                fontSize: '16px', 
+                cursor: 'pointer',
+              }}
             >
               ✕
             </button>
@@ -1226,8 +1427,14 @@ function EquipmentDetailModal({
         <div style={{ padding: '16px', maxHeight: '50vh', overflowY: 'auto' }}>
           <p style={{ color: '#d1d5db', fontSize: '14px', marginBottom: '16px' }}>{equipment.description}</p>
 
-          <div style={{ backgroundColor: '#1f2937', borderRadius: '8px', padding: '12px', marginBottom: '16px' }}>
-            <h4 style={{ color: '#a1a1aa', fontSize: '12px', marginBottom: '8px' }}>基础属性</h4>
+          <div style={{ 
+            background: 'rgba(0, 0, 0, 0.4)', 
+            borderRadius: '12px', 
+            padding: '12px', 
+            marginBottom: '16px',
+            border: '1px solid rgba(0, 212, 255, 0.2)',
+          }}>
+            <h4 style={{ color: '#00d4ff', fontSize: '12px', marginBottom: '8px' }}>基础属性</h4>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '14px' }}>
               {(() => {
                 const stats = calculateEquipmentStats(equipment);
@@ -1286,8 +1493,14 @@ function EquipmentDetailModal({
           </div>
 
           {equipment.effects.length > 0 && (
-            <div style={{ backgroundColor: '#1f2937', borderRadius: '8px', padding: '12px', marginBottom: '16px' }}>
-              <h4 style={{ color: '#a1a1aa', fontSize: '12px', marginBottom: '8px' }}>特殊效果</h4>
+            <div style={{ 
+              background: 'rgba(0, 0, 0, 0.4)', 
+              borderRadius: '12px', 
+              padding: '12px', 
+              marginBottom: '16px',
+              border: '1px solid rgba(124, 58, 237, 0.3)',
+            }}>
+              <h4 style={{ color: '#c084fc', fontSize: '12px', marginBottom: '8px' }}>特殊效果</h4>
               {equipment.effects.map((effect, index) => (
                 <div key={index} style={{ marginBottom: '4px', fontSize: '12px' }}>
                   <span style={{ color: '#d1d5db' }}>{effect.description}</span>
@@ -1299,37 +1512,15 @@ function EquipmentDetailModal({
         </div>
 
         {/* 操作按钮 */}
-        <div style={{ padding: '16px', borderTop: '1px solid #374151', display: 'flex', gap: '8px' }}>
-          <button
-            onClick={onEquip}
-            style={{
-              flex: 1,
-              padding: '12px',
-              backgroundColor: '#0099cc',
-              color: 'white',
-              fontWeight: 'bold',
-              borderRadius: '8px',
-              border: 'none',
-              cursor: 'pointer'
-            }}
-          >
-            去装备
-          </button>
-          <button
-            onClick={onClose}
-            style={{
-              flex: 1,
-              padding: '12px',
-              backgroundColor: '#374151',
-              color: '#d1d5db',
-              fontWeight: 'bold',
-              borderRadius: '8px',
-              border: 'none',
-              cursor: 'pointer'
-            }}
-          >
-            关闭
-          </button>
+        <div style={{ 
+          padding: '16px', 
+          borderTop: `1px solid ${rarityColor}30`, 
+          display: 'flex', 
+          gap: '8px',
+          background: `linear-gradient(0deg, ${rarityColor}10, transparent)`,
+        }}>
+          <SciFiButton onClick={onEquip} label="去装备" variant="primary" />
+          <SciFiButton onClick={onClose} label="关闭" variant="default" />
         </div>
       </div>
     </div>
