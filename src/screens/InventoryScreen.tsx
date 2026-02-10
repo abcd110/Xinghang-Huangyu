@@ -83,7 +83,7 @@ function extractEquipmentName(fullName: string): { quality: string; name: string
       return { quality: prefix, name: fullName.slice(prefix.length) };
     }
   }
-  
+
   // 检查括号格式：(星尘)/(合金)/(晶核)/(量子)/(虚空)
   const bracketMatch = fullName.match(/\((星尘|合金|晶核|量子|虚空)\)$/);
   if (bracketMatch) {
@@ -98,7 +98,7 @@ function extractEquipmentName(fullName: string): { quality: string; name: string
     const name = fullName.slice(0, fullName.length - bracketMatch[0].length);
     return { quality, name };
   }
-  
+
   return { quality: '', name: fullName };
 }
 
@@ -112,7 +112,7 @@ const CATEGORIES = [
 ];
 
 export default function InventoryScreen({ onBack, onNavigate }: InventoryScreenProps) {
-  const { gameManager, useItem, equipItem, unequipItem, sublimateItem, getEnhancePreview } = useGameStore();
+  const { gameManager, useItem, equipItem, unequipItem, sublimateItem, getEnhancePreview, saveGame } = useGameStore();
   const inventory = gameManager.inventory;
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
@@ -163,6 +163,7 @@ export default function InventoryScreen({ onBack, onNavigate }: InventoryScreenP
     } else if (action === 'discard') {
       const discardCount = quantity || 1;
       inventory.removeItem(selectedItem.id, discardCount);
+      await saveGame();
       setSelectedItem(null);
     } else if (action === 'sublimate') {
       if (onNavigate) {

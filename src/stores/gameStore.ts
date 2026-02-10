@@ -96,286 +96,218 @@ interface GameStore {
   getShopItems: () => GameManager['shopItems'];
 }
 
-export const useGameStore = create<GameStore>((set, get) => ({
-  // 初始状态
-  gameManager: new GameManager(),
-  isLoading: false,
-  hasSave: false,
-  logs: [],
-  toasts: [],
-
-  // Toast 提示方法
-  showToast: (message: string, type: ToastMessage['type'] = 'info', duration: number = 2000) => {
-    const id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
-    const newToast: ToastMessage = { id, message, type, duration };
-    set((state) => ({ toasts: [...state.toasts, newToast] }));
-  },
-  removeToast: (id: string) => {
-    set((state) => ({ toasts: state.toasts.filter((t) => t.id !== id) }));
-  },
-
-  // 初始化
-  init: async () => {
-    const hasSave = await GameStorage.hasSave();
+export const useGameStore = create<GameStore>((set, get) => {
+  // 辅助函数：执行游戏操作后更新状态
+  const executeGameAction = <T extends { success: boolean; message: string }>(
+    action: () => T,
+    save: boolean = true
+  ): T => {
     const { gameManager } = get();
-    set({ hasSave, logs: gameManager.logs });
-  },
-
-  // 新游戏
-  newGame: () => {
-    const { gameManager } = get();
-    gameManager.newGame();
-    set({ hasSave: true, logs: gameManager.logs });
-  },
-
-  // 加载游戏
-  loadGame: async () => {
-    set({ isLoading: true });
-    try {
-      const saveData = await GameStorage.loadGame();
-      if (saveData) {
-        const { gameManager } = get();
-        gameManager.loadGame(saveData);
-        set({ hasSave: true, logs: gameManager.logs });
-        return true;
-      }
-      return false;
-    } finally {
-      set({ isLoading: false });
+    const result = action();
+    if (save) {
+      get().saveGame();
     }
-  },
+    set({ logs: gameManager.logs });
+    return result;
+  };
 
-  // 保存游戏
-  saveGame: async () => {
+  // 辅助函数：异步执行游戏操作后更新状态
+  const executeGameActionAsync = async <T extends { success: boolean; message: string }>(
+    action: () => Promise<T>,
+    save: boolean = true
+  ): Promise<T> => {
     const { gameManager } = get();
-    const state = gameManager.saveGame();
-    return await GameStorage.saveGame(state);
-  },
+    const result = await action();
+    if (save) {
+      await get().saveGame();
+    }
+    set({ logs: gameManager.logs });
+    return result;
+  };
 
-  // 休息
-  rest: () => {
-    const { gameManager } = get();
-    const result = gameManager.rest();
-    get().saveGame();
-    set({ logs: gameManager.logs });
-    return result;
-  },
+  return {
+    // 初始状态
+    gameManager: new GameManager(),
+    isLoading: false,
+    hasSave: false,
+    logs: [],
+    toasts: [],
 
-  // 探索
-  explore: (locationId: string, exploreType: 'search' | 'hunt' | 'chest' = 'search') => {
-    const { gameManager } = get();
-    const result = gameManager.explore(locationId, exploreType);
-    get().saveGame();
-    set({ logs: gameManager.logs });
-    return result;
-  },
+    // Toast 提示方法
+    showToast: (message: string, type: ToastMessage['type'] = 'info', duration: number = 2000) => {
+      const id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
+      const newToast: ToastMessage = { id, message, type, duration };
+      set((state) => ({ toasts: [...state.toasts, newToast] }));
+    },
+    removeToast: (id: string) => {
+      set((state) => ({ toasts: state.toasts.filter((t) => t.id !== id) }));
+    },
 
-  // 使用物品
-  useItem: (itemId: string) => {
-    const { gameManager } = get();
-    const result = gameManager.useItem(itemId);
-    get().saveGame();
-    set({ logs: gameManager.logs });
-    return result;
-  },
+    // 初始化
+    init: async () => {
+      const hasSave = await GameStorage.hasSave();
+      const { gameManager } = get();
+      set({ hasSave, logs: gameManager.logs });
+    },
 
-  // 装备物品
-  equipItem: async (itemId: string) => {
-    const { gameManager } = get();
-    const result = gameManager.equipItem(itemId);
-    await get().saveGame();
-    set({ logs: gameManager.logs });
-    return result;
-  },
+    // 新游戏
+    newGame: () => {
+      const { gameManager } = get();
+      gameManager.newGame();
+      set({ hasSave: true, logs: gameManager.logs });
+    },
 
-  // 卸下装备
-  unequipItem: async (itemId: string) => {
-    const { gameManager } = get();
-    const result = gameManager.unequipItem(itemId);
-    await get().saveGame();
-    set({ logs: gameManager.logs });
-    return result;
-  },
+    // 加载游戏
+    loadGame: async () => {
+      set({ isLoading: true });
+      try {
+        const saveData = await GameStorage.loadGame();
+        if (saveData) {
+          const { gameManager } = get();
+          gameManager.loadGame(saveData);
+          set({ hasSave: true, logs: gameManager.logs });
+          return true;
+        }
+        return false;
+      } catch (error) {
+        console.error('Failed to load game:', error);
+        return false;
+      } finally {
+        set({ isLoading: false });
+      }
+    },
 
-  // 领取任务奖励
-  claimQuestReward: (questId: string) => {
-    const { gameManager } = get();
-    const result = gameManager.claimQuestReward(questId);
-    get().saveGame();
-    set({ logs: gameManager.logs });
-    return result;
-  },
+    // 保存游戏
+    saveGame: async () => {
+      const { gameManager } = get();
+      const state = gameManager.saveGame();
+      return await GameStorage.saveGame(state);
+    },
 
-  // 学习技能
-  // 购买物品
-  buyItem: (itemId: string, quantity: number = 1) => {
-    const { gameManager } = get();
-    const result = gameManager.buyItem(itemId, quantity);
-    get().saveGame();
-    set({ logs: gameManager.logs });
-    return result;
-  },
+    // 休息
+    rest: () => executeGameAction(() => get().gameManager.rest()),
 
-  // 制造物品
-  craftItem: (slot: import('../data/equipmentTypes').EquipmentSlot, selection: import('../core/CraftingSystem').MaterialSelection) => {
-    const { gameManager } = get();
-    const result = gameManager.craftItem(slot, selection);
-    get().saveGame();
-    set({ logs: gameManager.logs });
-    return result;
-  },
+    // 探索
+    explore: (locationId: string, exploreType: 'search' | 'hunt' | 'chest' = 'search') =>
+      executeGameAction(() => get().gameManager.explore(locationId, exploreType)),
 
-  // 分解装备
-  decomposeItem: (itemId: string) => {
-    const { gameManager } = get();
-    const result = gameManager.decomposeItem(itemId);
-    get().saveGame();
-    set({ logs: gameManager.logs });
-    return result;
-  },
+    // 使用物品
+    useItem: (itemId: string) =>
+      executeGameAction(() => get().gameManager.useItem(itemId)),
 
-  // 获取分解预览
-  getDecomposePreview: (itemId: string) => {
-    const { gameManager } = get();
-    return gameManager.getDecomposePreview(itemId);
-  },
+    // 装备物品
+    equipItem: async (itemId: string) =>
+      executeGameActionAsync(async () => get().gameManager.equipItem(itemId)),
 
-  // 装备升华
-  sublimateItem: async (itemId: string) => {
-    const { gameManager } = get();
-    const result = gameManager.sublimateItem(itemId);
-    await get().saveGame();
-    set({ logs: gameManager.logs });
-    return result;
-  },
+    // 卸下装备
+    unequipItem: async (itemId: string) =>
+      executeGameActionAsync(async () => get().gameManager.unequipItem(itemId)),
 
-  // 装备强化
-  enhanceItem: (itemId: string, useProtection: boolean = false) => {
-    const { gameManager } = get();
-    const result = gameManager.enhanceItem(itemId, useProtection);
-    get().saveGame();
-    set({ logs: gameManager.logs });
-    return result;
-  },
+    // 领取任务奖励
+    claimQuestReward: (questId: string) =>
+      executeGameAction(() => get().gameManager.claimQuestReward(questId)),
 
-  // 获取强化预览
-  getEnhancePreview: (itemId: string) => {
-    const { gameManager } = get();
-    return gameManager.getEnhancePreview(itemId);
-  },
+    // 购买物品
+    buyItem: (itemId: string, quantity: number = 1) =>
+      executeGameAction(() => get().gameManager.buyItem(itemId, quantity)),
 
-  // 神话装备系统
-  equipMythologyItem: (equipmentId: string, slot: import('../data/equipmentTypes').EquipmentSlot) => {
-    const { gameManager } = get();
-    const result = gameManager.equipMythologyItem(equipmentId, slot);
-    get().saveGame();
-    set({ logs: gameManager.logs });
-    return result;
-  },
-  unequipMythologyItem: (slot: import('../data/equipmentTypes').EquipmentSlot) => {
-    const { gameManager } = get();
-    const result = gameManager.unequipMythologyItem(slot);
-    get().saveGame();
-    set({ logs: gameManager.logs });
-    return result;
-  },
-  getMythologyEquipmentBySlot: (slot: import('../data/equipmentTypes').EquipmentSlot) => {
-    const { gameManager } = get();
-    return gameManager.player.getEquipmentBySlot(slot);
-  },
-  enhanceMythologyEquipment: (slot: import('../data/equipmentTypes').EquipmentSlot) => {
-    const { gameManager } = get();
-    const result = gameManager.enhanceMythologyEquipment(slot);
-    get().saveGame();
-    set({ logs: gameManager.logs });
-    return result;
-  },
-  sublimateMythologyEquipment: (slot: import('../data/equipmentTypes').EquipmentSlot) => {
-    const { gameManager } = get();
-    const result = gameManager.sublimateMythologyEquipment(slot);
-    get().saveGame();
-    set({ logs: gameManager.logs });
-    return result;
-  },
+    // 制造物品
+    craftItem: (slot: import('../data/equipmentTypes').EquipmentSlot, selection: import('../core/CraftingSystem').MaterialSelection) =>
+      executeGameAction(() => get().gameManager.craftItem(slot, selection)),
 
-  // 修复列车
-  repairTrain: () => {
-    const { gameManager } = get();
-    const result = gameManager.repairTrain();
-    get().saveGame();
-    set({ logs: gameManager.logs });
-    return result;
-  },
+    // 分解装备
+    decomposeItem: (itemId: string) =>
+      executeGameAction(() => get().gameManager.decomposeItem(itemId)),
 
-  // 升级列车
-  upgradeTrain: (type: any) => {
-    const { gameManager } = get();
-    const result = gameManager.upgradeTrain(type);
-    get().saveGame();
-    set({ logs: gameManager.logs });
-    return result;
-  },
+    // 获取分解预览
+    getDecomposePreview: (itemId: string) => {
+      const { gameManager } = get();
+      return gameManager.getDecomposePreview(itemId);
+    },
 
-  // 战斗系统
-  startBattle: (locationId: string, isBoss: boolean = false, isElite: boolean = false) => {
-    const { gameManager } = get();
-    const result = gameManager.startBattle(locationId, isBoss, isElite);
-    get().saveGame();
-    set({ logs: gameManager.logs });
-    return result;
-  },
-  endBattleVictory: (enemy: any) => {
-    const { gameManager } = get();
-    const result = gameManager.endBattleVictory(enemy);
-    get().saveGame();
-    set({ logs: gameManager.logs });
-    return result;
-  },
-  attemptEscape: (enemy: any) => {
-    const { gameManager } = get();
-    const result = gameManager.attemptEscape(enemy);
-    get().saveGame();
-    set({ logs: gameManager.logs });
-    return result;
-  },
+    // 装备升华
+    sublimateItem: async (itemId: string) =>
+      executeGameActionAsync(async () => get().gameManager.sublimateItem(itemId)),
 
-  // 自动采集系统
-  startAutoCollect: (locationId: string, mode: AutoCollectMode) => {
-    const { gameManager } = get();
-    const result = gameManager.startAutoCollect(locationId, mode);
-    get().saveGame();
-    set({ logs: gameManager.logs });
-    return result;
-  },
-  stopAutoCollect: () => {
-    const { gameManager } = get();
-    const result = gameManager.stopAutoCollect();
-    get().saveGame();
-    set({ logs: gameManager.logs });
-    return result;
-  },
-  claimAutoCollectRewards: () => {
-    const { gameManager } = get();
-    const result = gameManager.claimAutoCollectRewards();
-    get().saveGame();
-    set({ logs: gameManager.logs });
-    return result;
-  },
-  getAutoCollectState: () => get().gameManager.getAutoCollectState(),
-  getAutoCollectConfig: () => get().gameManager.getAutoCollectConfig(),
-  updateAutoCollectConfig: (config: Partial<GameManager['autoCollectSystem']['config']>) => {
-    const { gameManager } = get();
-    gameManager.updateAutoCollectConfig(config);
-  },
-  getAutoCollectDuration: () => get().gameManager.getAutoCollectDuration(),
-  getEstimatedHourlyRewards: () => get().gameManager.getEstimatedHourlyRewards(),
-  getAvailableCollectLocations: () => get().gameManager.getAvailableCollectLocations(),
+    // 装备强化
+    enhanceItem: (itemId: string, useProtection: boolean = false) =>
+      executeGameAction(() => get().gameManager.enhanceItem(itemId, useProtection)),
 
-  // 获取器
-  getPlayer: () => get().gameManager.player,
-  getInventory: () => get().gameManager.inventory,
-  getCurrentLocation: () => get().gameManager.getCurrentLocation(),
-  isGameOver: () => get().gameManager.isGameOver,
-  getQuests: () => get().gameManager.quests,
-  getShopItems: () => get().gameManager.shopItems,
-}));
+    // 获取强化预览
+    getEnhancePreview: (itemId: string) => {
+      const { gameManager } = get();
+      return gameManager.getEnhancePreview(itemId);
+    },
+
+    // 神话装备系统
+    equipMythologyItem: (equipmentId: string, slot: import('../data/equipmentTypes').EquipmentSlot) =>
+      executeGameAction(() => get().gameManager.equipMythologyItem(equipmentId, slot)),
+
+    unequipMythologyItem: (slot: import('../data/equipmentTypes').EquipmentSlot) =>
+      executeGameAction(() => get().gameManager.unequipMythologyItem(slot)),
+
+    getMythologyEquipmentBySlot: (slot: import('../data/equipmentTypes').EquipmentSlot) => {
+      const { gameManager } = get();
+      return gameManager.player.getEquipmentBySlot(slot);
+    },
+
+    enhanceMythologyEquipment: (slot: import('../data/equipmentTypes').EquipmentSlot) =>
+      executeGameAction(() => get().gameManager.enhanceMythologyEquipment(slot)),
+
+    sublimateMythologyEquipment: (slot: import('../data/equipmentTypes').EquipmentSlot) =>
+      executeGameAction(() => get().gameManager.sublimateMythologyEquipment(slot)),
+
+    // 修复列车
+    repairTrain: () =>
+      executeGameAction(() => get().gameManager.repairTrain()),
+
+    // 升级列车
+    upgradeTrain: (type: any) =>
+      executeGameAction(() => get().gameManager.upgradeTrain(type)),
+
+    // 战斗系统
+    startBattle: (locationId: string, isBoss: boolean = false, isElite: boolean = false) =>
+      executeGameAction(() => get().gameManager.startBattle(locationId, isBoss, isElite)),
+
+    endBattleVictory: (enemy: any) => {
+      const { gameManager } = get();
+      const result = gameManager.endBattleVictory(enemy);
+      // 战斗胜利后恢复生命值至满（包含装备加成）
+      gameManager.player.hp = gameManager.player.totalMaxHp;
+      get().saveGame();
+      set({ logs: gameManager.logs });
+      return result;
+    },
+
+    attemptEscape: (enemy: any) =>
+      executeGameAction(() => get().gameManager.attemptEscape(enemy)),
+
+    // 自动采集系统
+    startAutoCollect: (locationId: string, mode: AutoCollectMode) =>
+      executeGameAction(() => get().gameManager.startAutoCollect(locationId, mode)),
+
+    stopAutoCollect: () =>
+      executeGameAction(() => get().gameManager.stopAutoCollect()),
+
+    claimAutoCollectRewards: () =>
+      executeGameAction(() => get().gameManager.claimAutoCollectRewards()),
+
+    getAutoCollectState: () => get().gameManager.getAutoCollectState(),
+    getAutoCollectConfig: () => get().gameManager.getAutoCollectConfig(),
+    updateAutoCollectConfig: (config: Partial<GameManager['autoCollectSystem']['config']>) => {
+      const { gameManager } = get();
+      gameManager.updateAutoCollectConfig(config);
+    },
+    getAutoCollectDuration: () => get().gameManager.getAutoCollectDuration(),
+    getEstimatedHourlyRewards: () => get().gameManager.getEstimatedHourlyRewards(),
+    getAvailableCollectLocations: () => get().gameManager.getAvailableCollectLocations(),
+
+    // 获取器
+    getPlayer: () => get().gameManager.player,
+    getInventory: () => get().gameManager.inventory,
+    getCurrentLocation: () => get().gameManager.getCurrentLocation(),
+    isGameOver: () => get().gameManager.isGameOver,
+    getQuests: () => get().gameManager.quests,
+    getShopItems: () => get().gameManager.shopItems,
+  };
+});

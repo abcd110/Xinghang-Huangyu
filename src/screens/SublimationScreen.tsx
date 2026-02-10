@@ -165,7 +165,7 @@ export default function SublimationScreen({ onBack }: SublimationScreenProps) {
             <span>←</span>
             <span>返回</span>
           </button>
-          <h1 style={{ color: 'white', fontWeight: 'bold', fontSize: '18px' }}>✨ 装备升华</h1>
+          <h1 style={{ color: 'white', fontWeight: 'bold', fontSize: '18px' }}>✨ 升华</h1>
           <div style={{ width: '48px' }} />
         </div>
       </header>

@@ -178,7 +178,7 @@ export default function DecomposeScreen({ onBack }: DecomposeScreenProps) {
             <span>←</span>
             <span>返回</span>
           </button>
-          <h1 style={{ color: 'white', fontWeight: 'bold', fontSize: '18px' }}>装备分解</h1>
+          <h1 style={{ color: 'white', fontWeight: 'bold', fontSize: '18px' }}>星骸解构舱</h1>
           <div style={{ width: '48px' }} />
         </div>
       </header>
@@ -203,10 +203,10 @@ export default function DecomposeScreen({ onBack }: DecomposeScreenProps) {
             // 修复：缺失闭合大括号
           }}>
             <h2 style={{ color: '#e5e7eb', fontSize: '14px', fontWeight: 600 }}>
-              可分解装备 ({decomposableItems.length})
+              可解构装备 ({decomposableItems.length})
             </h2>
             <p style={{ color: '#a1a1aa', fontSize: '12px', marginTop: '4px' }}>
-              选择装备进行分解，获得精炼碎片或神话碎片
+              选择装备进行解构，获得星骸元质（品质1-5级）
             </p>
           </div>
 
@@ -282,7 +282,7 @@ export default function DecomposeScreen({ onBack }: DecomposeScreenProps) {
             borderBottom: '1px solid #374151'
           }}>
             <h2 style={{ color: '#e5e7eb', fontSize: '14px', fontWeight: 600 }}>
-              分解预览
+              解构预览
             </h2>
           </div>
 
@@ -343,7 +343,7 @@ export default function DecomposeScreen({ onBack }: DecomposeScreenProps) {
                   padding: '16px'
                 }}>
                   <h3 style={{ color: '#e5e7eb', fontSize: '14px', marginBottom: '12px' }}>
-                    分解产出
+                    解构产出
                   </h3>
 
                   {preview.reward && (
@@ -415,7 +415,7 @@ export default function DecomposeScreen({ onBack }: DecomposeScreenProps) {
                     e.currentTarget.style.backgroundColor = preview.isMythic ? '#dc2626' : '#2563eb';
                   }}
                 >
-                  {preview.isMythic ? '🔴 分解神话装备' : '🔷 分解装备'}
+                  ⚗️ 解构
                 </button>
               </>
             ) : (

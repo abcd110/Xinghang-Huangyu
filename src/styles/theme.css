@@ -8,35 +8,35 @@
   --space-primary: #0a0e27;
   --space-secondary: #1a1f3a;
   --space-tertiary: #2a3050;
-  
+
   /* 强调色 - 科技蓝 */
   --tech-primary: #00d4ff;
   --tech-secondary: #0099cc;
   --tech-glow: rgba(0, 212, 255, 0.3);
-  
+
   /* 辅助色 - 能量紫 */
   --energy-primary: #8b5cf6;
   --energy-secondary: #6d28d9;
   --energy-glow: rgba(139, 92, 246, 0.3);
-  
+
   /* 警告色 - 虚空红 */
   --void-primary: #ef4444;
   --void-secondary: #dc2626;
   --void-glow: rgba(239, 68, 68, 0.3);
-  
+
   /* 成功色 - 星际绿 */
   --success-primary: #10b981;
   --success-secondary: #059669;
-  
+
   /* 文字色 */
   --text-primary: #ffffff;
   --text-secondary: #a1a1aa;
   --text-muted: #71717a;
-  
+
   /* 边框色 */
   --border-primary: rgba(0, 212, 255, 0.3);
   --border-secondary: rgba(255, 255, 255, 0.1);
-  
+
   /* 背景渐变 */
   --bg-gradient: linear-gradient(180deg, #0a0e27 0%, #1a1f3a 100%);
   --bg-stars: radial-gradient(ellipse at bottom, #1b2735 0%, #090a0f 100%);
@@ -55,14 +55,14 @@
   border: 1px solid var(--border-primary);
   border-radius: 12px;
   backdrop-filter: blur(10px);
-  box-shadow: 
+  box-shadow:
     0 4px 6px -1px rgba(0, 0, 0, 0.3),
     0 0 20px var(--tech-glow);
 }
 
 .space-card:hover {
   border-color: var(--tech-primary);
-  box-shadow: 
+  box-shadow:
     0 4px 6px -1px rgba(0, 0, 0, 0.3),
     0 0 30px var(--tech-glow);
 }
@@ -238,9 +238,12 @@
 
 /* ==================== 动画效果 ==================== */
 @keyframes pulse-glow {
-  0%, 100% {
+
+  0%,
+  100% {
     box-shadow: 0 0 5px var(--tech-glow);
   }
+
   50% {
     box-shadow: 0 0 20px var(--tech-glow);
   }
@@ -250,6 +253,41 @@
   0% {
     transform: translateY(-100%);
   }
+
+  100% {
+    transform: translateY(100%);
+  }
+}
+
+@keyframes pulse {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes twinkle {
+
+  0%,
+  100% {
+    opacity: 0.8;
+  }
+
+  50% {
+    opacity: 0.4;
+  }
+}
+
+@keyframes scan {
+  0% {
+    transform: translateY(-100%);
+  }
+
   100% {
     transform: translateY(100%);
   }
@@ -277,7 +315,7 @@
   .space-card {
     border-radius: 8px;
   }
-  
+
   .space-btn {
     padding: 10px 16px;
     font-size: 14px;
@@ -372,7 +410,7 @@
   position: relative;
   background: rgba(0, 212, 255, 0.1);
   border: 1px solid var(--tech-primary);
-  box-shadow: 
+  box-shadow:
     0 0 20px var(--tech-glow),
     inset 0 0 20px var(--tech-glow);
 }
@@ -384,12 +422,10 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    rgba(0, 212, 255, 0.03) 2px,
-    rgba(0, 212, 255, 0.03) 4px
-  );
+  background: repeating-linear-gradient(0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 212, 255, 0.03) 2px,
+      rgba(0, 212, 255, 0.03) 4px);
   pointer-events: none;
 }

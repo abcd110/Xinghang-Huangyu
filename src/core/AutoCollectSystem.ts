@@ -14,9 +14,19 @@ import {
   MATERIAL_IDS,
 } from '../data/autoCollectTypes';
 import { getItemTemplate } from '../data/items';
+import { ArmorQuality } from '../data/nanoArmorRecipes';
 
 // 强化石ID
 const ENHANCE_STONE_ID = 'enhance_stone';
+
+// 材料品质后缀映射
+const QUALITY_SUFFIX: Record<ArmorQuality, string> = {
+  [ArmorQuality.STARDUST]: '_stardust',
+  [ArmorQuality.ALLOY]: '_alloy',
+  [ArmorQuality.CRYSTAL]: '_crystal',
+  [ArmorQuality.QUANTUM]: '_quantum',
+  [ArmorQuality.VOID]: '_void',
+};
 
 // 每日最大挂机时间（小时）
 const MAX_DAILY_HOURS = 24;
@@ -189,6 +199,15 @@ export class AutoCollectSystem {
       enhanceStones: 0,
     };
 
+    // 检查是否因达到8小时上限而自动停止
+    if (!this.state.isCollecting) {
+      return {
+        success: true,
+        message: '采集已完成（已达8小时上限），请重新派遣机器人',
+        rewards,
+      };
+    }
+
     // 重置采集时长（重新计时）
     const now = Date.now();
     this.state.startTime = now;
@@ -243,6 +262,11 @@ export class AutoCollectSystem {
     this.dailyCollectHours += effectiveHours;
 
     this.state.lastCollectTime = now;
+
+    // 如果已达到单次采集上限（8小时），自动停止采集
+    if (elapsedHours >= maxSessionHours) {
+      this.state.isCollecting = false;
+    }
   }
 
   // 生成收益
@@ -292,14 +316,16 @@ export class AutoCollectSystem {
     const actualMaterialDrops = Math.floor(expectedMaterialDrops) + (Math.random() < (expectedMaterialDrops % 1) ? 1 : 0);
 
     for (let i = 0; i < actualMaterialDrops; i++) {
-      const matId = MATERIAL_IDS[Math.floor(Math.random() * MATERIAL_IDS.length)];
-      const matTemplate = getItemTemplate(matId);
+      const baseMatId = MATERIAL_IDS[Math.floor(Math.random() * MATERIAL_IDS.length)];
+      // 自动采集默认产出星尘级品质材料
+      const qualityId = `${baseMatId}${QUALITY_SUFFIX[ArmorQuality.STARDUST]}`;
+      const matTemplate = getItemTemplate(qualityId);
       if (matTemplate) {
-        const existing = materials.find(m => m.itemId === matId);
+        const existing = materials.find(m => m.itemId === qualityId);
         if (existing) {
           existing.quantity++;
         } else {
-          materials.push({ itemId: matId, name: matTemplate.name, quantity: 1 });
+          materials.push({ itemId: qualityId, name: matTemplate.name, quantity: 1 });
         }
       }
     }

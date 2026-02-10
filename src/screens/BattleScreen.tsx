@@ -17,6 +17,9 @@ export default function BattleScreen({ locationId, isBoss, isElite, onBack, onBa
   const [enemy, setEnemy] = useState<Enemy | null>(null);
   const [battleLog, setBattleLog] = useState<string[]>([]);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [escapeCooldown, setEscapeCooldown] = useState(false);
+  // 用于逃跑失败后重启自动战斗
+  const [battleResumeFlag, setBattleResumeFlag] = useState(0);
 
   // 战斗计时器
   const playerAttackTimer = useRef<number | null>(null);
@@ -174,10 +177,14 @@ export default function BattleScreen({ locationId, isBoss, isElite, onBack, onBa
       addLog('你被击败了！');
       gameManager.isGameOver = true;
       gameManager.player.stamina = 0;
+      // 战斗失败后将生命值设置为1点
+      gameManager.player.hp = 1;
+      // 保存游戏状态
+      saveGame();
     }
-  }, [battleState, addLog, clearAllTimers, gameManager]);
+  }, [battleState, addLog, clearAllTimers, gameManager, saveGame]);
 
-  // 启动自动战斗 - 只在 battleState 和 isInitialized 变化时执行
+  // 启动自动战斗 - 在 battleState、isInitialized 或 battleResumeFlag 变化时执行
   useEffect(() => {
     if (battleState !== 'fighting' || !isInitialized) return;
 
@@ -202,11 +209,15 @@ export default function BattleScreen({ locationId, isBoss, isElite, onBack, onBa
     };
     // 注意：这里不依赖 doPlayerAttack 和 doEnemyAttack，因为它们使用 ref
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [battleState, isInitialized, player.totalAttackSpeed, enemy?.speed]);
+  }, [battleState, isInitialized, battleResumeFlag, player.totalAttackSpeed, enemy?.speed]);
 
   // 逃跑
   const handleEscape = () => {
-    if (!enemy || battleState !== 'fighting') return;
+    if (!enemy || battleState !== 'fighting' || escapeCooldown) return;
+
+    // 设置逃跑按钮冷却
+    setEscapeCooldown(true);
+    setTimeout(() => setEscapeCooldown(false), 2000);
 
     clearAllTimers();
     const result = attemptEscape(enemy);
@@ -216,7 +227,10 @@ export default function BattleScreen({ locationId, isBoss, isElite, onBack, onBa
       setBattleState('escaped');
       setTimeout(() => onBack(), 1500);
     } else {
-      setBattleState('fighting');
+      // 逃跑失败，战斗继续
+      // 通过改变 battleResumeFlag 来触发 useEffect 重启自动战斗计时器
+      addLog('逃跑失败！战斗继续！');
+      setBattleResumeFlag(prev => prev + 1);
     }
   };
 
@@ -653,19 +667,20 @@ export default function BattleScreen({ locationId, isBoss, isElite, onBack, onBa
           <div style={{ display: 'flex', gap: '8px' }}>
             <button
               onClick={handleEscape}
+              disabled={escapeCooldown}
               style={{
                 width: '100%',
                 padding: '14px',
-                backgroundColor: '#374151',
-                color: '#a1a1aa',
+                backgroundColor: escapeCooldown ? '#1f2937' : '#374151',
+                color: escapeCooldown ? '#6b7280' : '#a1a1aa',
                 borderRadius: '8px',
                 border: 'none',
-                cursor: 'pointer',
+                cursor: escapeCooldown ? 'not-allowed' : 'pointer',
                 fontWeight: 'bold',
                 fontSize: '14px'
               }}
             >
-              逃跑
+              {escapeCooldown ? '冷却中...' : '逃跑'}
             </button>
           </div>
         </footer>

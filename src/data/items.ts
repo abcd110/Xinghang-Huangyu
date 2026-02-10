@@ -1406,19 +1406,19 @@ export const ITEMS: Record<string, Item> = {
   },
 
   // ============================================
-  // 分解系统材料 - 精炼碎片（普通装备分解获得）
+  // 分解系统材料 - 星骸元质（装备分解获得，品质1-5级）
   // ============================================
   'mat_refined_fragment': {
-    id: 'mat_refined_fragment', name: '精炼碎片', type: ItemType.MATERIAL, rarity: ItemRarity.UNCOMMON,
-    description: '分解普通装备获得的精炼碎片，用于制造装备。普通=1个,优秀=2个,稀有=3个,史诗=4个,传说=5个', sublimationLevel: 0,
+    id: 'mat_refined_fragment', name: '星骸元质', type: ItemType.MATERIAL, rarity: ItemRarity.UNCOMMON,
+    description: '分解装备获得的星骸元质，用于制造装备。普通=1个,优秀=2个,稀有=3个,史诗=4个,传说=5个', sublimationLevel: 0,
   },
 
   // ============================================
-  // 分解系统材料 - 神话碎片（神话装备分解获得）
+  // 分解系统材料 - 星骸元质（神话装备分解获得，品质1-5级）
   // ============================================
   'mat_mythic_fragment': {
-    id: 'mat_mythic_fragment', name: '神话碎片', type: ItemType.MATERIAL, rarity: ItemRarity.MYTHIC,
-    description: '分解神话装备获得的神话碎片，用于制造神话装备。数量=品质等级(1-6)', sublimationLevel: 0,
+    id: 'mat_mythic_fragment', name: '星骸元质', type: ItemType.MATERIAL, rarity: ItemRarity.MYTHIC,
+    description: '分解神话装备获得的星骸元质，用于制造神话装备。数量=品质等级(1-5)', sublimationLevel: 0,
   },
 
   // ============================================

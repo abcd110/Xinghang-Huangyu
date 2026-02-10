@@ -219,13 +219,10 @@ export default function PlanetExplorationScreen({
     }
 
     setIsCollecting(true);
-    addLog(`📦 开始采集 ${selectedPlanet.name} 的资源...`);
+    addLog(`📦 采集 ${selectedPlanet.name} 的资源...`);
 
     // 消耗体力 - 采集消耗5体力
     gameManager.player.stamina -= 5;
-
-    // 模拟采集时间
-    await new Promise(resolve => setTimeout(resolve, 1500));
 
     // 必定有收获 - 随机选择1种材料
     const randomMaterial = NEW_MATERIAL_IDS[Math.floor(Math.random() * NEW_MATERIAL_IDS.length)];
@@ -257,8 +254,19 @@ export default function PlanetExplorationScreen({
       addLog(`✅ 获得 ${displayName} x${count}`);
     }
 
-    // 保存游戏
-    await saveGame();
+    // 保存游戏 - 确保体力状态被正确保存
+    try {
+      const saveResult = await saveGame();
+      if (!saveResult) {
+        console.error('保存游戏失败');
+        addLog('⚠️ 保存游戏失败，请检查存储权限');
+      } else {
+        console.log('游戏已保存，当前体力:', gameManager.player.stamina);
+      }
+    } catch (error) {
+      console.error('保存游戏出错:', error);
+      addLog('⚠️ 保存游戏出错');
+    }
 
     setIsCollecting(false);
   };
@@ -503,7 +511,7 @@ export default function PlanetExplorationScreen({
               <ActionButton
                 icon="💀"
                 label="挑战首领"
-                description={`每日1次 | 消耗10体力`}
+                description={gameManager.isBossRefreshed(selectedPlanet.id) ? `每日1次 | 消耗10体力` : `今日已挑战 | 明日刷新`}
                 color="#ef4444"
                 onClick={() => onStartBattle(selectedPlanet.id, true, false)}
                 disabled={!gameManager.isBossRefreshed(selectedPlanet.id)}
@@ -624,34 +632,38 @@ function ActionButton({
   label,
   description,
   color,
-  onClick
+  onClick,
+  disabled = false
 }: {
   icon: string;
   label: string;
   description: string;
   color: string;
   onClick: () => void;
+  disabled?: boolean;
 }) {
   return (
     <button
       onClick={onClick}
+      disabled={disabled}
       style={{
         padding: '16px',
-        background: 'rgba(26, 31, 58, 0.8)',
-        border: `1px solid ${color}60`,
+        background: disabled ? 'rgba(42, 48, 80, 0.5)' : 'rgba(26, 31, 58, 0.8)',
+        border: `1px solid ${disabled ? '#4b5563' : color + '60'}`,
         borderRadius: '12px',
-        color: 'white',
-        cursor: 'pointer',
+        color: disabled ? '#6b7280' : 'white',
+        cursor: disabled ? 'not-allowed' : 'pointer',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         gap: '6px',
-        transition: 'all 0.3s ease'
+        transition: 'all 0.3s ease',
+        opacity: disabled ? 0.6 : 1
       }}
     >
-      <span style={{ fontSize: '28px' }}>{icon}</span>
-      <span style={{ fontSize: '14px', fontWeight: 'bold', color }}>{label}</span>
-      <span style={{ fontSize: '11px', color: '#71717a' }}>{description}</span>
+      <span style={{ fontSize: '28px', opacity: disabled ? 0.5 : 1 }}>{icon}</span>
+      <span style={{ fontSize: '14px', fontWeight: 'bold', color: disabled ? '#6b7280' : color }}>{label}</span>
+      <span style={{ fontSize: '11px', color: disabled ? '#4b5563' : '#71717a' }}>{description}</span>
     </button>
   );
 }

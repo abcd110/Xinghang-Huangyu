@@ -221,6 +221,27 @@ export class Inventory {
     return this.items;
   }
 
+  // 获取所有物品（别名）
+  getItems(): InventoryItem[] {
+    return this.items;
+  }
+
+  // 获取已装备的战甲（护甲类装备）
+  getEquippedArmor(): InventoryItem | undefined {
+    return this.items.find(i => i.equipped && i.type === ItemType.ARMOR);
+  }
+
+  // 获取材料列表
+  getMaterials(): Record<string, number> {
+    const materials: Record<string, number> = {};
+    this.items
+      .filter(item => item.type === ItemType.MATERIAL)
+      .forEach(item => {
+        materials[item.id] = item.quantity;
+      });
+    return materials;
+  }
+
   // 序列化
   serialize(): { items: InventoryItem[]; equipment: EquipmentInstance[] } {
     return { items: this.items, equipment: this.equipment };

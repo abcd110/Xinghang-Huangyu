@@ -63,9 +63,9 @@ export default function EnhanceScreen({ onBack }: EnhanceScreenProps) {
     setRefreshKey(prev => prev + 1);
   }, []);
 
-  // 获取槽位中的装备（优先检查已装备的装备）
+  // 获取槽位中的装备（只返回已装备的装备）
   const getEquipmentInSlot = (slot: EquipmentSlot): InventoryItem | null => {
-    // 1. 优先检查已装备的装备
+    // 只检查已装备的装备
     const equippedMythology = player.getEquipmentBySlot(slot);
     if (equippedMythology) {
       // 正确转换神话装备为 InventoryItem 格式，确保 id 使用 instanceId
@@ -92,50 +92,8 @@ export default function EnhanceScreen({ onBack }: EnhanceScreenProps) {
       } as InventoryItem;
     }
 
-    // 2. 如果没有已装备的装备，检查背包中的装备（未装备的）
-    const equipmentInInventory = inventory.equipment?.find((equip: any) => {
-      return equip.slot === slot && !equip.equipped;
-    });
-
-    if (equipmentInInventory) {
-      // 转换 EquipmentInstance 为 InventoryItem 格式
-      let mappedType: ItemType;
-      switch (equipmentInInventory.slot) {
-        case EquipmentSlot.WEAPON:
-          mappedType = ItemType.WEAPON;
-          break;
-        case EquipmentSlot.ACCESSORY:
-          mappedType = ItemType.ACCESSORY;
-          break;
-        default:
-          mappedType = ItemType.ARMOR;
-      }
-      return {
-        id: equipmentInInventory.instanceId,
-        name: equipmentInInventory.name,
-        type: mappedType,
-        rarity: equipmentInInventory.rarity,
-        description: equipmentInInventory.description,
-        enhanceLevel: equipmentInInventory.enhanceLevel,
-        quantity: 1,
-        slot: slot,
-      } as InventoryItem;
-    }
-
-    // 3. 检查旧格式的装备（兼容旧数据）
-    const itemInInventory = inventory.items?.find((item: any) => {
-      // 检查 slot 字段（制造系统添加的）
-      if (item.slot === slot) return true;
-
-      // 检查 type 字段（旧装备系统）
-      if (slot === EquipmentSlot.WEAPON && item.type === ItemType.WEAPON) return true;
-      if (slot === EquipmentSlot.ACCESSORY && item.type === ItemType.ACCESSORY) return true;
-      if (slot === EquipmentSlot.BODY && item.type === ItemType.ARMOR) return true;
-
-      return false;
-    });
-
-    return itemInInventory || null;
+    // 未装备则返回 null
+    return null;
   };
 
   // 当前选中的装备
@@ -254,7 +212,7 @@ export default function EnhanceScreen({ onBack }: EnhanceScreenProps) {
             <span>←</span>
             <span>返回</span>
           </button>
-          <h1 style={{ color: 'white', fontWeight: 'bold', fontSize: '18px' }}>🔨 装备强化</h1>
+          <h1 style={{ color: 'white', fontWeight: 'bold', fontSize: '18px' }}>🔨 强化</h1>
           <div style={{ width: '48px' }} />
         </div>
       </header>

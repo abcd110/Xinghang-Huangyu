@@ -47,6 +47,28 @@ export interface BattleResult {
   itemsGained: string[];
 }
 
+// 战斗系统常量
+const BATTLE_CONSTANTS = {
+  // 命中率计算
+  MIN_HIT_RATE: 10,
+  MAX_HIT_RATE: 90,
+  DODGE_FACTOR: 0.8,
+
+  // 防御减免公式
+  DEFENSE_FORMULA_BASE: 500,
+  DEFENSE_FORMULA_LEVEL_MULT: 100,
+
+  // 暴击公式
+  CRIT_FORMULA_DENOMINATOR: 1.5,
+
+  // 战斗限制
+  MAX_BATTLE_TURNS: 100,
+
+  // 基础数值
+  BASE_CRIT_DAMAGE_BONUS: 1.5,
+  MIN_DAMAGE: 1,
+} as const;
+
 export class BattleSystem {
   private static instance: BattleSystem;
 
@@ -59,13 +81,13 @@ export class BattleSystem {
 
   // 计算命中率
   calculateHitRate(attackerHit: number, defenderDodge: number): number {
-    const rate = attackerHit / (attackerHit + defenderDodge * 0.8) * 100;
-    return Math.max(10, Math.min(90, rate));
+    const rate = attackerHit / (attackerHit + defenderDodge * BATTLE_CONSTANTS.DODGE_FACTOR) * 100;
+    return Math.max(BATTLE_CONSTANTS.MIN_HIT_RATE, Math.min(BATTLE_CONSTANTS.MAX_HIT_RATE, rate));
   }
 
   // 计算防御减免（暴雪式）
   calculateDefenseReduction(defense: number, level: number): number {
-    return defense / (defense + level * 100 + 500);
+    return defense / (defense + level * BATTLE_CONSTANTS.DEFENSE_FORMULA_LEVEL_MULT + BATTLE_CONSTANTS.DEFENSE_FORMULA_BASE);
   }
 
   // 计算伤害
@@ -85,10 +107,10 @@ export class BattleSystem {
     const defenderGuard = 'totalGuard' in defender ? defender.totalGuard : (defender.guard || 5);
     const defenderLevel = 'level' in defender ? defender.level : 1;
 
-    // 判断是否暴击 - 新公式：暴击概率 = (我方会心 - 敌人护心) / (敌人护心 * 1.5)
+    // 判断是否暴击 - 新公式：暴击概率 = (我方会心 - 敌人护心) / (敌人护心 * CRIT_FORMULA_DENOMINATOR)
     let critChance = 0;
     if (attackerCrit > defenderGuard) {
-      critChance = (attackerCrit - defenderGuard) / (defenderGuard * 1.5) * 100;
+      critChance = (attackerCrit - defenderGuard) / (defenderGuard * BATTLE_CONSTANTS.CRIT_FORMULA_DENOMINATOR) * 100;
     }
     critChance = Math.max(0, Math.min(100, critChance)); // 限制在0-100%
     const critRoll = Math.random() * 100;
@@ -131,11 +153,11 @@ export class BattleSystem {
 
     // 暴击加成
     if (isCrit) {
-      finalDamage *= (1.5 + attackerCritDamage / 100);
+      finalDamage *= (BATTLE_CONSTANTS.BASE_CRIT_DAMAGE_BONUS + attackerCritDamage / 100);
     }
 
     return {
-      damage: Math.max(1, Math.floor(finalDamage)),
+      damage: Math.max(BATTLE_CONSTANTS.MIN_DAMAGE, Math.floor(finalDamage)),
       isCrit,
       isTrueDamage: trueDamagePercent > 0,
     };
@@ -168,7 +190,7 @@ export class BattleSystem {
     let playerNextTurn = 100 / playerSpeed;
     let enemyNextTurn = 100 / enemySpeed;
 
-    while (playerHp > 0 && enemyHp > 0 && turn < 100) {
+    while (playerHp > 0 && enemyHp > 0 && turn < BATTLE_CONSTANTS.MAX_BATTLE_TURNS) {
       turn++;
 
       if (playerNextTurn <= enemyNextTurn) {

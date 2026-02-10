@@ -12,8 +12,8 @@ export interface DecomposeReward {
 
 // 材料名称映射
 export const MATERIAL_NAMES: Record<string, string> = {
-  'mat_refined_fragment': '精炼碎片',
-  'mat_mythic_fragment': '神话碎片',
+  'mat_refined_fragment': '星骸元质',
+  'mat_mythic_fragment': '星骸元质',
 };
 
 // 品质名称映射

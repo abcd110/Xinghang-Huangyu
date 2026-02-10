@@ -22,14 +22,14 @@ const SLOT_ICONS: Record<EquipmentSlot, string> = {
 };
 
 const SLOT_NAMES: Record<EquipmentSlot, string> = {
-  [EquipmentSlot.HEAD]: '头盔',
-  [EquipmentSlot.BODY]: '护甲',
-  [EquipmentSlot.LEGS]: '护腿',
-  [EquipmentSlot.FEET]: '战靴',
+  [EquipmentSlot.HEAD]: '盔',
+  [EquipmentSlot.BODY]: '炉',
+  [EquipmentSlot.SHOULDER]: '盾',
+  [EquipmentSlot.ARM]: '臂',
+  [EquipmentSlot.LEGS]: '腿',
+  [EquipmentSlot.FEET]: '靴',
   [EquipmentSlot.WEAPON]: '武器',
   [EquipmentSlot.ACCESSORY]: '饰品',
-  [EquipmentSlot.SHOULDER]: '肩甲',
-  [EquipmentSlot.ARM]: '臂甲',
 };
 
 // 战甲槽位（6个）
@@ -260,11 +260,18 @@ export default function PlayerScreen({ onBack }: PlayerScreenProps) {
                 }
               }
 
+              // 检查背包中是否有对应槽位的装备
+              const hasItemInBackpack = !unifiedItem && (
+                backpackEquipment.some(e => e.slot === slot) ||
+                gameManager.inventory.getAllItems().some(item => !item.equipped && item.slot === slot)
+              );
+
               return (
                 <EquipmentSlotItem
                   key={slot}
                   slot={slot}
                   item={unifiedItem}
+                  hasItemInBackpack={hasItemInBackpack}
                   onClick={() => handleSlotClick(slot, equippedItem)}
                 />
               );
@@ -853,7 +860,7 @@ function extractEquipmentName(fullName: string): { quality: string; name: string
 }
 
 // 装备槽位组件
-function EquipmentSlotItem({ slot, item, onClick }: { slot: EquipmentSlot; item: UnifiedEquipment | null; onClick?: () => void }) {
+function EquipmentSlotItem({ slot, item, onClick, hasItemInBackpack }: { slot: EquipmentSlot; item: UnifiedEquipment | null; onClick?: () => void; hasItemInBackpack?: boolean }) {
   if (!item) {
     return (
       <div
@@ -871,7 +878,8 @@ function EquipmentSlotItem({ slot, item, onClick }: { slot: EquipmentSlot; item:
           flex: 1,
           minWidth: 0,
           height: '50px',
-          overflow: 'hidden'
+          overflow: 'hidden',
+          position: 'relative',
         }}
       >
         <span style={{
@@ -881,6 +889,19 @@ function EquipmentSlotItem({ slot, item, onClick }: { slot: EquipmentSlot; item:
         }}>
           {SLOT_NAMES[slot]}
         </span>
+        {/* 背包中有对应部件时显示绿色小点 */}
+        {hasItemInBackpack && (
+          <span style={{
+            position: 'absolute',
+            top: '4px',
+            right: '4px',
+            width: '8px',
+            height: '8px',
+            backgroundColor: '#4ade80',
+            borderRadius: '50%',
+            boxShadow: '0 0 6px rgba(74, 222, 128, 0.8)',
+          }} />
+        )}
       </div>
     );
   }
@@ -922,14 +943,11 @@ function EquipmentSlotItem({ slot, item, onClick }: { slot: EquipmentSlot; item:
         fontWeight: 'bold',
         lineHeight: '1.2',
         overflow: 'hidden',
-        display: '-webkit-box',
-        WebkitLineClamp: 2,
-        WebkitBoxOrient: 'vertical',
+        display: 'flex',
+        flex: 1,
         width: '100%',
         padding: '0 1px',
         wordBreak: 'break-all',
-        flex: 1,
-        display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
       }}>

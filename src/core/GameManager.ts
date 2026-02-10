@@ -1,6 +1,5 @@
 import { Player, type PlayerData } from './Player';
 import { Inventory } from './Inventory';
-import { Train, type TrainData } from './Train';
 import type { InventoryItem, Location, Enemy } from '../data/types';
 import { ItemType, ItemRarity } from '../data/types';
 import type { EquipmentInstance } from './EquipmentSystem';
@@ -16,13 +15,6 @@ import { DECOMPOSE_REWARDS, TYPE_BONUS, SUBLIMATION_BONUS, MATERIAL_NAMES, getDe
 import { ENHANCE_CONFIG, MAX_ENHANCE_LEVEL, ENHANCE_STONE_ID, PROTECTION_ITEM_ID, MATERIAL_NAMES as ENHANCE_MATERIAL_NAMES, EnhanceResultType, type EnhanceResult, type EnhancePreview, calculateEnhanceBonus, canEnhance, getSuccessRate } from './EnhanceSystem';
 import { equipmentSystem } from './EquipmentSystem';
 import { calculateEquipmentStats, calculateEnhancedStatsPreview } from './EquipmentStatCalculator';
-import { TrainUpgradeType } from './Train';
-import {
-  getTrainUpgradeInfo,
-  getUpgradeCoinCost,
-  getUpgradeMaterials,
-  FACILITY_NAMES,
-} from '../data/trainUpgrades';
 import { AutoCollectSystem } from './AutoCollectSystem';
 import { AutoCollectMode, CollectReward, getCollectRobot } from '../data/autoCollectTypes';
 import { synthesize, synthesizeBatch, getSynthesizableMaterials, QUALITY_NAMES } from './MaterialSynthesisSystem';
@@ -30,7 +22,6 @@ import { synthesize, synthesizeBatch, getSynthesizableMaterials, QUALITY_NAMES }
 export interface GameState {
   player: PlayerData;
   inventory: { items: InventoryItem[]; equipment: EquipmentInstance[] } | InventoryItem[];
-  train: TrainData;
   day: number;
   time: 'day' | 'night';
   currentLocation: string;
@@ -54,15 +45,14 @@ export interface GameState {
 export class GameManager {
   player: Player;
   inventory: Inventory;
-  train: Train;
   day: number;
   time: 'day' | 'night';
   currentLocation: string;
   gameTime: number;
   logs: string[];
   isGameOver: boolean;
-  trainCoins: number;
   playerName: string;
+  trainCoins: number; // 信用点/货币
 
   // 任务系统
   quests: Map<string, Quest> = new Map();
@@ -90,15 +80,14 @@ export class GameManager {
   constructor() {
     this.player = new Player();
     this.inventory = new Inventory();
-    this.train = new Train();
     this.day = 1;
     this.time = 'day';
     this.currentLocation = 'loc_001';
     this.gameTime = 480; // 从早上8点开始
     this.logs = [];
     this.isGameOver = false;
-    this.trainCoins = 100000; // 测试：10万列车币
     this.playerName = '幸存者';
+    this.trainCoins = 100000; // 初始信用点
 
     this.initQuests();
     this.initShop();
@@ -168,14 +157,12 @@ export class GameManager {
   newGame(): void {
     this.player = new Player();
     this.inventory = new Inventory();
-    this.train = new Train();
     this.day = 1;
     this.time = 'day';
     this.currentLocation = 'loc_001';
     this.gameTime = 480;
     this.logs = [];
     this.isGameOver = false;
-    this.trainCoins = 100000; // 测试：10万列车币
 
     this.quests.clear();
     this.initQuests();
@@ -748,139 +735,6 @@ export class GameManager {
     }
   }
 
-  // 修复列车
-  repairTrain(): { success: boolean; message: string } {
-    if (this.train.durability >= this.train.maxDurability) {
-      return { success: false, message: '列车不需要修复' };
-    }
-
-    // 检查材料 - 使用星尘级材料
-    const material = this.inventory.getItem('mat_001_stardust');
-    if (!material || material.quantity < 2) {
-      return { success: false, message: '材料不足（需要2个星铁基础构件(星尘)）' };
-    }
-
-    this.inventory.removeItem('mat_001_stardust', 2);
-    const repairAmount = 20;
-    this.train.durability = Math.min(this.train.maxDurability, this.train.durability + repairAmount);
-
-    this.updateQuestProgress(QuestConditionType.REPAIR_TRAIN, 'train', 1);
-    this.addLog('修复', `修复了列车，耐久恢复${repairAmount}`);
-
-    return {
-      success: true,
-      message: `修复成功！列车耐久：${this.train.durability}/${this.train.maxDurability}`,
-    };
-  }
-
-  // 升级列车 - 消耗材料+列车币
-  upgradeTrain(type: TrainUpgradeType): { success: boolean; message: string } {
-    const upgradeInfo = getTrainUpgradeInfo(type, this.getCurrentLevel(type));
-    const { coinCost, materials, name } = upgradeInfo;
-
-    // 检查列车币
-    if (this.trainCoins < coinCost) {
-      return { success: false, message: `列车币不足（需要${coinCost}）` };
-    }
-
-    // 检查材料
-    for (const mat of materials) {
-      const hasItem = this.inventory.items.find(item => item.id === mat.itemId);
-      const hasQuantity = hasItem?.quantity ?? 0;
-      if (hasQuantity < mat.quantity) {
-        return {
-          success: false,
-          message: `材料不足：${mat.name}（需要${mat.quantity}，拥有${hasQuantity}）`,
-        };
-      }
-    }
-
-    // 扣除列车币
-    this.trainCoins -= coinCost;
-
-    // 扣除材料
-    for (const mat of materials) {
-      this.inventory.removeItem(mat.itemId, mat.quantity);
-    }
-
-    // 执行升级
-    this.train.upgrade(type);
-
-    // 构建消耗信息
-    const materialStr = materials.map(m => `${m.name}x${m.quantity}`).join('、');
-    this.addLog(
-      '列车升级',
-      `成功升级${name}，消耗${coinCost}列车币和${materialStr}`
-    );
-
-    return {
-      success: true,
-      message: `升级成功！${name}已提升`,
-    };
-  }
-
-  // 获取当前升级等级
-  private getCurrentLevel(type: TrainUpgradeType): number {
-    switch (type) {
-      case TrainUpgradeType.CAPACITY:
-        return this.train.capacityLevel;
-      case TrainUpgradeType.ARMOR:
-        return this.train.armorLevel;
-      case TrainUpgradeType.SPEED:
-        return this.train.speedLevel;
-      case TrainUpgradeType.FACILITY:
-        return this.train.facilityLevel;
-      default:
-        return 0;
-    }
-  }
-
-  // 获取列车升级信息（供UI使用）
-  getTrainUpgradeDetails(type: TrainUpgradeType) {
-    const currentLevel = this.getCurrentLevel(type);
-    const upgradeInfo = getTrainUpgradeInfo(type, currentLevel);
-
-    // 检查材料是否足够
-    const materialsStatus = upgradeInfo.materials.map(mat => {
-      const hasItem = this.inventory.items.find(item => item.id === mat.itemId);
-      const hasQuantity = hasItem?.quantity ?? 0;
-      return {
-        ...mat,
-        hasQuantity,
-        isEnough: hasQuantity >= mat.quantity,
-      };
-    });
-
-    const canAffordCoins = this.trainCoins >= upgradeInfo.coinCost;
-    const canAffordMaterials = materialsStatus.every(m => m.isEnough);
-
-    return {
-      ...upgradeInfo,
-      currentLevel,
-      materialsStatus,
-      canAffordCoins,
-      canAffordMaterials,
-      canUpgrade: canAffordCoins && canAffordMaterials,
-    };
-  }
-
-  // 添加列车币
-  addTrainCoins(amount: number, source: string = ''): void {
-    this.trainCoins += amount;
-    if (source) {
-      this.addLog('获得列车币', `从${source}获得了 ${amount} 列车币`);
-    } else {
-      this.addLog('获得列车币', `获得了 ${amount} 列车币`);
-    }
-  }
-
-  // 消费列车币
-  consumeTrainCoins(amount: number): boolean {
-    if (this.trainCoins < amount) return false;
-    this.trainCoins -= amount;
-    return true;
-  }
-
   // 休息（休整）
   // 消耗：能量x10，冷却x10
   rest(): { success: boolean; message: string; logs: string[] } {
@@ -1012,13 +866,6 @@ export class GameManager {
       }
     }
 
-    // 列车可能受到环境伤害
-    if (Math.random() < dangerLevel * 0.05) {
-      const damage = Math.floor(Math.random() * 6) + 5;
-      this.train.durability = Math.max(0, this.train.durability - damage);
-      logs.push(`列车在恶劣环境中受到${damage}点损伤！`);
-    }
-
     // 获得经验
     const expGain = dangerLevel * 10 + Math.floor(Math.random() * 10);
     this.player.addExp(expGain);
@@ -1139,12 +986,16 @@ export class GameManager {
     return Array.from(this.quests.values()).filter(q => q.status === QuestStatus.COMPLETED);
   }
 
+  // 获取可接取的任务
+  getAvailableQuests(): Quest[] {
+    return Array.from(this.quests.values()).filter(q => q.status === QuestStatus.AVAILABLE);
+  }
+
   // 保存游戏
   saveGame(): GameState {
     return {
       player: this.player.serialize(),
       inventory: this.inventory.serialize(),
-      train: this.train.serialize(),
       day: this.day,
       time: this.time,
       currentLocation: this.currentLocation,
@@ -1178,13 +1029,12 @@ export class GameManager {
       console.error('[数据迁移] 错误:', migrationResult.errors);
     }
 
-    this.train = new Train(state.train);
     this.day = state.day;
     this.time = state.time;
     this.currentLocation = state.currentLocation;
     this.gameTime = state.gameTime;
     this.logs = state.logs || [];
-    this.trainCoins = state.trainCoins ?? 0;
+    this.trainCoins = state.trainCoins ?? 100000;
     this.lastShopRefreshDay = state.lastShopRefreshDay ?? 1;
     this.playerName = state.playerName ?? '幸存者';
     this.isGameOver = false;
@@ -1223,14 +1073,12 @@ export class GameManager {
   reset(): void {
     this.player = new Player();
     this.inventory = new Inventory();
-    this.train = new Train();
     this.day = 1;
     this.time = 'day';
     this.currentLocation = 'loc_001';
     this.gameTime = 480;
     this.logs = [];
     this.isGameOver = false;
-    this.trainCoins = 100000;
     this.playerName = '幸存者';
     this.lastShopRefreshDay = 1;
 
@@ -1364,6 +1212,14 @@ export class GameManager {
     // 使用新的虚空怪物系统
     let enemy: Enemy | null = null;
 
+    // 战斗消耗10体力
+    const staminaCost = 10;
+
+    // 检查体力
+    if (this.player.stamina < staminaCost) {
+      return { success: false, message: `体力不足（需要${staminaCost}点）` };
+    }
+
     if (isBoss) {
       // 检查今天是否已经挑战过
       if (!this.isBossRefreshed(planetId)) {
@@ -1379,10 +1235,12 @@ export class GameManager {
       if (!enemyInstance) {
         return { success: false, message: '创建首领失败' };
       }
+      // 扣除体力
+      this.player.consumeStamina(staminaCost);
       // 记录挑战日期（失败不扣除次数，所以在这里记录）
       this.recordBossChallenge(planetId);
-      this.addLog('战斗', `💀 挑战虚空首领 ${enemyInstance.name}！`);
-      return { success: true, message: `💀 挑战虚空首领 ${enemyInstance.name}！`, enemy: enemyInstance };
+      this.addLog('战斗', `💀 挑战虚空首领 ${enemyInstance.name}！消耗${staminaCost}体力`);
+      return { success: true, message: `💀 挑战虚空首领 ${enemyInstance.name}！消耗${staminaCost}体力`, enemy: enemyInstance };
     }
 
     if (isElite) {
@@ -1394,8 +1252,10 @@ export class GameManager {
       if (!enemyInstance) {
         return { success: false, message: '创建精英虚空生物失败' };
       }
-      this.addLog('战斗', `👾 遭遇了精英 ${enemyInstance.name}！`);
-      return { success: true, message: `👾 遭遇了精英 ${enemyInstance.name}！`, enemy: enemyInstance };
+      // 扣除体力
+      this.player.consumeStamina(staminaCost);
+      this.addLog('战斗', `👾 遭遇了精英 ${enemyInstance.name}！消耗${staminaCost}体力`);
+      return { success: true, message: `👾 遭遇了精英 ${enemyInstance.name}！消耗${staminaCost}体力`, enemy: enemyInstance };
     }
 
     // 普通虚空生物
@@ -1409,8 +1269,10 @@ export class GameManager {
       return { success: false, message: '创建虚空生物失败' };
     }
 
-    this.addLog('战斗', `👾 遭遇了 ${enemyInstance.name}！`);
-    return { success: true, message: `👾 遭遇了 ${enemyInstance.name}！`, enemy: enemyInstance };
+    // 扣除体力
+    this.player.consumeStamina(staminaCost);
+    this.addLog('战斗', `👾 遭遇了 ${enemyInstance.name}！消耗${staminaCost}体力`);
+    return { success: true, message: `👾 遭遇了 ${enemyInstance.name}！消耗${staminaCost}体力`, enemy: enemyInstance };
   }
 
   // 扫荡功能：首次击败boss后解锁，收获等于战胜一次精英敌人，消耗10体力
@@ -1582,6 +1444,14 @@ export class GameManager {
 
   // 神话站台战斗
   private startMythologyBattle(mythLocation: any, isBoss: boolean, isElite: boolean): { success: boolean; message: string; enemy?: Enemy } {
+    // 战斗消耗10体力
+    const staminaCost = 10;
+
+    // 检查体力
+    if (this.player.stamina < staminaCost) {
+      return { success: false, message: `体力不足（需要${staminaCost}点）` };
+    }
+
     if (isBoss) {
       // 神明BOSS战
       const bossEnemy = Object.values(ENEMIES).find(e => e.name === mythLocation.bossName);
@@ -1592,8 +1462,10 @@ export class GameManager {
       if (!enemyInstance) {
         return { success: false, message: '创建神明失败' };
       }
-      this.addLog('战斗', `👑 挑战神明 ${enemyInstance.name}！`);
-      return { success: true, message: `👑 挑战神明 ${enemyInstance.name}！`, enemy: enemyInstance };
+      // 扣除体力
+      this.player.consumeStamina(staminaCost);
+      this.addLog('战斗', `👑 挑战神明 ${enemyInstance.name}！消耗${staminaCost}体力`);
+      return { success: true, message: `👑 挑战神明 ${enemyInstance.name}！消耗${staminaCost}体力`, enemy: enemyInstance };
     }
 
     // 根据难度选择敌人类型
@@ -1613,9 +1485,11 @@ export class GameManager {
       return { success: false, message: '创建神话敌人失败' };
     }
 
+    // 扣除体力
+    this.player.consumeStamina(staminaCost);
     const enemyTypeText = isElite ? '精英' : '';
-    this.addLog('战斗', `遭遇了${enemyTypeText} ${enemyInstance.name}！`);
-    return { success: true, message: `遭遇了${enemyTypeText} ${enemyInstance.name}！`, enemy: enemyInstance };
+    this.addLog('战斗', `遭遇了${enemyTypeText} ${enemyInstance.name}！消耗${staminaCost}体力`);
+    return { success: true, message: `遭遇了${enemyTypeText} ${enemyInstance.name}！消耗${staminaCost}体力`, enemy: enemyInstance };
   }
 
   // 创建神话站台敌人
@@ -1722,17 +1596,6 @@ export class GameManager {
     const levelUpLogs = this.player.addExp(expGain);
     logs.push(`获得 ${expGain} 经验值`);
     logs.push(...levelUpLogs);
-
-    // 掉落物品
-    enemy.lootTable.forEach(lootItem => {
-      if (Math.random() < lootItem.chance) {
-        const itemTemplate = getItemTemplate(lootItem.itemId);
-        if (itemTemplate && this.inventory.addItem(lootItem.itemId, 1)) {
-          loot.push({ itemId: lootItem.itemId, name: itemTemplate.name, quantity: 1 });
-          logs.push(`获得 ${itemTemplate.name}`);
-        }
-      }
-    });
 
     // 掉落制造材料 - 使用 mat_001~mat_010 带品质版本
     // 根据敌人类型决定掉落数量：普通3种，精英5种，BOSS7种
@@ -1845,22 +1708,34 @@ export class GameManager {
     };
 
     // 新的材料ID列表 (mat_001~mat_010) - 纳米战甲制造材料
+    // 权重基于战甲配方总需求量：需求量越高，掉落率越高
     const NEW_MATERIAL_IDS = [
-      { id: 'mat_001', name: '星铁基础构件' },
-      { id: 'mat_002', name: '星铜传导组件' },
-      { id: 'mat_003', name: '钛钢外甲坯料' },
-      { id: 'mat_004', name: '战甲能量晶核' },
-      { id: 'mat_005', name: '稀土传感基质' },
-      { id: 'mat_006', name: '虚空防护核心' },
-      { id: 'mat_007', name: '推进模块燃料' },
-      { id: 'mat_008', name: '纳米韧化纤维' },
-      { id: 'mat_009', name: '陨铁缓冲衬垫' },
-      { id: 'mat_010', name: '量子紧固组件' },
+      { id: 'mat_001', name: '星铁基础构件', weight: 47 },    // 总需求47
+      { id: 'mat_002', name: '星铜传导组件', weight: 36 },    // 总需求36
+      { id: 'mat_003', name: '钛钢外甲坯料', weight: 20 },    // 总需求20
+      { id: 'mat_004', name: '战甲能量晶核', weight: 7 },     // 总需求7
+      { id: 'mat_005', name: '稀土传感基质', weight: 3 },     // 总需求3
+      { id: 'mat_006', name: '虚空防护核心', weight: 4 },     // 总需求4
+      { id: 'mat_007', name: '推进模块燃料', weight: 11 },    // 总需求11
+      { id: 'mat_008', name: '纳米韧化纤维', weight: 28 },    // 总需求28
+      { id: 'mat_009', name: '陨铁缓冲衬垫', weight: 9 },     // 总需求9
+      { id: 'mat_010', name: '量子紧固组件', weight: 13 },    // 总需求13
     ];
 
-    // 随机选择材料类型
-    const shuffledMaterials = [...NEW_MATERIAL_IDS].sort(() => Math.random() - 0.5);
-    const selectedMaterials = shuffledMaterials.slice(0, materialDropCount);
+    // 加权随机选择材料类型
+    const selectedMaterials: typeof NEW_MATERIAL_IDS = [];
+    const totalWeight = NEW_MATERIAL_IDS.reduce((sum, m) => sum + m.weight, 0);
+
+    while (selectedMaterials.length < materialDropCount) {
+      let random = Math.random() * totalWeight;
+      for (const material of NEW_MATERIAL_IDS) {
+        random -= material.weight;
+        if (random <= 0 && !selectedMaterials.find(m => m.id === material.id)) {
+          selectedMaterials.push(material);
+          break;
+        }
+      }
+    }
 
     // 掉落材料（带品质）
     selectedMaterials.forEach(material => {
@@ -1880,9 +1755,9 @@ export class GameManager {
       }
     });
 
-    // 掉落强化石 - 根据敌人类型
-    const enhanceStoneCount = enemyType === 'boss' ? 5 : enemyType === 'elite' ? 2 : 1;
-    const enhanceStoneId = 'enhance_stone';
+    // 掉落强化石 - 根据敌人类型：普通1、精英3、boss5
+    const enhanceStoneCount = enemyType === 'boss' ? 5 : enemyType === 'elite' ? 3 : 1;
+    const enhanceStoneId = 'mat_enhance_stone';
     const enhanceStoneTemplate = getItemTemplate(enhanceStoneId);
     if (enhanceStoneTemplate && this.inventory.addItem(enhanceStoneId, enhanceStoneCount)) {
       loot.push({ itemId: enhanceStoneId, name: enhanceStoneTemplate.name, quantity: enhanceStoneCount });
@@ -1906,9 +1781,12 @@ export class GameManager {
     const success = Math.random() < 0.5;
 
     if (success) {
-      logs.push('成功逃脱！');
-      this.addLog('战斗', '从战斗中逃脱');
-      return { success: true, message: '成功逃脱！', logs };
+      // 逃跑成功消耗10体力
+      const staminaCost = 10;
+      this.player.consumeStamina(staminaCost);
+      logs.push(`成功逃脱！消耗${staminaCost}体力`);
+      this.addLog('战斗', `从战斗中逃脱，消耗${staminaCost}体力`);
+      return { success: true, message: `成功逃脱！消耗${staminaCost}体力`, logs };
     } else {
       logs.push('逃跑失败！');
       // 敌人获得一次攻击机会

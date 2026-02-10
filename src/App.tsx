@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import StartScreen from './screens/StartScreen';
 import HomeScreen from './screens/HomeScreen';
 import PlayerScreen from './screens/PlayerScreen';
@@ -6,10 +6,10 @@ import InventoryScreen from './screens/InventoryScreen';
 import NanoArmorCraftingScreen from './screens/NanoArmorCraftingScreen';
 import QuestScreen from './screens/QuestScreen';
 import ShopScreen from './screens/ShopScreen';
+import BaseScreen from './screens/BaseScreen';
 
 import DecomposeScreen from './screens/DecomposeScreen';
 import MaterialSynthesisScreen from './screens/MaterialSynthesisScreen';
-import TrainScreen from './screens/TrainScreen';
 import BattleScreen from './screens/BattleScreen';
 import EnhanceScreen from './screens/EnhanceScreen';
 import SublimationScreen from './screens/SublimationScreen';
@@ -54,7 +54,6 @@ type ScreenType =
   | 'inventory'
   | 'exploration'
   | 'normal-stations'
-  | 'train'
   | 'quests'
   | 'shop'
   | 'crafting'
@@ -66,7 +65,20 @@ type ScreenType =
   | 'battle'
   | 'mythology'
   | 'mythology_explore'
-  | 'test';
+  | 'test'
+  | 'base';
+
+// 有效的屏幕类型集合，用于类型守卫
+const VALID_SCREENS: readonly ScreenType[] = [
+  'start', 'home', 'player', 'inventory', 'exploration', 'normal-stations',
+  'quests', 'shop', 'crafting', 'equipment', 'sublimation', 'decompose',
+  'synthesis', 'settings', 'battle', 'mythology', 'mythology_explore', 'test', 'base'
+] as const;
+
+// 类型守卫函数
+function isValidScreen(screen: string): screen is ScreenType {
+  return VALID_SCREENS.includes(screen as ScreenType);
+}
 
 interface BattleParams {
   locationId: string;
@@ -83,11 +95,17 @@ function App() {
   const [planetTypeFilter, setPlanetTypeFilter] = useState<string | null>(null);
   const { saveGame, toasts, removeToast } = useGameStore();
 
-  const handleStartGame = () => {
+  const handleStartGame = useCallback(() => {
     setCurrentScreen('home');
-  };
+  }, []);
 
-  const handleNavigate = (screen: string, params?: any) => {
+  const handleNavigate = useCallback((screen: string, params?: any) => {
+    // 类型守卫检查
+    if (!isValidScreen(screen)) {
+      console.warn(`Invalid screen type: ${screen}`);
+      return;
+    }
+
     if (screen === 'battle' && params?.locationId) {
       setBattleParams({ locationId: params.locationId });
     }
@@ -105,18 +123,18 @@ function App() {
       setPlanetTypeFilter(null);
     }
 
-    setCurrentScreen(screen as ScreenType);
-  };
+    setCurrentScreen(screen);
+  }, []);
 
-  const handleBack = () => {
+  const handleBack = useCallback(() => {
     setCurrentScreen('home');
     setBattleParams(null);
-  };
+  }, []);
 
-  const handleStartBattle = (locationId: string, isBoss?: boolean, isElite?: boolean) => {
+  const handleStartBattle = useCallback((locationId: string, isBoss?: boolean, isElite?: boolean) => {
     setBattleParams({ locationId, isBoss, isElite });
     setCurrentScreen('battle');
-  };
+  }, []);
 
   const handleBattleEnd = async (action: 'continue_hunt' | 'return_collect' | 'boss_defeated') => {
     if (action === 'continue_hunt') {
@@ -187,8 +205,6 @@ function App() {
         ) : (
           <HomeScreen onNavigate={handleNavigate} />
         );
-      case 'train':
-        return <SpaceshipModuleScreen onBack={handleBack} />;
       case 'quests':
         return <QuestScreen onBack={handleBack} />;
       case 'shop':
@@ -212,6 +228,8 @@ function App() {
         return <PlaceholderScreen title="神域探索" onBack={handleBack} />;
       case 'test':
         return <TestScreen onBack={handleBack} />;
+      case 'base':
+        return <BaseScreen onNavigate={handleNavigate} onBack={handleBack} />;
       default:
         return <HomeScreen onNavigate={handleNavigate} />;
     }

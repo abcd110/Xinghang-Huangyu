@@ -1,6 +1,7 @@
 import { useGameStore } from '../stores/gameStore';
 import { useState, useEffect } from 'react';
 import { AutoCollectMode, MODE_INFO, getCollectRobot } from '../data/autoCollectTypes';
+import restPodImage from '../assets/images/休整.png';
 
 interface HomeScreenProps {
   onNavigate: (screen: string) => void;
@@ -20,10 +21,13 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
     showToast,
   } = useGameStore();
   const player = gameManager.player;
-  const train = gameManager.train;
   const [showAllLogs, setShowAllLogs] = useState(false);
   const [showCollectModal, setShowCollectModal] = useState(false);
   const [collectDuration, setCollectDuration] = useState('00:00');
+
+  // 系统测试入口：点击🚀3次
+  const [rocketClickCount, setRocketClickCount] = useState(0);
+  const [rocketClickTimer, setRocketClickTimer] = useState<NodeJS.Timeout | null>(null);
 
   // 自动采集状态
   const autoCollectState = getAutoCollectState();
@@ -140,6 +144,30 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
     return '#00d4ff'; // 科技蓝
   };
 
+  // 处理🚀点击（系统测试入口）
+  const handleRocketClick = () => {
+    const newCount = rocketClickCount + 1;
+    setRocketClickCount(newCount);
+
+    // 清除之前的定时器
+    if (rocketClickTimer) {
+      clearTimeout(rocketClickTimer);
+    }
+
+    // 设置新的定时器，2秒后重置计数
+    const timer = setTimeout(() => {
+      setRocketClickCount(0);
+    }, 2000);
+    setRocketClickTimer(timer);
+
+    // 点击3次进入系统测试
+    if (newCount >= 3) {
+      setRocketClickCount(0);
+      if (rocketClickTimer) clearTimeout(rocketClickTimer);
+      onNavigate('test');
+    }
+  };
+
   return (
     <div className="space-theme" style={{
       height: '100vh',
@@ -160,15 +188,30 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
           justifyContent: 'space-between',
           alignItems: 'center'
         }}>
-          {/* 最左边：战甲档案 */}
-          <h1 style={{
-            color: '#00d4ff',
-            fontSize: '18px',
-            fontWeight: 'bold',
-            margin: 0,
-            textShadow: '0 0 10px rgba(0, 212, 255, 0.5)'
-          }}>
+          {/* 最左边：战甲档案（点击🚀3次进入系统测试） */}
+          <h1
+            onClick={handleRocketClick}
+            style={{
+              color: '#00d4ff',
+              fontSize: '18px',
+              fontWeight: 'bold',
+              margin: 0,
+              textShadow: '0 0 10px rgba(0, 212, 255, 0.5)',
+              cursor: 'pointer',
+              userSelect: 'none',
+            }}
+            title="点击🚀3次进入系统测试"
+          >
             🚀 {gameManager.playerName || '战甲档案'}
+            {rocketClickCount > 0 && (
+              <span style={{
+                fontSize: '10px',
+                marginLeft: '4px',
+                color: rocketClickCount >= 2 ? '#ef4444' : '#00d4ff',
+              }}>
+                ({rocketClickCount}/3)
+              </span>
+            )}
           </h1>
 
           {/* 中间：等级|第X天 XX:XX */}
@@ -232,10 +275,10 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
             </span>
           </div>
         </div>
-        {/* 第二行：能量储备、冷却液、航船状态 */}
+        {/* 第二行：能量储备、冷却液 */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',
+          gridTemplateColumns: 'repeat(2, 1fr)',
           gap: '8px',
           fontSize: '13px',
           marginTop: '8px'
@@ -248,10 +291,6 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
             <span style={{ color: '#60a5fa' }}>❄️ 冷却 </span>
             <span style={{ color: '#ffffff', fontWeight: 'bold' }}>{player.thirst}</span>
           </div>
-          <div style={{ textAlign: 'center' }}>
-            <span style={{ color: '#00d4ff' }}>🚀 状态 </span>
-            <span style={{ color: '#ffffff', fontWeight: 'bold' }}>{train.durability}%</span>
-          </div>
         </div>
       </div>
 
@@ -259,7 +298,7 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
       <AutoCollectPanel
         isCollecting={isCollecting}
         duration={collectDuration}
-        locationId={autoCollectState.locationId}
+        robotId={autoCollectState.robotId}
         mode={autoCollectState.mode}
         onStart={() => setShowCollectModal(true)}
         onStop={handleStopCollect}
@@ -267,86 +306,66 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
         onOpenSettings={() => setShowCollectModal(true)}
       />
 
-      {/* 核心操作区 - 新主题 */}
+      {/* 核心操作区 - 全息面板风格 */}
       <div style={{
         flexShrink: 0,
         padding: '16px',
         borderBottom: '1px solid rgba(0, 212, 255, 0.2)'
       }}>
+        {/* 第一行：休整、强化、升华、星械锻造所 */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
-          <ActionButton
-            icon="🪐"
-            label="星球探索"
-            gradient="linear-gradient(135deg, #059669 0%, #10b981 100%)"
-            onClick={() => onNavigate('exploration')}
-          />
-          <ActionButton
-            icon="🛌"
+          <HologramButton
+            iconImage={restPodImage}
             label={canRest ? "休整" : "能量不足"}
-            gradient={canRest ? "linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)" : "linear-gradient(135deg, #374151 0%, #2a3050 100%)"}
+            color="#3b82f6"
             onClick={handleRest}
             disabled={!canRest}
           />
-          <ActionButton
+          <HologramButton
             icon="🔫"
-            label="装备强化"
-            gradient="linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%)"
+            label="强化"
+            color="#8b5cf6"
             onClick={() => onNavigate('equipment')}
           />
-          <ActionButton
+          <HologramButton
+            icon="✨"
+            label="升华"
+            color="#c084fc"
+            onClick={() => onNavigate('sublimation')}
+          />
+          <HologramButton
             icon="🔨"
-            label="星械锻造所"
-            gradient="linear-gradient(135deg, #1a1f3a 0%, #f59e0b 100%)"
+            label="锻造所"
+            color="#f59e0b"
             onClick={() => onNavigate('crafting')}
           />
         </div>
+        {/* 第二行：材料合成、星骸解构舱、战甲档案、星际商店 */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginTop: '12px' }}>
-          <ActionButton
+          <HologramButton
             icon="⚗️"
             label="材料合成"
-            gradient="linear-gradient(135deg, #059669 0%, #10b981 100%)"
+            color="#10b981"
             onClick={() => onNavigate('synthesis')}
           />
-          <ActionButton
-            icon="📦"
-            label="物资分解"
-            gradient="linear-gradient(135deg, #374151 0%, #2a3050 100%)"
+          <HologramButton
+            icon="⚗️"
+            label="星骸解构"
+            color="#6b7280"
             onClick={() => onNavigate('decompose')}
           />
-
-          <ActionButton
+          <HologramButton
             icon="👤"
             label="战甲档案"
-            gradient="linear-gradient(135deg, #374151 0%, #2a3050 100%)"
+            color="#6b7280"
             onClick={() => onNavigate('player')}
           />
-          <ActionButton
-            icon="🚀"
-            label="航船状态"
-            gradient="linear-gradient(135deg, #374151 0%, #2a3050 100%)"
-            onClick={() => onNavigate('train')}
-          />
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginTop: '12px' }}>
-          <ActionButton
-            icon="✨"
-            label="装备升华"
-            gradient="linear-gradient(135deg, #9333ea 0%, #c084fc 100%)"
-            onClick={() => onNavigate('sublimation')}
-          />
-          <ActionButton
+          <HologramButton
             icon="🛒"
             label="星际商店"
-            gradient="linear-gradient(135deg, #059669 0%, #10b981 100%)"
+            color="#10b981"
             onClick={() => onNavigate('shop')}
           />
-          <ActionButton
-            icon="🧪"
-            label="系统测试"
-            gradient="linear-gradient(135deg, #dc2626 0%, #ef4444 100%)"
-            onClick={() => onNavigate('test')}
-          />
-          <div /> {/* 空占位 */}
         </div>
       </div>
 
@@ -428,7 +447,7 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
 function AutoCollectPanel({
   isCollecting,
   duration,
-  locationId,
+  robotId,
   mode,
   onStart,
   onStop,
@@ -437,15 +456,62 @@ function AutoCollectPanel({
 }: {
   isCollecting: boolean;
   duration: string;
-  locationId: string;
+  robotId: string;
   mode: AutoCollectMode;
   onStart: () => void;
   onStop: () => void;
   onClaim: () => void;
   onOpenSettings: () => void;
 }) {
-  const robot = getCollectRobot(locationId);
+  const robot = getCollectRobot(robotId);
   const modeInfo = MODE_INFO[mode];
+
+  // 计算收益预估（基于已采集时长）
+  const calculateEstimatedRewards = () => {
+    if (!robot || !isCollecting) return null;
+
+    // 解析时长字符串 "HH:MM:SS" 或 "MM:SS"
+    const parts = duration.split(':').map(Number);
+    let hours = 0;
+    if (parts.length === 3) {
+      hours = parts[0] + parts[1] / 60 + parts[2] / 3600;
+    } else if (parts.length === 2) {
+      hours = parts[0] / 60 + parts[1] / 3600;
+    }
+
+    const base = robot.baseRewards;
+    let goldRate = base.gold;
+    let expRate = base.exp;
+    let materialRate = base.materialsPerHour;
+    let stoneRate = base.enhanceStonesPerHour;
+
+    // 根据模式调整收益
+    switch (mode) {
+      case AutoCollectMode.GATHER:
+        goldRate *= 1.5;
+        materialRate *= 1.5;
+        break;
+      case AutoCollectMode.COMBAT:
+        expRate *= 1.5;
+        stoneRate *= 1.5;
+        break;
+      case AutoCollectMode.BALANCED:
+        goldRate *= 1.2;
+        expRate *= 1.2;
+        materialRate *= 1.2;
+        stoneRate *= 1.2;
+        break;
+    }
+
+    return {
+      gold: Math.floor(goldRate * hours),
+      exp: Math.floor(expRate * hours),
+      materials: Math.floor(materialRate * hours),
+      stones: Math.floor(stoneRate * hours),
+    };
+  };
+
+  const estimated = calculateEstimatedRewards();
 
   return (
     <div style={{
@@ -497,64 +563,83 @@ function AutoCollectPanel({
       </div>
 
       {/* 状态显示 */}
-      {isCollecting ? (
-        <div style={{
-          background: 'rgba(0, 212, 255, 0.1)',
-          borderRadius: '12px',
-          padding: '12px',
-          marginBottom: '12px',
-        }}>
+      {
+        isCollecting ? (
           <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: '8px',
+            background: 'rgba(0, 212, 255, 0.1)',
+            borderRadius: '12px',
+            padding: '12px',
+            marginBottom: '12px',
           }}>
-            <span style={{ color: '#a1a1aa', fontSize: '12px' }}>⏱️ 已采集时长</span>
-            <span style={{
-              color: '#00d4ff',
-              fontSize: '18px',
-              fontWeight: 'bold',
-              fontFamily: 'monospace',
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '8px',
             }}>
-              {duration}
-            </span>
+              <span style={{ color: '#a1a1aa', fontSize: '12px' }}>⏱️ 已采集时长</span>
+              <span style={{
+                color: '#00d4ff',
+                fontSize: '18px',
+                fontWeight: 'bold',
+                fontFamily: 'monospace',
+              }}>
+                {duration}
+              </span>
+            </div>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '4px',
+            }}>
+              <span style={{ color: '#a1a1aa', fontSize: '12px' }}>🤖 当前机器人</span>
+              <span style={{ color: '#ffffff', fontSize: '13px' }}>
+                {robot?.icon} {robot?.name}
+              </span>
+            </div>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '4px',
+            }}>
+              <span style={{ color: '#a1a1aa', fontSize: '12px' }}>🎯 采集模式</span>
+              <span style={{ color: '#ffffff', fontSize: '13px' }}>
+                {modeInfo.icon} {modeInfo.name}
+              </span>
+            </div>
+            {/* 收益预估 */}
+            {estimated && (
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                paddingTop: '8px',
+                borderTop: '1px solid rgba(0, 212, 255, 0.2)',
+                marginTop: '4px',
+              }}>
+                <span style={{ color: '#f59e0b', fontSize: '12px' }}>📊 预估收益</span>
+                <span style={{ color: '#f59e0b', fontSize: '12px', fontWeight: 'bold' }}>
+                  {estimated.gold}信用点|{estimated.exp}经验|{estimated.materials}材料|{estimated.stones}强化石
+                </span>
+              </div>
+            )}
           </div>
+        ) : (
           <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: '4px',
+            background: 'rgba(55, 65, 81, 0.3)',
+            borderRadius: '12px',
+            padding: '12px',
+            marginBottom: '12px',
+            textAlign: 'center',
           }}>
-            <span style={{ color: '#a1a1aa', fontSize: '12px' }}>🤖 当前机器人</span>
-            <span style={{ color: '#ffffff', fontSize: '13px' }}>
-              {robot?.icon} {robot?.name}
+            <span style={{ color: '#71717a', fontSize: '13px' }}>
+              自动采集系统待机中，点击开始设置采集任务
             </span>
           </div>
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          }}>
-            <span style={{ color: '#a1a1aa', fontSize: '12px' }}>🎯 采集模式</span>
-            <span style={{ color: '#ffffff', fontSize: '13px' }}>
-              {modeInfo.icon} {modeInfo.name}
-            </span>
-          </div>
-        </div>
-      ) : (
-        <div style={{
-          background: 'rgba(55, 65, 81, 0.3)',
-          borderRadius: '12px',
-          padding: '12px',
-          marginBottom: '12px',
-          textAlign: 'center',
-        }}>
-          <span style={{ color: '#71717a', fontSize: '13px' }}>
-            自动采集系统待机中，点击开始设置采集任务
-          </span>
-        </div>
-      )}
+        )
+      }
 
       {/* 操作按钮 */}
       <div style={{
@@ -633,7 +718,7 @@ function AutoCollectPanel({
           </button>
         )}
       </div>
-    </div>
+    </div >
   );
 }
 
@@ -994,12 +1079,14 @@ function AutoCollectModal({
 // 操作按钮组件 - 玻璃拟态风格
 function ActionButton({
   icon,
+  iconImage,
   label,
   gradient,
   onClick,
   disabled = false
 }: {
-  icon: string;
+  icon?: string;
+  iconImage?: string;
   label: string;
   gradient: string;
   onClick: () => void;
@@ -1071,14 +1158,19 @@ function ActionButton({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: `linear-gradient(135deg, ${glowColor}30 0%, ${glowColor}10 100%)`,
+        background: iconImage ? 'transparent' : `linear-gradient(135deg, ${glowColor}30 0%, ${glowColor}10 100%)`,
         borderRadius: '12px',
-        border: `1px solid ${glowColor}50`,
+        border: iconImage ? 'none' : `1px solid ${glowColor}50`,
         fontSize: '24px',
         filter: disabled ? 'grayscale(100%)' : 'none',
-        transition: 'all 0.3s ease'
+        transition: 'all 0.3s ease',
+        overflow: 'hidden'
       }}>
-        {icon}
+        {iconImage ? (
+          <img src={iconImage} alt={label} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+        ) : (
+          icon
+        )}
       </div>
 
       <span style={{
@@ -1088,6 +1180,113 @@ function ActionButton({
         textShadow: `0 1px 2px rgba(0,0,0,0.5)`,
         letterSpacing: '0.3px'
       }}>{label}</span>
+    </button>
+  );
+}
+
+// 全息按钮组件 - BaseScreen风格
+function HologramButton({
+  icon,
+  iconImage,
+  label,
+  color,
+  onClick,
+  disabled = false
+}: {
+  icon?: string;
+  iconImage?: string;
+  label: string;
+  color: string;
+  onClick: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        background: 'rgba(26, 31, 58, 0.6)',
+        border: `1px solid ${disabled ? 'rgba(255,255,255,0.1)' : color + '50'}`,
+        borderRadius: '12px',
+        padding: '12px 8px',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '8px',
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        opacity: disabled ? 0.5 : 1,
+        transition: 'all 0.3s ease',
+        position: 'relative',
+        overflow: 'hidden',
+        minHeight: '90px',
+      }}
+      onMouseEnter={(e) => {
+        if (!disabled) {
+          e.currentTarget.style.transform = 'scale(1.02)';
+          e.currentTarget.style.borderColor = color;
+          e.currentTarget.style.boxShadow = `0 0 20px ${color}40`;
+        }
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = 'scale(1)';
+        e.currentTarget.style.borderColor = disabled ? 'rgba(255,255,255,0.1)' : color + '50';
+        e.currentTarget.style.boxShadow = 'none';
+      }}
+    >
+      {/* 顶部发光条 */}
+      <div style={{
+        position: 'absolute',
+        top: 0,
+        left: '10%',
+        right: '10%',
+        height: '2px',
+        background: disabled ? 'rgba(255,255,255,0.1)' : `linear-gradient(90deg, transparent 0%, ${color} 50%, transparent 100%)`,
+      }} />
+
+      {/* 图标容器 */}
+      <div style={{
+        width: '40px',
+        height: '40px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: iconImage ? 'transparent' : `rgba(${parseInt(color.slice(1, 3), 16)}, ${parseInt(color.slice(3, 5), 16)}, ${parseInt(color.slice(5, 7), 16)}, 0.15)`,
+        borderRadius: '10px',
+        border: iconImage ? 'none' : `1px solid ${color}40`,
+        fontSize: '22px',
+        filter: disabled ? 'grayscale(100%)' : 'none',
+        transition: 'all 0.3s ease',
+        overflow: 'hidden',
+      }}>
+        {iconImage ? (
+          <img src={iconImage} alt={label} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+        ) : (
+          icon
+        )}
+      </div>
+
+      <span style={{
+        color: disabled ? '#71717a' : color,
+        fontSize: '11px',
+        fontWeight: 'bold',
+        textAlign: 'center',
+        whiteSpace: 'nowrap',
+      }}>{label}</span>
+
+      {/* 全息扫描线效果 */}
+      {!disabled && (
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 212, 255, 0.02) 2px, rgba(0, 212, 255, 0.02) 4px)',
+          pointerEvents: 'none',
+          borderRadius: '12px',
+        }} />
+      )}
     </button>
   );
 }

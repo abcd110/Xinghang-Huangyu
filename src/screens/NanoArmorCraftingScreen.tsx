@@ -110,7 +110,7 @@ export default function NanoArmorCraftingScreen({ onBack }: NanoArmorCraftingScr
       attack: Math.floor((baseStats.attack || 0) * multiplier),
       defense: Math.floor((baseStats.defense || 0) * multiplier),
       hp: Math.floor((baseStats.hp || 0) * multiplier),
-      speed: Math.floor((baseStats.speed || 0) * multiplier),
+      speed: Math.round((baseStats.speed || 0) * multiplier * 10) / 10, // 攻速保留1位小数
       critRate: (baseStats.critRate || 0) * multiplier,
       critDamage: (baseStats.critDamage || 0) * multiplier,
       hit: Math.floor((baseStats.hit || 0) * multiplier),
@@ -213,9 +213,6 @@ export default function NanoArmorCraftingScreen({ onBack }: NanoArmorCraftingScr
   // 部位选择按钮（优化版）
   const SlotButton = ({ slot }: { slot: NanoArmorSlot }) => {
     const isSelected = selectedSlot === slot;
-    const slotRecipe = getRecipeBySlot(slot);
-    const canCraftSlot = slotRecipe?.materials.every(m => getMaterialQuantity(m.itemId, selectedQuality) >= m.count) ?? false;
-    const hasCrafted = slotRecipe && inventory.equipment.some(e => e.id === slotRecipe.id);
 
     return (
       <button
@@ -223,7 +220,7 @@ export default function NanoArmorCraftingScreen({ onBack }: NanoArmorCraftingScr
         style={{
           padding: '16px 12px',
           backgroundColor: isSelected ? 'rgba(0, 153, 204, 0.2)' : '#1a1f3a',
-          border: `2px solid ${isSelected ? '#00d4ff' : hasCrafted ? '#4ade80' : canCraftSlot ? '#f59e0b' : '#2a3050'}`,
+          border: `2px solid ${isSelected ? '#00d4ff' : '#2a3050'}`,
           borderRadius: '12px',
           cursor: 'pointer',
           display: 'flex',
@@ -243,22 +240,11 @@ export default function NanoArmorCraftingScreen({ onBack }: NanoArmorCraftingScr
         </span>
         <span style={{
           fontSize: '11px',
-          color: isSelected ? '#00d4ff' : hasCrafted ? '#4ade80' : '#a1a1aa',
+          color: isSelected ? '#00d4ff' : '#a1a1aa',
           fontWeight: isSelected ? 'bold' : 'normal',
         }}>
           {NANO_ARMOR_SLOT_NAMES[slot]}
         </span>
-        {hasCrafted && (
-          <span style={{
-            fontSize: '9px',
-            color: '#4ade80',
-            backgroundColor: 'rgba(74, 222, 128, 0.2)',
-            padding: '2px 6px',
-            borderRadius: '4px',
-          }}>
-            已拥有
-          </span>
-        )}
       </button>
     );
   };
@@ -266,6 +252,10 @@ export default function NanoArmorCraftingScreen({ onBack }: NanoArmorCraftingScr
   // 品质选择按钮（优化版）
   const QualityButton = ({ quality }: { quality: ArmorQuality }) => {
     const isSelected = selectedQuality === quality;
+    // 检查当前选中的部位在该品质下材料是否满足
+    const slotRecipe = selectedSlot ? getRecipeBySlot(selectedSlot) : null;
+    const canCraftQuality = slotRecipe?.materials.every(m => getMaterialQuantity(m.itemId, quality) >= m.count) ?? false;
+
     return (
       <button
         onClick={() => setSelectedQuality(quality)}
@@ -278,6 +268,7 @@ export default function NanoArmorCraftingScreen({ onBack }: NanoArmorCraftingScr
           opacity: isSelected ? 1 : 0.8,
           transition: 'all 0.2s ease',
           boxShadow: isSelected ? QUALITY_GLOW[quality] : 'none',
+          position: 'relative',
         }}
       >
         <span style={{
@@ -287,6 +278,19 @@ export default function NanoArmorCraftingScreen({ onBack }: NanoArmorCraftingScr
         }}>
           {ARMOR_QUALITY_NAMES[quality]}
         </span>
+        {/* 材料满足时显示绿色小点 */}
+        {canCraftQuality && (
+          <span style={{
+            position: 'absolute',
+            top: '4px',
+            right: '4px',
+            width: '8px',
+            height: '8px',
+            backgroundColor: '#4ade80',
+            borderRadius: '50%',
+            boxShadow: '0 0 6px rgba(74, 222, 128, 0.8)',
+          }} />
+        )}
       </button>
     );
   };
@@ -597,7 +601,7 @@ export default function NanoArmorCraftingScreen({ onBack }: NanoArmorCraftingScr
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <span style={{ color: '#f59e0b', fontSize: '16px' }}>⚡</span>
                         <span style={{ color: '#f59e0b', fontSize: '14px', fontWeight: 'bold' }}>
-                          攻速 +{Math.floor(recipe.baseStats.speed * calculateQualityMultiplier(selectedQuality))}
+                          攻速 +{Math.round(recipe.baseStats.speed * calculateQualityMultiplier(selectedQuality) * 10) / 10}
                         </span>
                       </div>
                     )}

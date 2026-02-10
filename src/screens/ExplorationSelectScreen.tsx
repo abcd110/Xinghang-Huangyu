@@ -1,312 +1,465 @@
-import { useGameStore } from '../stores/gameStore';
+import { useState, useEffect } from 'react';
+import 联邦科技星Img from '../assets/images/联邦科技星.png';
+import 神域星Img from '../assets/images/神域星.png';
+import 废土星Img from '../assets/images/废土星.png';
+import 探索背景Img from '../assets/images/探索背景.png';
 
 interface ExplorationSelectScreenProps {
   onBack: () => void;
   onNavigate: (screen: string, params?: { planetType?: string }) => void;
 }
 
+const planets = [
+  {
+    id: 'tech',
+    name: '联邦科技星',
+    subtitle: 'FEDERATION TECH',
+    image: 联邦科技星Img,
+    route: 'normal-stations',
+    theme: {
+      primary: '#00d4ff',
+      secondary: '#0099cc',
+      glow: 'rgba(0, 212, 255, 0.6)',
+      gradient: 'linear-gradient(135deg, #0c4a6e 0%, #0891b2 50%, #00d4ff 100%)'
+    }
+  },
+  {
+    id: 'god',
+    name: '神域星',
+    subtitle: 'DIVINE REALM',
+    image: 神域星Img,
+    route: 'normal-stations',
+    theme: {
+      primary: '#c084fc',
+      secondary: '#7c3aed',
+      glow: 'rgba(192, 132, 252, 0.6)',
+      gradient: 'linear-gradient(135deg, #5b21b6 0%, #7c3aed 50%, #c084fc 100%)'
+    }
+  },
+  {
+    id: 'wasteland',
+    name: '废土星',
+    subtitle: 'WASTELAND',
+    image: 废土星Img,
+    route: 'normal-stations',
+    theme: {
+      primary: '#f87171',
+      secondary: '#dc2626',
+      glow: 'rgba(248, 113, 113, 0.6)',
+      gradient: 'linear-gradient(135deg, #7f1d1d 0%, #dc2626 50%, #f87171 100%)'
+    }
+  }
+];
+
+// 动画样式
+const animationStyles = `
+  @keyframes scan {
+    0% { transform: translateY(-100%); }
+    100% { transform: translateY(100%); }
+  }
+  @keyframes pulse-glow {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+  }
+  @keyframes rotate-slow {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+  @keyframes border-flow {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+  @keyframes card-pulse {
+    0%, 100% { box-shadow: 0 0 20px rgba(0,0,0,0.4); }
+    50% { box-shadow: 0 0 40px rgba(0,0,0,0.6), 0 0 60px rgba(255,255,255,0.1); }
+  }
+  @keyframes text-glow {
+    0%, 100% { text-shadow: 0 0 10px currentColor; }
+    50% { text-shadow: 0 0 20px currentColor, 0 0 30px currentColor; }
+  }
+  @keyframes arrow-bounce {
+    0%, 100% { transform: translateX(0); }
+    50% { transform: translateX(4px); }
+  }
+`;
+
 export default function ExplorationSelectScreen({ onBack, onNavigate }: ExplorationSelectScreenProps) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   return (
-    <div style={{
-      height: '100vh',
-      backgroundColor: '#0a0e27',
-      display: 'flex',
-      flexDirection: 'column'
-    }}>
-      {/* 顶部标题栏 */}
-      <header style={{
-        flexShrink: 0,
-        backgroundColor: '#1a1f3a',
-        borderBottom: '1px solid #2a3050',
-        padding: '12px 16px'
+    <>
+      <style>{animationStyles}</style>
+      <div style={{
+        height: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        position: 'relative',
+        overflow: 'hidden'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <button
-            onClick={onBack}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              color: '#a1a1aa',
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: '14px'
-            }}
-          >
-            <span>←</span>
-            <span>返回</span>
-          </button>
-          <h1 style={{ color: 'white', fontWeight: 'bold', fontSize: '18px' }}>🗺️ 探索</h1>
-          <div style={{ width: '48px' }} />
-        </div>
-      </header>
-
-      {/* 主内容区 */}
-      <main style={{
-        flex: 1,
-        overflowY: 'auto',
-        padding: '20px 16px'
-      }}>
-        {/* 标题 */}
+        {/* 背景层 */}
         <div style={{
-          textAlign: 'center',
-          marginBottom: '24px'
-        }}>
-          <p style={{ color: '#a1a1aa', fontSize: '14px' }}>选择探索区域</p>
-        </div>
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundImage: `url(${探索背景Img})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          zIndex: 0
+        }} />
 
-        {/* 探索选项 */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {/* 联邦科技星 */}
-          <button
-            onClick={() => onNavigate('normal-stations', { planetType: 'tech' })}
-            style={{
-              background: 'linear-gradient(135deg, #0c4a6e 0%, #0891b2 100%)',
-              border: '2px solid #00d4ff',
-              borderRadius: '16px',
-              padding: '24px 20px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '16px',
-              cursor: 'pointer',
-              transition: 'transform 0.2s, box-shadow 0.2s',
-              boxShadow: '0 4px 12px rgba(0, 212, 255, 0.3)'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translateY(-2px)';
-              e.currentTarget.style.boxShadow = '0 6px 20px rgba(0, 212, 255, 0.4)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 212, 255, 0.3)';
-            }}
-          >
-            {/* 图标 */}
-            <div style={{
-              width: '64px',
-              height: '64px',
-              backgroundColor: 'rgba(255, 255, 255, 0.15)',
-              borderRadius: '12px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '32px'
-            }}>
-              🏭
-            </div>
-
-            {/* 内容 */}
-            <div style={{ flex: 1, textAlign: 'left' }}>
-              <h2 style={{
-                color: 'white',
-                fontSize: '20px',
-                fontWeight: 'bold',
-                margin: '0 0 6px 0'
-              }}>
-                联邦科技星
-              </h2>
-              <p style={{
-                color: '#a5f3fc',
-                fontSize: '13px',
-                margin: 0,
-                lineHeight: '1.4'
-              }}>
-                探索联邦科技星获取科技装备和工业资源
-              </p>
-            </div>
-
-            {/* 箭头 */}
-            <span style={{
-              color: '#00d4ff',
-              fontSize: '24px',
-              fontWeight: 'bold'
-            }}>
-              ›
-            </span>
-          </button>
-
-          {/* 神域星 */}
-          <button
-            onClick={() => onNavigate('normal-stations', { planetType: 'god' })}
-            style={{
-              background: 'linear-gradient(135deg, #5b21b6 0%, #7c3aed 100%)',
-              border: '2px solid #8b5cf6',
-              borderRadius: '16px',
-              padding: '24px 20px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '16px',
-              cursor: 'pointer',
-              transition: 'transform 0.2s, box-shadow 0.2s',
-              boxShadow: '0 4px 12px rgba(139, 92, 246, 0.3)'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translateY(-2px)';
-              e.currentTarget.style.boxShadow = '0 6px 20px rgba(139, 92, 246, 0.4)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 4px 12px rgba(139, 92, 246, 0.3)';
-            }}
-          >
-            {/* 图标 */}
-            <div style={{
-              width: '64px',
-              height: '64px',
-              backgroundColor: 'rgba(255, 255, 255, 0.15)',
-              borderRadius: '12px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '32px'
-            }}>
-              ⭐
-            </div>
-
-            {/* 内容 */}
-            <div style={{ flex: 1, textAlign: 'left' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                <h2 style={{
-                  color: 'white',
-                  fontSize: '20px',
-                  fontWeight: 'bold',
-                  margin: 0
-                }}>
-                  神域星
-                </h2>
-                <span style={{
-                  backgroundColor: '#8b5cf6',
-                  color: 'white',
-                  fontSize: '10px',
-                  padding: '2px 8px',
-                  borderRadius: '10px'
-                }}>
-                  高难度
-                </span>
-              </div>
-              <p style={{
-                color: '#c4b5fd',
-                fontSize: '13px',
-                margin: 0,
-                lineHeight: '1.4'
-              }}>
-                探索神域星获取神能装备和稀有资源
-              </p>
-            </div>
-
-            {/* 箭头 */}
-            <span style={{
-              color: '#8b5cf6',
-              fontSize: '24px',
-              fontWeight: 'bold'
-            }}>
-              ›
-            </span>
-          </button>
-
-          {/* 废土星 */}
-          <button
-            onClick={() => onNavigate('normal-stations', { planetType: 'wasteland' })}
-            style={{
-              background: 'linear-gradient(135deg, #7f1d1d 0%, #dc2626 100%)',
-              border: '2px solid #ef4444',
-              borderRadius: '16px',
-              padding: '24px 20px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '16px',
-              cursor: 'pointer',
-              transition: 'transform 0.2s, box-shadow 0.2s',
-              boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translateY(-2px)';
-              e.currentTarget.style.boxShadow = '0 6px 20px rgba(239, 68, 68, 0.4)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 4px 12px rgba(239, 68, 68, 0.3)';
-            }}
-          >
-            {/* 图标 */}
-            <div style={{
-              width: '64px',
-              height: '64px',
-              backgroundColor: 'rgba(255, 255, 255, 0.15)',
-              borderRadius: '12px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '32px'
-            }}>
-              💀
-            </div>
-
-            {/* 内容 */}
-            <div style={{ flex: 1, textAlign: 'left' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                <h2 style={{
-                  color: 'white',
-                  fontSize: '20px',
-                  fontWeight: 'bold',
-                  margin: 0
-                }}>
-                  废土星
-                </h2>
-                <span style={{
-                  backgroundColor: '#ef4444',
-                  color: 'white',
-                  fontSize: '10px',
-                  padding: '2px 8px',
-                  borderRadius: '10px'
-                }}>
-                  危险
-                </span>
-              </div>
-              <p style={{
-                color: '#fca5a5',
-                fontSize: '13px',
-                margin: 0,
-                lineHeight: '1.4'
-              }}>
-                探索废土星获取稀有材料，但危险重重
-              </p>
-            </div>
-
-            {/* 箭头 */}
-            <span style={{
-              color: '#ef4444',
-              fontSize: '24px',
-              fontWeight: 'bold'
-            }}>
-              ›
-            </span>
-          </button>
-        </div>
-
-        {/* 提示信息 */}
+        {/* 暗角效果 */}
         <div style={{
-          marginTop: '24px',
-          padding: '16px',
-          backgroundColor: '#1f2937',
-          borderRadius: '12px',
-          border: '1px solid #374151'
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'radial-gradient(ellipse at center, transparent 0%, rgba(0,0,0,0.6) 100%)',
+          zIndex: 1
+        }} />
+
+        {/* 网格叠加 */}
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundImage: `
+            linear-gradient(rgba(0, 212, 255, 0.03) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0, 212, 255, 0.03) 1px, transparent 1px)
+          `,
+          backgroundSize: '50px 50px',
+          zIndex: 1
+        }} />
+
+        {/* 顶部标题栏 */}
+        <header style={{
+          flexShrink: 0,
+          padding: '16px 20px',
+          position: 'relative',
+          zIndex: 10
         }}>
-          <p style={{
-            color: '#a1a1aa',
-            fontSize: '12px',
-            margin: 0,
-            lineHeight: '1.6'
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
           }}>
-            💡 <strong style={{ color: '#d1d5db' }}>探索提示：</strong><br />
-            • 联邦科技星适合获取基础资源和装备<br />
-            • 神域星难度较高，但神能装备更强大<br />
-            • 废土星危险重重，但稀有材料丰富
-          </p>
-        </div>
-      </main>
-    </div>
+            <button
+              onClick={onBack}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                color: '#00d4ff',
+                background: 'rgba(0, 0, 0, 0.5)',
+                border: '1px solid rgba(0, 212, 255, 0.4)',
+                borderRadius: '8px',
+                padding: '10px 16px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: 500,
+                letterSpacing: '1px',
+                textTransform: 'uppercase',
+                backdropFilter: 'blur(10px)',
+                boxShadow: '0 0 20px rgba(0, 212, 255, 0.2)'
+              }}
+            >
+              <span style={{ fontSize: '16px' }}>◀</span>
+              <span>返回</span>
+            </button>
+
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              position: 'absolute',
+              left: '50%',
+              transform: 'translateX(-50%)'
+            }}>
+              <h1 style={{
+                color: '#fff',
+                fontWeight: 'bold',
+                fontSize: '20px',
+                margin: 0,
+                letterSpacing: '3px',
+                textTransform: 'uppercase',
+                textShadow: '0 0 20px rgba(0, 212, 255, 0.8), 0 0 40px rgba(0, 212, 255, 0.4)'
+              }}>
+                星际探索
+              </h1>
+              <span style={{
+                color: 'rgba(0, 212, 255, 0.7)',
+                fontSize: '9px',
+                letterSpacing: '4px',
+                marginTop: '2px',
+                whiteSpace: 'nowrap'
+              }}>
+                INTERSTELLAR EXPLORATION
+              </span>
+            </div>
+
+            <div style={{ width: '60px' }} />
+          </div>
+        </header>
+
+        {/* 主内容区 */}
+        <main style={{
+          flex: 1,
+          overflowY: 'auto',
+          padding: '20px 24px 40px',
+          position: 'relative',
+          zIndex: 10,
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          gap: '20px'
+        }}>
+          {planets.map((planet, index) => (
+            <button
+              key={planet.id}
+              onClick={() => onNavigate(planet.route, { planetType: planet.id })}
+              style={{
+                position: 'relative',
+                background: 'rgba(0, 0, 0, 0.4)',
+                border: 'none',
+                borderRadius: '16px',
+                padding: '0',
+                cursor: 'pointer',
+                backdropFilter: 'blur(10px)',
+                overflow: 'hidden',
+                opacity: mounted ? 1 : 0,
+                transform: mounted ? 'translateY(0)' : 'translateY(30px)',
+                transition: 'opacity 0.5s ease, transform 0.5s ease',
+                transitionDelay: `${index * 100}ms`,
+                boxShadow: `0 0 30px ${planet.theme.glow}, inset 0 0 60px rgba(0,0,0,0.5)`,
+                animation: 'card-pulse 3s ease-in-out infinite'
+              }}
+            >
+              {/* 动态边框 */}
+              <div style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                borderRadius: '16px',
+                padding: '2px',
+                backgroundImage: `linear-gradient(90deg, ${planet.theme.primary}, ${planet.theme.secondary}, ${planet.theme.primary})`,
+                backgroundSize: '200% 100%',
+                animation: 'border-flow 3s ease infinite',
+                WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+                WebkitMaskComposite: 'xor',
+                maskComposite: 'exclude'
+              }} />
+
+              {/* 扫描线效果 */}
+              <div style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                overflow: 'hidden',
+                borderRadius: '16px',
+                pointerEvents: 'none'
+              }}>
+                <div style={{
+                  position: 'absolute',
+                  left: 0,
+                  right: 0,
+                  height: '2px',
+                  background: `linear-gradient(90deg, transparent, ${planet.theme.primary}, transparent)`,
+                  boxShadow: `0 0 10px ${planet.theme.primary}`,
+                  animation: 'scan 2s linear infinite'
+                }} />
+              </div>
+
+              {/* 内容容器 */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '20px',
+                padding: '20px 24px',
+                position: 'relative',
+                zIndex: 2
+              }}>
+                {/* 星球图片容器 */}
+                <div style={{
+                  position: 'relative',
+                  width: '90px',
+                  height: '90px',
+                  flexShrink: 0
+                }}>
+                  {/* 外圈光环 */}
+                  <div style={{
+                    position: 'absolute',
+                    top: '-8px',
+                    left: '-8px',
+                    right: '-8px',
+                    bottom: '-8px',
+                    borderRadius: '50%',
+                    borderWidth: '2px',
+                    borderStyle: 'solid',
+                    borderTopColor: 'transparent',
+                    borderRightColor: planet.theme.primary,
+                    borderBottomColor: 'transparent',
+                    borderLeftColor: planet.theme.primary,
+                    animation: 'rotate-slow 8s linear infinite',
+                    opacity: 0.6
+                  }} />
+
+                  {/* 内圈光环 */}
+                  <div style={{
+                    position: 'absolute',
+                    top: '-4px',
+                    left: '-4px',
+                    right: '-4px',
+                    bottom: '-4px',
+                    borderRadius: '50%',
+                    borderWidth: '1px',
+                    borderStyle: 'solid',
+                    borderTopColor: planet.theme.secondary,
+                    borderRightColor: 'transparent',
+                    borderBottomColor: planet.theme.secondary,
+                    borderLeftColor: 'transparent',
+                    animation: 'rotate-slow 6s linear infinite reverse',
+                    opacity: 0.4
+                  }} />
+
+                  {/* 星球图片 */}
+                  <div style={{
+                    width: '100%',
+                    height: '100%',
+                    borderRadius: '50%',
+                    overflow: 'hidden',
+                    border: `3px solid ${planet.theme.primary}`,
+                    boxShadow: `0 0 30px ${planet.theme.glow}, inset 0 0 20px ${planet.theme.glow}`,
+                    animation: 'float 3s ease-in-out infinite'
+                  }}>
+                    <img
+                      src={planet.image}
+                      alt={planet.name}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover'
+                      }}
+                    />
+                  </div>
+
+                  {/* 脉冲点 */}
+                  <div style={{
+                    position: 'absolute',
+                    top: '0',
+                    right: '0',
+                    width: '12px',
+                    height: '12px',
+                    borderRadius: '50%',
+                    background: planet.theme.primary,
+                    boxShadow: `0 0 10px ${planet.theme.primary}`,
+                    animation: 'pulse-glow 2s ease-in-out infinite'
+                  }} />
+                </div>
+
+                {/* 文字内容 */}
+                <div style={{
+                  flex: 1,
+                  textAlign: 'left',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px'
+                }}>
+                  <span style={{
+                    color: 'rgba(255,255,255,0.5)',
+                    fontSize: '10px',
+                    letterSpacing: '3px',
+                    fontWeight: 500
+                  }}>
+                    {planet.subtitle}
+                  </span>
+                  <h2 style={{
+                    color: '#fff',
+                    fontSize: '24px',
+                    fontWeight: 'bold',
+                    margin: 0,
+                    letterSpacing: '2px',
+                    textShadow: `0 0 20px ${planet.theme.glow}`,
+                    animation: 'text-glow 2s ease-in-out infinite'
+                  }}>
+                    {planet.name}
+                  </h2>
+
+                  {/* 装饰线 */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    marginTop: '4px'
+                  }}>
+                    <div style={{
+                      width: '40px',
+                      height: '2px',
+                      background: planet.theme.gradient,
+                      borderRadius: '1px'
+                    }} />
+                    <div style={{
+                      width: '4px',
+                      height: '4px',
+                      borderRadius: '50%',
+                      background: planet.theme.primary,
+                      boxShadow: `0 0 8px ${planet.theme.primary}`
+                    }} />
+                  </div>
+                </div>
+
+                {/* 箭头 */}
+                <div style={{
+                  width: '40px',
+                  height: '40px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: '50%',
+                  background: `linear-gradient(135deg, ${planet.theme.secondary}, ${planet.theme.primary})`,
+                  boxShadow: `0 0 20px ${planet.theme.glow}`
+                }}>
+                  <span style={{
+                    color: '#fff',
+                    fontSize: '20px',
+                    fontWeight: 'bold',
+                    animation: 'arrow-bounce 1.5s ease-in-out infinite'
+                  }}>
+                    →
+                  </span>
+                </div>
+              </div>
+
+              {/* 底部渐变条 */}
+              <div style={{
+                position: 'absolute',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                height: '3px',
+                background: planet.theme.gradient,
+                opacity: 1
+              }} />
+            </button>
+          ))}
+        </main>
+      </div>
+    </>
   );
 }

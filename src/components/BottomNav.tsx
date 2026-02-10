@@ -7,6 +7,7 @@ export default function BottomNav({ currentScreen, onNavigate }: BottomNavProps)
   const navItems = [
     { id: 'home', label: '舰桥', icon: '🚀' },
     { id: 'exploration', label: '星图', icon: '🪐' },
+    { id: 'base', label: '基地', icon: '🏛️' },
     { id: 'inventory', label: '货舱', icon: '📦' },
     { id: 'quests', label: '任务', icon: '📜' },
   ];
