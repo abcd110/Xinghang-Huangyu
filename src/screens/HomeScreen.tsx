@@ -1,7 +1,14 @@
 import { useGameStore } from '../stores/gameStore';
 import { useState, useEffect } from 'react';
 import { AutoCollectMode, MODE_INFO, getCollectRobot, CollectRobot } from '../data/autoCollectTypes';
-import restPodImage from '../assets/images/休整.png';
+import 休整Img from '../assets/images/休整.png';
+import 强化Img from '../assets/images/强化.png';
+import 升华Img from '../assets/images/升华.png';
+import 锻造所Img from '../assets/images/锻造所.png';
+import 材料合成Img from '../assets/images/材料合成.png';
+import 星骸解构Img from '../assets/images/星骸解构.png';
+import 战甲档案Img from '../assets/images/战甲档案.png';
+import 商店Img from '../assets/images/商店.png';
 import 舰桥背景Img from '../assets/images/舰桥背景.png';
 
 interface HomeScreenProps {
@@ -430,7 +437,7 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
           {/* 第一行 */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
             <ActionButton
-              iconImage={restPodImage}
+              iconImage={休整Img}
               label={canRest ? "休整" : "能量不足"}
               color="#3b82f6"
               onClick={handleRest}
@@ -439,7 +446,7 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
               delay={0}
             />
             <ActionButton
-              icon="🔫"
+              iconImage={强化Img}
               label="强化"
               color="#8b5cf6"
               onClick={() => onNavigate('equipment')}
@@ -447,7 +454,7 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
               delay={50}
             />
             <ActionButton
-              icon="✨"
+              iconImage={升华Img}
               label="升华"
               color="#c084fc"
               onClick={() => onNavigate('sublimation')}
@@ -455,7 +462,7 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
               delay={100}
             />
             <ActionButton
-              icon="🔨"
+              iconImage={锻造所Img}
               label="锻造所"
               color="#f59e0b"
               onClick={() => onNavigate('crafting')}
@@ -466,7 +473,7 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
           {/* 第二行 */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginTop: '12px' }}>
             <ActionButton
-              icon="⚗️"
+              iconImage={材料合成Img}
               label="材料合成"
               color="#10b981"
               onClick={() => onNavigate('synthesis')}
@@ -474,7 +481,7 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
               delay={200}
             />
             <ActionButton
-              icon="⚗️"
+              iconImage={星骸解构Img}
               label="星骸解构"
               color="#6b7280"
               onClick={() => onNavigate('decompose')}
@@ -482,7 +489,7 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
               delay={250}
             />
             <ActionButton
-              icon="👤"
+              iconImage={战甲档案Img}
               label="战甲档案"
               color="#6b7280"
               onClick={() => onNavigate('player')}
@@ -490,7 +497,7 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
               delay={300}
             />
             <ActionButton
-              icon="🛒"
+              iconImage={商店Img}
               label="星际商店"
               color="#10b981"
               onClick={() => onNavigate('shop')}
@@ -1036,19 +1043,30 @@ function ActionButton({
 
       {/* 图标 */}
       <div style={{
-        width: '36px',
-        height: '36px',
+        width: '44px',
+        height: '44px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: iconImage ? 'transparent' : `${color}20`,
-        borderRadius: '10px',
-        border: iconImage ? 'none' : `1px solid ${color}50`,
-        fontSize: '20px',
-        filter: disabled ? 'grayscale(100%)' : 'none'
+        background: iconImage ? 'rgba(255, 255, 255, 0.05)' : `${color}20`,
+        borderRadius: '12px',
+        border: iconImage ? `1px solid ${color}40` : `1px solid ${color}50`,
+        fontSize: '24px',
+        filter: disabled ? 'grayscale(100%)' : 'none',
+        boxShadow: iconImage ? `0 0 15px ${color}30` : 'none',
+        overflow: 'hidden',
       }}>
         {iconImage ? (
-          <img src={iconImage} alt={label} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+          <img
+            src={iconImage}
+            alt={label}
+            style={{
+              width: '80%',
+              height: '80%',
+              objectFit: 'contain',
+              filter: disabled ? 'grayscale(100%) brightness(0.7)' : 'none',
+            }}
+          />
         ) : (
           icon
         )}
