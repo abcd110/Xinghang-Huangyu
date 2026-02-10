@@ -5,7 +5,7 @@ import type { InventoryItem } from '../data/types';
 import type { EquipmentInstance } from '../core/EquipmentSystem';
 import { EquipmentSlot } from '../data/equipmentTypes';
 import { calculateEquipmentStats } from '../core/EquipmentStatCalculator';
-import 舰桥背景 from '../assets/images/舰桥背景.png';
+import 货舱背景 from '../assets/images/货舱背景.png';
 
 interface InventoryScreenProps {
   onBack: () => void;
@@ -207,12 +207,12 @@ export default function InventoryScreen({ onBack, onNavigate }: InventoryScreenP
       <div style={{
         position: 'absolute',
         inset: 0,
-        backgroundImage: `url(${舰桥背景})`,
+        backgroundImage: `url(${货舱背景})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         zIndex: 0,
       }} />
-      
+
       {/* 扫描线效果 */}
       <div style={{
         position: 'absolute',
@@ -264,16 +264,16 @@ export default function InventoryScreen({ onBack, onNavigate }: InventoryScreenP
             <span>返回</span>
           </button>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <h1 style={{ 
-              color: '#00d4ff', 
-              fontWeight: 'bold', 
+            <h1 style={{
+              color: '#00d4ff',
+              fontWeight: 'bold',
               fontSize: '18px',
               textShadow: '0 0 10px rgba(0, 212, 255, 0.5)',
             }}>
               货舱
             </h1>
-            <span style={{ 
-              color: '#a1a1aa', 
+            <span style={{
+              color: '#a1a1aa',
               fontSize: '14px',
               background: 'rgba(0, 0, 0, 0.5)',
               padding: '2px 8px',
@@ -308,16 +308,16 @@ export default function InventoryScreen({ onBack, onNavigate }: InventoryScreenP
               borderRadius: '20px',
               fontSize: '14px',
               whiteSpace: 'nowrap',
-              background: selectedCategory === cat.id 
+              background: selectedCategory === cat.id
                 ? 'linear-gradient(135deg, rgba(0, 212, 255, 0.3), rgba(124, 58, 237, 0.3))'
                 : 'rgba(255, 255, 255, 0.05)',
               color: selectedCategory === cat.id ? '#00d4ff' : '#9ca3af',
-              border: selectedCategory === cat.id 
+              border: selectedCategory === cat.id
                 ? '1px solid rgba(0, 212, 255, 0.6)'
                 : '1px solid rgba(255, 255, 255, 0.1)',
               cursor: 'pointer',
               fontWeight: selectedCategory === cat.id ? 'bold' : 'normal',
-              boxShadow: selectedCategory === cat.id 
+              boxShadow: selectedCategory === cat.id
                 ? '0 0 15px rgba(0, 212, 255, 0.3)'
                 : 'none',
               transition: 'all 0.3s ease',
@@ -360,13 +360,13 @@ export default function InventoryScreen({ onBack, onNavigate }: InventoryScreenP
         </section>
 
         {filteredItems.length === 0 && filteredEquipment.length === 0 && (
-          <div style={{ 
-            textAlign: 'center', 
-            padding: '48px 0', 
+          <div style={{
+            textAlign: 'center',
+            padding: '48px 0',
             color: '#6b7280',
           }}>
-            <div style={{ 
-              fontSize: '48px', 
+            <div style={{
+              fontSize: '48px',
               marginBottom: '8px',
               opacity: 0.5,
             }}>📦</div>
@@ -653,8 +653,8 @@ function ItemDetailModal({
         overflow: 'hidden',
       }}>
         {/* 头部 */}
-        <div style={{ 
-          padding: '16px', 
+        <div style={{
+          padding: '16px',
           borderBottom: '1px solid rgba(0, 212, 255, 0.2)',
           background: 'linear-gradient(180deg, rgba(0, 212, 255, 0.1), transparent)',
         }}>
@@ -675,10 +675,10 @@ function ItemDetailModal({
                 {TYPE_NAMES[item.type][0]}
               </div>
               <div>
-                <h2 style={{ 
-                  color: rarityColor, 
-                  fontWeight: 'bold', 
-                  fontSize: '16px', 
+                <h2 style={{
+                  color: rarityColor,
+                  fontWeight: 'bold',
+                  fontSize: '16px',
                   margin: 0,
                   textShadow: `0 0 10px ${rarityColor}50`,
                 }}>
@@ -694,14 +694,14 @@ function ItemDetailModal({
             </div>
             <button
               onClick={onClose}
-              style={{ 
-                color: '#a1a1aa', 
-                background: 'rgba(255, 255, 255, 0.1)', 
+              style={{
+                color: '#a1a1aa',
+                background: 'rgba(255, 255, 255, 0.1)',
                 border: '1px solid rgba(255, 255, 255, 0.2)',
                 borderRadius: '8px',
                 width: '32px',
                 height: '32px',
-                fontSize: '16px', 
+                fontSize: '16px',
                 cursor: 'pointer',
               }}
             >
@@ -714,10 +714,10 @@ function ItemDetailModal({
         <div style={{ padding: '16px', maxHeight: '50vh', overflowY: 'auto' }}>
           <p style={{ color: '#d1d5db', fontSize: '14px', marginBottom: '16px' }}>{item.description}</p>
 
-          <div style={{ 
-            background: 'rgba(0, 0, 0, 0.4)', 
-            borderRadius: '12px', 
-            padding: '12px', 
+          <div style={{
+            background: 'rgba(0, 0, 0, 0.4)',
+            borderRadius: '12px',
+            padding: '12px',
             marginBottom: '16px',
             border: '1px solid rgba(0, 212, 255, 0.2)',
           }}>
@@ -780,10 +780,10 @@ function ItemDetailModal({
             </div>
           </div>
 
-          <div style={{ 
-            textAlign: 'center', 
-            color: '#a1a1aa', 
-            fontSize: '14px', 
+          <div style={{
+            textAlign: 'center',
+            color: '#a1a1aa',
+            fontSize: '14px',
             marginBottom: '16px',
             background: 'rgba(0, 0, 0, 0.3)',
             padding: '8px',
@@ -794,11 +794,11 @@ function ItemDetailModal({
         </div>
 
         {/* 操作按钮 */}
-        <div style={{ 
-          padding: '16px', 
-          borderTop: '1px solid rgba(0, 212, 255, 0.2)', 
-          display: 'grid', 
-          gridTemplateColumns: '1fr 1fr', 
+        <div style={{
+          padding: '16px',
+          borderTop: '1px solid rgba(0, 212, 255, 0.2)',
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
           gap: '8px',
           background: 'linear-gradient(0deg, rgba(0, 212, 255, 0.05), transparent)',
         }}>
@@ -876,13 +876,13 @@ function ItemDetailModal({
 }
 
 // 科幻风格按钮组件
-function SciFiButton({ 
-  onClick, 
-  label, 
-  variant = 'default' 
-}: { 
-  onClick: () => void; 
-  label: string; 
+function SciFiButton({
+  onClick,
+  label,
+  variant = 'default'
+}: {
+  onClick: () => void;
+  label: string;
   variant?: 'primary' | 'secondary' | 'success' | 'danger' | 'info' | 'default';
 }) {
   const variantStyles = {
@@ -1168,8 +1168,8 @@ function EnhancePreviewModal({
         overflow: 'hidden',
       }}>
         {/* 头部 */}
-        <div style={{ 
-          padding: '16px', 
+        <div style={{
+          padding: '16px',
           borderBottom: '1px solid rgba(0, 212, 255, 0.2)',
           background: 'linear-gradient(180deg, rgba(0, 212, 255, 0.1), transparent)',
         }}>
@@ -1179,14 +1179,14 @@ function EnhancePreviewModal({
             </h2>
             <button
               onClick={onClose}
-              style={{ 
-                color: '#a1a1aa', 
-                background: 'rgba(255, 255, 255, 0.1)', 
+              style={{
+                color: '#a1a1aa',
+                background: 'rgba(255, 255, 255, 0.1)',
                 border: '1px solid rgba(255, 255, 255, 0.2)',
                 borderRadius: '8px',
                 width: '32px',
                 height: '32px',
-                fontSize: '16px', 
+                fontSize: '16px',
                 cursor: 'pointer',
               }}
             >
@@ -1369,8 +1369,8 @@ function EquipmentDetailModal({
         overflow: 'hidden',
       }}>
         {/* 头部 */}
-        <div style={{ 
-          padding: '16px', 
+        <div style={{
+          padding: '16px',
           borderBottom: `1px solid ${rarityColor}50`,
           background: `linear-gradient(180deg, ${rarityColor}20, transparent)`,
         }}>
@@ -1391,10 +1391,10 @@ function EquipmentDetailModal({
                 {SLOT_ICONS[equipment.slot]}
               </div>
               <div>
-                <h2 style={{ 
-                  color: rarityColor, 
-                  fontWeight: 'bold', 
-                  fontSize: '16px', 
+                <h2 style={{
+                  color: rarityColor,
+                  fontWeight: 'bold',
+                  fontSize: '16px',
                   margin: 0,
                   textShadow: `0 0 10px ${rarityColor}50`,
                 }}>
@@ -1407,14 +1407,14 @@ function EquipmentDetailModal({
             </div>
             <button
               onClick={onClose}
-              style={{ 
-                color: '#a1a1aa', 
-                background: 'rgba(255, 255, 255, 0.1)', 
+              style={{
+                color: '#a1a1aa',
+                background: 'rgba(255, 255, 255, 0.1)',
                 border: '1px solid rgba(255, 255, 255, 0.2)',
                 borderRadius: '8px',
                 width: '32px',
                 height: '32px',
-                fontSize: '16px', 
+                fontSize: '16px',
                 cursor: 'pointer',
               }}
             >
@@ -1427,10 +1427,10 @@ function EquipmentDetailModal({
         <div style={{ padding: '16px', maxHeight: '50vh', overflowY: 'auto' }}>
           <p style={{ color: '#d1d5db', fontSize: '14px', marginBottom: '16px' }}>{equipment.description}</p>
 
-          <div style={{ 
-            background: 'rgba(0, 0, 0, 0.4)', 
-            borderRadius: '12px', 
-            padding: '12px', 
+          <div style={{
+            background: 'rgba(0, 0, 0, 0.4)',
+            borderRadius: '12px',
+            padding: '12px',
             marginBottom: '16px',
             border: '1px solid rgba(0, 212, 255, 0.2)',
           }}>
@@ -1493,10 +1493,10 @@ function EquipmentDetailModal({
           </div>
 
           {equipment.effects.length > 0 && (
-            <div style={{ 
-              background: 'rgba(0, 0, 0, 0.4)', 
-              borderRadius: '12px', 
-              padding: '12px', 
+            <div style={{
+              background: 'rgba(0, 0, 0, 0.4)',
+              borderRadius: '12px',
+              padding: '12px',
               marginBottom: '16px',
               border: '1px solid rgba(124, 58, 237, 0.3)',
             }}>
@@ -1512,10 +1512,10 @@ function EquipmentDetailModal({
         </div>
 
         {/* 操作按钮 */}
-        <div style={{ 
-          padding: '16px', 
-          borderTop: `1px solid ${rarityColor}30`, 
-          display: 'flex', 
+        <div style={{
+          padding: '16px',
+          borderTop: `1px solid ${rarityColor}30`,
+          display: 'flex',
           gap: '8px',
           background: `linear-gradient(0deg, ${rarityColor}10, transparent)`,
         }}>
