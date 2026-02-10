@@ -439,7 +439,8 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
             <ActionButton
               iconImage={休整Img}
               label={canRest ? "休整" : "能量不足"}
-              color="#3b82f6"
+              color="#00d4ff"
+              glowColor="rgba(0, 212, 255, 0.6)"
               onClick={handleRest}
               disabled={!canRest}
               mounted={mounted}
@@ -449,6 +450,7 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
               iconImage={强化Img}
               label="强化"
               color="#8b5cf6"
+              glowColor="rgba(139, 92, 246, 0.6)"
               onClick={() => onNavigate('equipment')}
               mounted={mounted}
               delay={50}
@@ -456,7 +458,8 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
             <ActionButton
               iconImage={升华Img}
               label="升华"
-              color="#c084fc"
+              color="#fbbf24"
+              glowColor="rgba(251, 191, 36, 0.6)"
               onClick={() => onNavigate('sublimation')}
               mounted={mounted}
               delay={100}
@@ -464,7 +467,8 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
             <ActionButton
               iconImage={锻造所Img}
               label="锻造所"
-              color="#f59e0b"
+              color="#f97316"
+              glowColor="rgba(249, 115, 22, 0.6)"
               onClick={() => onNavigate('crafting')}
               mounted={mounted}
               delay={150}
@@ -476,6 +480,7 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
               iconImage={材料合成Img}
               label="材料合成"
               color="#10b981"
+              glowColor="rgba(16, 185, 129, 0.6)"
               onClick={() => onNavigate('synthesis')}
               mounted={mounted}
               delay={200}
@@ -483,7 +488,8 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
             <ActionButton
               iconImage={星骸解构Img}
               label="星骸解构"
-              color="#6b7280"
+              color="#64748b"
+              glowColor="rgba(100, 116, 139, 0.6)"
               onClick={() => onNavigate('decompose')}
               mounted={mounted}
               delay={250}
@@ -491,7 +497,8 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
             <ActionButton
               iconImage={战甲档案Img}
               label="战甲档案"
-              color="#6b7280"
+              color="#60a5fa"
+              glowColor="rgba(96, 165, 250, 0.6)"
               onClick={() => onNavigate('player')}
               mounted={mounted}
               delay={300}
@@ -499,7 +506,8 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
             <ActionButton
               iconImage={商店Img}
               label="星际商店"
-              color="#10b981"
+              color="#22d3ee"
+              glowColor="rgba(34, 211, 238, 0.6)"
               onClick={() => onNavigate('shop')}
               mounted={mounted}
               delay={350}
@@ -993,6 +1001,7 @@ function ActionButton({
   iconImage,
   label,
   color,
+  glowColor,
   onClick,
   disabled = false,
   mounted,
@@ -1002,95 +1011,146 @@ function ActionButton({
   iconImage?: string;
   label: string;
   color: string;
+  glowColor?: string;
   onClick: () => void;
   disabled?: boolean;
   mounted: boolean;
   delay: number;
 }) {
+  const actualGlowColor = glowColor || color + '60';
+
   return (
     <button
       onClick={onClick}
       disabled={disabled}
+      className="action-button"
       style={{
-        background: 'rgba(0, 0, 0, 0.5)',
-        border: `1px solid ${disabled ? 'rgba(255,255,255,0.1)' : color + '50'}`,
-        borderRadius: '10px',
-        padding: '8px 4px',
+        background: disabled
+          ? 'rgba(20, 20, 30, 0.6)'
+          : `linear-gradient(135deg, rgba(0,0,0,0.7) 0%, ${color}08 50%, rgba(0,0,0,0.7) 100%)`,
+        border: `1px solid ${disabled ? 'rgba(100,100,100,0.2)' : color + '60'}`,
+        borderRadius: '12px',
+        padding: '10px 6px',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'flex-start',
-        gap: '4px',
+        gap: '6px',
         cursor: disabled ? 'not-allowed' : 'pointer',
-        opacity: mounted ? (disabled ? 0.5 : 1) : 0,
-        transform: mounted ? 'translateY(0)' : 'translateY(20px)',
-        transition: `all 0.4s ease ${delay}ms`,
+        opacity: mounted ? (disabled ? 0.4 : 1) : 0,
+        transform: mounted ? 'translateY(0) scale(1)' : 'translateY(20px) scale(0.95)',
+        transition: `all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) ${delay}ms`,
         position: 'relative',
         overflow: 'hidden',
-        minHeight: '90px',
-        boxShadow: `0 0 15px ${disabled ? 'transparent' : color + '15'}`,
+        minHeight: '95px',
+        boxShadow: disabled
+          ? 'inset 0 0 20px rgba(0,0,0,0.5)'
+          : `0 0 20px ${color}20, inset 0 0 30px ${color}08`,
       }}
       onMouseEnter={(e) => {
         if (!disabled) {
-          e.currentTarget.style.boxShadow = `0 0 25px ${color}40`;
-          e.currentTarget.style.borderColor = color + '80';
+          e.currentTarget.style.transform = 'translateY(-3px) scale(1.02)';
+          e.currentTarget.style.boxShadow = `0 8px 30px ${actualGlowColor}, 0 0 40px ${color}30, inset 0 0 20px ${color}15`;
+          e.currentTarget.style.borderColor = color;
         }
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.boxShadow = `0 0 15px ${disabled ? 'transparent' : color + '15'}`;
-        e.currentTarget.style.borderColor = disabled ? 'rgba(255,255,255,0.1)' : color + '50';
+        e.currentTarget.style.transform = 'translateY(0) scale(1)';
+        e.currentTarget.style.boxShadow = disabled
+          ? 'inset 0 0 20px rgba(0,0,0,0.5)'
+          : `0 0 20px ${color}20, inset 0 0 30px ${color}08`;
+        e.currentTarget.style.borderColor = disabled ? 'rgba(100,100,100,0.2)' : color + '60';
+      }}
+      onMouseDown={(e) => {
+        if (!disabled) {
+          e.currentTarget.style.transform = 'translateY(0) scale(0.98)';
+        }
+      }}
+      onMouseUp={(e) => {
+        if (!disabled) {
+          e.currentTarget.style.transform = 'translateY(-3px) scale(1.02)';
+        }
       }}
     >
+      {/* 动态光效背景 */}
+      {!disabled && (
+        <div
+          className="button-glow"
+          style={{
+            position: 'absolute',
+            inset: '-50%',
+            background: `radial-gradient(circle at 50% 50%, ${color}20 0%, transparent 60%)`,
+            animation: 'pulse-glow 3s ease-in-out infinite',
+            pointerEvents: 'none',
+          }}
+        />
+      )}
+
       {/* 顶部发光条 */}
       <div style={{
         position: 'absolute',
         top: 0,
-        left: '15%',
-        right: '15%',
+        left: '20%',
+        right: '20%',
         height: '2px',
-        background: disabled ? 'transparent' : `linear-gradient(90deg, transparent 0%, ${color} 50%, transparent 100%)`,
-        boxShadow: disabled ? 'none' : `0 0 6px ${color}`,
+        background: disabled
+          ? 'rgba(100,100,100,0.3)'
+          : `linear-gradient(90deg, transparent 0%, ${color} 50%, transparent 100%)`,
+        boxShadow: disabled ? 'none' : `0 0 10px ${color}, 0 0 20px ${color}`,
+        animation: disabled ? 'none' : 'shimmer 2s ease-in-out infinite',
       }} />
 
-      {/* 图标区域 - 占据大部分空间 */}
+      {/* 图标区域 */}
       <div style={{
-        width: '56px',
-        height: '56px',
+        width: '54px',
+        height: '54px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: iconImage ? `radial-gradient(circle, ${color}15 0%, transparent 70%)` : `${color}15`,
-        borderRadius: '10px',
-        border: `1px solid ${disabled ? 'rgba(255,255,255,0.1)' : color + '40'}`,
+        background: disabled
+          ? 'rgba(50,50,50,0.3)'
+          : `radial-gradient(circle, ${color}20 0%, ${color}05 50%, transparent 70%)`,
+        borderRadius: '12px',
+        border: `1px solid ${disabled ? 'rgba(100,100,100,0.2)' : color + '50'}`,
         fontSize: '28px',
-        filter: disabled ? 'grayscale(100%) brightness(0.6)' : 'none',
-        marginTop: '2px',
+        filter: disabled ? 'grayscale(100%) brightness(0.5)' : 'none',
+        marginTop: '4px',
+        position: 'relative',
+        boxShadow: disabled ? 'none' : `inset 0 0 15px ${color}15`,
       }}>
         {iconImage ? (
           <img
             src={iconImage}
             alt={label}
             style={{
-              width: '90%',
-              height: '90%',
+              width: '85%',
+              height: '85%',
               objectFit: 'contain',
-              filter: disabled ? 'grayscale(100%) brightness(0.7)' : 'drop-shadow(0 0 4px ' + color + '50)',
+              filter: disabled
+                ? 'grayscale(100%) brightness(0.6)'
+                : `drop-shadow(0 0 8px ${color}60) drop-shadow(0 0 16px ${color}40)`,
+              transition: 'all 0.3s ease',
             }}
           />
         ) : (
-          <span style={{ filter: disabled ? 'none' : `drop-shadow(0 0 4px ${color})` }}>{icon}</span>
+          <span style={{
+            filter: disabled ? 'none' : `drop-shadow(0 0 6px ${color}) drop-shadow(0 0 12px ${color})`,
+            transition: 'all 0.3s ease',
+          }}>{icon}</span>
         )}
       </div>
 
       {/* 文字标签 */}
       <span style={{
-        color: disabled ? '#71717a' : color,
-        fontSize: '10px',
+        color: disabled ? '#555' : color,
+        fontSize: '11px',
         fontWeight: 'bold',
         textAlign: 'center',
         lineHeight: '1.2',
-        textShadow: disabled ? 'none' : `0 0 4px ${color}40`,
-        marginTop: '2px',
+        textShadow: disabled ? 'none' : `0 0 8px ${color}60, 0 0 16px ${color}40`,
+        letterSpacing: '0.5px',
+        position: 'relative',
+        zIndex: 1,
       }}>{label}</span>
     </button>
   );
