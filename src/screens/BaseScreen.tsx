@@ -1,10 +1,22 @@
 import { useState } from 'react';
 import { useGameStore } from '../stores/gameStore';
+import 基地背景 from '../assets/images/基地背景.png';
 
 interface BaseScreenProps {
   onNavigate: (screen: string, params?: unknown) => void;
   onBack: () => void;
 }
+
+// 科幻风格颜色配置
+const SCIFI_COLORS = {
+  primary: '#00d4ff',
+  secondary: '#7c3aed',
+  warning: '#f59e0b',
+  danger: '#ef4444',
+  success: '#22c55e',
+  background: 'rgba(0, 20, 40, 0.85)',
+  border: 'rgba(0, 212, 255, 0.3)',
+};
 
 // 基地功能定义
 interface BaseFacility {
@@ -41,15 +53,37 @@ export default function BaseScreen({ onNavigate, onBack }: BaseScreenProps) {
 
   return (
     <div style={{
-      minHeight: '100vh',
+      height: '100vh',
+      position: 'relative',
+      overflow: 'hidden',
       display: 'flex',
       flexDirection: 'column',
-      background: 'linear-gradient(180deg, #0a0e27 0%, #1a1f3a 50%, #0a0e27 100%)',
     }}>
-      {/* 顶部标题栏 */}
+      {/* 背景 */}
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        backgroundImage: `url(${基地背景})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        zIndex: 0,
+      }} />
+      
+      {/* 扫描线效果 */}
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        background: 'linear-gradient(180deg, transparent 0%, rgba(0, 212, 255, 0.03) 50%, transparent 100%)',
+        backgroundSize: '100% 4px',
+        animation: 'scanline 8s linear infinite',
+        pointerEvents: 'none',
+        zIndex: 1,
+      }} />
+
+      {/* 顶部标题栏 - 玻璃拟态 */}
       <BaseHeader onBack={onBack} />
 
-      {/* 基地概览 */}
+      {/* 基地概览 - 玻璃拟态 */}
       <BaseOverview />
 
       {/* 功能网格 */}
@@ -57,6 +91,8 @@ export default function BaseScreen({ onNavigate, onBack }: BaseScreenProps) {
         flex: 1,
         overflowY: 'auto',
         padding: '16px',
+        position: 'relative',
+        zIndex: 10,
       }}>
         <div style={{
           display: 'grid',
@@ -80,20 +116,30 @@ export default function BaseScreen({ onNavigate, onBack }: BaseScreenProps) {
           onClose={() => setSelectedFacility(null)}
         />
       )}
+
+      {/* CSS 动画 */}
+      <style>{`
+        @keyframes scanline {
+          0% { transform: translateY(-100%); }
+          100% { transform: translateY(100vh); }
+        }
+      `}</style>
     </div>
   );
 }
 
-// 顶部标题栏
+// 顶部标题栏 - 科幻风格
 function BaseHeader({ onBack }: { onBack: () => void }) {
   return (
     <div style={{
       flexShrink: 0,
-      background: 'linear-gradient(180deg, rgba(26, 31, 58, 0.98) 0%, rgba(10, 14, 39, 0.95) 100%)',
+      position: 'relative',
+      zIndex: 10,
+      background: 'rgba(0, 20, 40, 0.85)',
+      backdropFilter: 'blur(12px)',
       borderBottom: '1px solid rgba(0, 212, 255, 0.3)',
       padding: '12px 16px',
-      boxShadow: '0 2px 20px rgba(0, 212, 255, 0.15)',
-      position: 'relative',
+      boxShadow: '0 0 20px rgba(0, 212, 255, 0.1)',
     }}>
       {/* 顶部发光条 */}
       <div style={{
@@ -103,6 +149,7 @@ function BaseHeader({ onBack }: { onBack: () => void }) {
         right: 0,
         height: '2px',
         background: 'linear-gradient(90deg, transparent 0%, #00d4ff 50%, transparent 100%)',
+        boxShadow: '0 0 10px #00d4ff',
       }} />
 
       <div style={{
@@ -123,32 +170,40 @@ function BaseHeader({ onBack }: { onBack: () => void }) {
             color: '#00d4ff',
             fontSize: '14px',
             cursor: 'pointer',
+            transition: 'all 0.3s ease',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'rgba(0, 212, 255, 0.2)';
+            e.currentTarget.style.boxShadow = '0 0 10px rgba(0, 212, 255, 0.3)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'rgba(0, 212, 255, 0.1)';
+            e.currentTarget.style.boxShadow = 'none';
           }}
         >
-          <span>←</span>
+          <span>◀</span>
           <span>返回舰桥</span>
         </button>
 
         <h1 style={{
-          color: '#ffffff',
+          color: '#00d4ff',
           fontSize: '18px',
           fontWeight: 'bold',
           textShadow: '0 0 10px rgba(0, 212, 255, 0.5)',
         }}>
-          ⚡ 基地
+          ⚡ 星际基地
         </h1>
 
-        <div style={{ width: '80px' }} />
+        <div style={{ width: '90px' }} />
       </div>
     </div>
   );
 }
 
-// 基地概览
+// 基地概览 - 科幻风格
 function BaseOverview() {
   const { gameManager } = useGameStore();
   
-  // TODO: 从 gameManager 获取真实数据
   const activeFacilities = FACILITIES.filter(f => f.status === 'active').length;
   const totalFacilities = FACILITIES.length;
   const baseLevel = 1;
@@ -156,7 +211,10 @@ function BaseOverview() {
   return (
     <div style={{
       flexShrink: 0,
-      background: 'linear-gradient(135deg, rgba(0, 212, 255, 0.15) 0%, rgba(0, 153, 204, 0.1) 100%)',
+      position: 'relative',
+      zIndex: 10,
+      background: 'rgba(0, 10, 30, 0.8)',
+      backdropFilter: 'blur(8px)',
       borderBottom: '1px solid rgba(0, 212, 255, 0.2)',
       padding: '16px',
     }}>
@@ -165,20 +223,28 @@ function BaseOverview() {
         justifyContent: 'space-around',
         alignItems: 'center',
       }}>
-        <OverviewItem label="基地等级" value={`Lv.${baseLevel}`} color="#00d4ff" />
-        <OverviewItem label="设施数量" value={`${activeFacilities}/${totalFacilities}`} color="#10b981" />
-        <OverviewItem label="能源产出" value="+100%/h" color="#f59e0b" />
+        <OverviewItem label="基地等级" value={`Lv.${baseLevel}`} color="#00d4ff" icon="🏢" />
+        <OverviewItem label="设施数量" value={`${activeFacilities}/${totalFacilities}`} color="#10b981" icon="🔧" />
+        <OverviewItem label="能源产出" value="+100%/h" color="#f59e0b" icon="⚡" />
       </div>
     </div>
   );
 }
 
-function OverviewItem({ label, value, color }: { label: string; value: string; color: string }) {
+function OverviewItem({ label, value, color, icon }: { label: string; value: string; color: string; icon: string }) {
   return (
-    <div style={{ textAlign: 'center' }}>
+    <div style={{ 
+      textAlign: 'center',
+      background: 'rgba(0, 0, 0, 0.4)',
+      padding: '10px 16px',
+      borderRadius: '12px',
+      border: `1px solid ${color}30`,
+      minWidth: '90px',
+    }}>
+      <div style={{ fontSize: '16px', marginBottom: '4px' }}>{icon}</div>
       <div style={{
         color: color,
-        fontSize: '20px',
+        fontSize: '18px',
         fontWeight: 'bold',
         textShadow: `0 0 10px ${color}50`,
       }}>
@@ -186,7 +252,7 @@ function OverviewItem({ label, value, color }: { label: string; value: string; c
       </div>
       <div style={{
         color: '#a1a1aa',
-        fontSize: '11px',
+        fontSize: '10px',
         marginTop: '2px',
       }}>
         {label}
@@ -195,7 +261,7 @@ function OverviewItem({ label, value, color }: { label: string; value: string; c
   );
 }
 
-// 设施卡片
+// 设施卡片 - 科幻风格
 function FacilityCard({ facility, onClick }: { facility: BaseFacility; onClick: () => void }) {
   const isLocked = facility.status === 'locked';
   const isBuilding = facility.status === 'building';
@@ -211,15 +277,26 @@ function FacilityCard({ facility, onClick }: { facility: BaseFacility; onClick: 
         justifyContent: 'center',
         padding: '16px 8px',
         background: isLocked 
-          ? 'rgba(107, 114, 128, 0.1)' 
-          : `linear-gradient(135deg, ${facility.color}20 0%, ${facility.color}05 100%)`,
-        border: `1px solid ${isLocked ? 'rgba(107, 114, 128, 0.3)' : facility.color + '50'}`,
+          ? 'rgba(107, 114, 128, 0.15)' 
+          : 'rgba(0, 20, 40, 0.7)',
+        border: `1px solid ${isLocked ? 'rgba(107, 114, 128, 0.3)' : facility.color + '60'}`,
         borderRadius: '12px',
         cursor: isLocked ? 'not-allowed' : 'pointer',
-        transition: 'all 0.2s',
-        opacity: isLocked ? 0.6 : 1,
+        opacity: isLocked ? 0.5 : 1,
         position: 'relative',
         minHeight: '100px',
+        boxShadow: isLocked ? 'none' : `0 0 15px ${facility.color}20`,
+        transition: 'all 0.3s ease',
+      }}
+      onMouseEnter={(e) => {
+        if (!isLocked) {
+          e.currentTarget.style.boxShadow = `0 0 25px ${facility.color}40`;
+          e.currentTarget.style.transform = 'translateY(-2px)';
+        }
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.boxShadow = isLocked ? 'none' : `0 0 15px ${facility.color}20`;
+        e.currentTarget.style.transform = 'translateY(0)';
       }}
     >
       {/* 状态图标 */}
@@ -229,6 +306,7 @@ function FacilityCard({ facility, onClick }: { facility: BaseFacility; onClick: 
           top: '8px',
           right: '8px',
           fontSize: '14px',
+          opacity: 0.7,
         }}>
           🔒
         </div>
@@ -249,6 +327,7 @@ function FacilityCard({ facility, onClick }: { facility: BaseFacility; onClick: 
         fontSize: '32px',
         marginBottom: '8px',
         filter: isLocked ? 'grayscale(100%)' : 'none',
+        textShadow: isLocked ? 'none' : `0 0 10px ${facility.color}50`,
       }}>
         {facility.icon}
       </div>
@@ -259,6 +338,7 @@ function FacilityCard({ facility, onClick }: { facility: BaseFacility; onClick: 
         fontSize: '13px',
         fontWeight: 'bold',
         textAlign: 'center',
+        textShadow: isLocked ? 'none' : `0 0 5px ${facility.color}30`,
       }}>
         {facility.name}
       </div>
@@ -269,6 +349,9 @@ function FacilityCard({ facility, onClick }: { facility: BaseFacility; onClick: 
           color: '#a1a1aa',
           fontSize: '10px',
           marginTop: '4px',
+          background: 'rgba(0, 0, 0, 0.4)',
+          padding: '2px 6px',
+          borderRadius: '4px',
         }}>
           Lv.{facility.level}/{facility.maxLevel}
         </div>
@@ -277,7 +360,7 @@ function FacilityCard({ facility, onClick }: { facility: BaseFacility; onClick: 
       {/* 描述 */}
       <div style={{
         color: '#71717a',
-        fontSize: '10px',
+        fontSize: '9px',
         textAlign: 'center',
         marginTop: '4px',
         lineHeight: '1.2',
@@ -288,7 +371,7 @@ function FacilityCard({ facility, onClick }: { facility: BaseFacility; onClick: 
   );
 }
 
-// 设施详情弹窗
+// 设施详情弹窗 - 科幻风格
 function FacilityDetailModal({ facility, onClose }: { facility: BaseFacility; onClose: () => void }) {
   const { gameManager } = useGameStore();
 
@@ -316,6 +399,7 @@ function FacilityDetailModal({ facility, onClose }: { facility: BaseFacility; on
       position: 'fixed',
       inset: 0,
       backgroundColor: 'rgba(0, 0, 0, 0.85)',
+      backdropFilter: 'blur(4px)',
       zIndex: 100,
       display: 'flex',
       alignItems: 'center',
@@ -323,32 +407,37 @@ function FacilityDetailModal({ facility, onClose }: { facility: BaseFacility; on
       padding: '16px',
     }}>
       <div style={{
-        background: 'linear-gradient(135deg, rgba(26, 31, 58, 0.98) 0%, rgba(10, 14, 39, 0.98) 100%)',
+        background: 'rgba(0, 20, 40, 0.95)',
+        backdropFilter: 'blur(20px)',
         borderRadius: '16px',
         width: '100%',
         maxWidth: '400px',
         maxHeight: '80vh',
         overflowY: 'auto',
         border: `2px solid ${facility.color}`,
-        boxShadow: `0 0 30px ${facility.color}40`,
+        boxShadow: `0 0 40px ${facility.color}40, inset 0 0 40px ${facility.color}10`,
       }}>
         {/* 头部 */}
         <div style={{
-          background: `${facility.color}20`,
+          background: `linear-gradient(180deg, ${facility.color}30, ${facility.color}10)`,
           padding: '16px',
-          borderBottom: `1px solid ${facility.color}40`,
+          borderBottom: `1px solid ${facility.color}50`,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <span style={{ fontSize: '28px' }}>{facility.icon}</span>
+            <span style={{ 
+              fontSize: '28px',
+              textShadow: `0 0 10px ${facility.color}`,
+            }}>{facility.icon}</span>
             <div>
               <h2 style={{
                 color: facility.color,
                 fontSize: '18px',
                 fontWeight: 'bold',
                 margin: 0,
+                textShadow: `0 0 10px ${facility.color}50`,
               }}>
                 {facility.name}
               </h2>
@@ -362,15 +451,16 @@ function FacilityDetailModal({ facility, onClose }: { facility: BaseFacility; on
           <button
             onClick={onClose}
             style={{
-              background: 'none',
-              border: 'none',
+              background: 'rgba(255, 255, 255, 0.1)',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              borderRadius: '8px',
               color: '#a1a1aa',
-              fontSize: '24px',
+              fontSize: '20px',
               cursor: 'pointer',
-              padding: '4px',
+              padding: '4px 10px',
             }}
           >
-            ×
+            ✕
           </button>
         </div>
 
@@ -395,7 +485,7 @@ function CrewContent() {
   return (
     <div>
       <p style={{ color: '#a1a1aa', fontSize: '14px', marginBottom: '16px' }}>
-        当前船员: {crewMembers.length}/5
+        当前船员: <span style={{ color: '#00d4ff', fontWeight: 'bold' }}>{crewMembers.length}/5</span>
       </p>
 
       {crewMembers.map(crew => (
@@ -405,8 +495,9 @@ function CrewContent() {
           gap: '12px',
           padding: '12px',
           background: 'rgba(0, 212, 255, 0.1)',
-          borderRadius: '8px',
+          borderRadius: '12px',
           marginBottom: '8px',
+          border: '1px solid rgba(0, 212, 255, 0.2)',
         }}>
           <div style={{ fontSize: '28px' }}>{crew.icon}</div>
           <div style={{ flex: 1 }}>
@@ -420,13 +511,14 @@ function CrewContent() {
       <button style={{
         width: '100%',
         padding: '12px',
-        background: 'linear-gradient(135deg, #00d4ff 0%, #0099cc 100%)',
-        border: 'none',
+        background: 'linear-gradient(135deg, rgba(0, 212, 255, 0.3), rgba(0, 212, 255, 0.1))',
+        border: '1px solid rgba(0, 212, 255, 0.5)',
         borderRadius: '8px',
-        color: 'white',
+        color: '#00d4ff',
         fontWeight: 'bold',
         cursor: 'pointer',
         marginTop: '8px',
+        boxShadow: '0 0 15px rgba(0, 212, 255, 0.2)',
       }}>
         ➕ 招募新船员 (500信用点)
       </button>
@@ -442,14 +534,15 @@ function EnergyContent() {
   return (
     <div>
       <div style={{
-        background: 'linear-gradient(180deg, rgba(245, 158, 11, 0.2) 0%, rgba(245, 158, 11, 0.05) 100%)',
+        background: 'rgba(0, 0, 0, 0.4)',
         borderRadius: '12px',
         padding: '20px',
         marginBottom: '16px',
         textAlign: 'center',
+        border: '1px solid rgba(245, 158, 11, 0.3)',
       }}>
-        <div style={{ fontSize: '48px', marginBottom: '8px' }}>⚡</div>
-        <div style={{ color: '#f59e0b', fontWeight: 'bold', fontSize: '20px' }}>
+        <div style={{ fontSize: '48px', marginBottom: '8px', textShadow: '0 0 20px rgba(245, 158, 11, 0.5)' }}>⚡</div>
+        <div style={{ color: '#f59e0b', fontWeight: 'bold', fontSize: '20px', textShadow: '0 0 10px rgba(245, 158, 11, 0.3)' }}>
           能源核心 Lv.{level}
         </div>
         <div style={{ color: '#a1a1aa', fontSize: '14px', marginTop: '8px' }}>
@@ -473,6 +566,7 @@ function EnergyContent() {
             width: `${(level / 10) * 100}%`,
             background: 'linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%)',
             borderRadius: '4px',
+            boxShadow: '0 0 10px #f59e0b',
           }} />
         </div>
       </div>
@@ -480,12 +574,13 @@ function EnergyContent() {
       <button style={{
         width: '100%',
         padding: '12px',
-        background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-        border: 'none',
+        background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.3), rgba(245, 158, 11, 0.1))',
+        border: '1px solid rgba(245, 158, 11, 0.5)',
         borderRadius: '8px',
-        color: 'white',
+        color: '#f59e0b',
         fontWeight: 'bold',
         cursor: 'pointer',
+        boxShadow: '0 0 15px rgba(245, 158, 11, 0.2)',
       }}>
         ⬆️ 升级 (1000信用点 + 10星铁)
       </button>
@@ -501,14 +596,15 @@ function WarehouseContent() {
   return (
     <div>
       <div style={{
-        background: 'linear-gradient(180deg, rgba(16, 185, 129, 0.2) 0%, rgba(16, 185, 129, 0.05) 100%)',
+        background: 'rgba(0, 0, 0, 0.4)',
         borderRadius: '12px',
         padding: '20px',
         marginBottom: '16px',
         textAlign: 'center',
+        border: '1px solid rgba(16, 185, 129, 0.3)',
       }}>
-        <div style={{ fontSize: '48px', marginBottom: '8px' }}>📦</div>
-        <div style={{ color: '#10b981', fontWeight: 'bold', fontSize: '20px' }}>
+        <div style={{ fontSize: '48px', marginBottom: '8px', textShadow: '0 0 20px rgba(16, 185, 129, 0.5)' }}>📦</div>
+        <div style={{ color: '#10b981', fontWeight: 'bold', fontSize: '20px', textShadow: '0 0 10px rgba(16, 185, 129, 0.3)' }}>
           存储容量
         </div>
         <div style={{ color: '#a1a1aa', fontSize: '14px', marginTop: '8px' }}>
@@ -532,6 +628,7 @@ function WarehouseContent() {
             width: `${(current / max) * 100}%`,
             background: 'linear-gradient(90deg, #10b981 0%, #34d399 100%)',
             borderRadius: '4px',
+            boxShadow: '0 0 10px #10b981',
           }} />
         </div>
       </div>
@@ -539,12 +636,13 @@ function WarehouseContent() {
       <button style={{
         width: '100%',
         padding: '12px',
-        background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-        border: 'none',
+        background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.3), rgba(16, 185, 129, 0.1))',
+        border: '1px solid rgba(16, 185, 129, 0.5)',
         borderRadius: '8px',
-        color: 'white',
+        color: '#10b981',
         fontWeight: 'bold',
         cursor: 'pointer',
+        boxShadow: '0 0 15px rgba(16, 185, 129, 0.2)',
       }}>
         ⬆️ 扩展仓库 (+20格, 500信用点)
       </button>
@@ -560,14 +658,15 @@ function MedicalContent() {
   return (
     <div>
       <div style={{
-        background: 'linear-gradient(180deg, rgba(239, 68, 68, 0.2) 0%, rgba(239, 68, 68, 0.05) 100%)',
+        background: 'rgba(0, 0, 0, 0.4)',
         borderRadius: '12px',
         padding: '20px',
         marginBottom: '16px',
         textAlign: 'center',
+        border: '1px solid rgba(239, 68, 68, 0.3)',
       }}>
-        <div style={{ fontSize: '48px', marginBottom: '8px' }}>🏥</div>
-        <div style={{ color: '#ef4444', fontWeight: 'bold', fontSize: '20px' }}>
+        <div style={{ fontSize: '48px', marginBottom: '8px', textShadow: '0 0 20px rgba(239, 68, 68, 0.5)' }}>🏥</div>
+        <div style={{ color: '#ef4444', fontWeight: 'bold', fontSize: '20px', textShadow: '0 0 10px rgba(239, 68, 68, 0.3)' }}>
           医疗舱 Lv.{level}
         </div>
         <div style={{ color: '#a1a1aa', fontSize: '14px', marginTop: '8px' }}>
@@ -576,10 +675,11 @@ function MedicalContent() {
       </div>
 
       <div style={{
-        background: 'rgba(255,255,255,0.05)',
-        borderRadius: '8px',
+        background: 'rgba(0, 0, 0, 0.3)',
+        borderRadius: '12px',
         padding: '12px',
         marginBottom: '16px',
+        border: '1px solid rgba(239, 68, 68, 0.2)',
       }}>
         <div style={{ color: '#a1a1aa', fontSize: '12px', marginBottom: '8px' }}>当前效果:</div>
         <div style={{ color: '#ffffff', fontSize: '13px', lineHeight: '1.6' }}>
@@ -591,12 +691,13 @@ function MedicalContent() {
       <button style={{
         width: '100%',
         padding: '12px',
-        background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
-        border: 'none',
+        background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.3), rgba(239, 68, 68, 0.1))',
+        border: '1px solid rgba(239, 68, 68, 0.5)',
         borderRadius: '8px',
-        color: 'white',
+        color: '#ef4444',
         fontWeight: 'bold',
         cursor: 'pointer',
+        boxShadow: '0 0 15px rgba(239, 68, 68, 0.2)',
       }}>
         ⬆️ 升级 (800信用点 + 5纳米纤维)
       </button>
@@ -614,14 +715,14 @@ function CommContent() {
   return (
     <div>
       <p style={{ color: '#a1a1aa', fontSize: '14px', marginBottom: '16px' }}>
-        正在监听星际通讯... 发现 {events.length} 个事件
+        正在监听星际通讯... 发现 <span style={{ color: '#8b5cf6', fontWeight: 'bold' }}>{events.length}</span> 个事件
       </p>
 
       {events.map(event => (
         <div key={event.id} style={{
           padding: '12px',
           background: 'rgba(139, 92, 246, 0.1)',
-          borderRadius: '8px',
+          borderRadius: '12px',
           marginBottom: '8px',
           border: '1px solid rgba(139, 92, 246, 0.3)',
         }}>
@@ -637,13 +738,14 @@ function CommContent() {
       <button style={{
         width: '100%',
         padding: '12px',
-        background: 'rgba(139, 92, 246, 0.2)',
+        background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.3), rgba(139, 92, 246, 0.1))',
         border: '1px solid rgba(139, 92, 246, 0.5)',
         borderRadius: '8px',
         color: '#8b5cf6',
         fontWeight: 'bold',
         cursor: 'pointer',
         marginTop: '8px',
+        boxShadow: '0 0 15px rgba(139, 92, 246, 0.2)',
       }}>
         🔄 扫描新信号
       </button>
@@ -668,7 +770,7 @@ function ResearchContent() {
         <div key={project.id} style={{
           padding: '12px',
           background: project.status === 'researching' ? 'rgba(192, 132, 252, 0.1)' : 'rgba(255,255,255,0.05)',
-          borderRadius: '8px',
+          borderRadius: '12px',
           marginBottom: '8px',
           border: `1px solid ${project.status === 'researching' ? 'rgba(192, 132, 252, 0.3)' : 'rgba(255,255,255,0.1)'}`,
         }}>
@@ -697,6 +799,7 @@ function ResearchContent() {
                   width: `${(project.progress / project.total) * 100}%`,
                   background: 'linear-gradient(90deg, #c084fc 0%, #a855f7 100%)',
                   borderRadius: '3px',
+                  boxShadow: '0 0 8px #c084fc',
                 }} />
               </div>
             </div>
@@ -718,10 +821,11 @@ function LockedContent({ facility }: { facility: BaseFacility }) {
       </p>
       <div style={{
         background: 'rgba(107, 114, 128, 0.2)',
-        borderRadius: '8px',
+        borderRadius: '12px',
         padding: '12px',
         color: '#a1a1aa',
         fontSize: '12px',
+        border: '1px solid rgba(107, 114, 128, 0.3)',
       }}>
         🔒 该功能将在后续版本开放
       </div>
