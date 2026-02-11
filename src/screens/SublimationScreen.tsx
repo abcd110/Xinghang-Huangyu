@@ -3,11 +3,23 @@ import { useGameStore } from '../stores/gameStore';
 import { EquipmentSlot, EquipmentRarity } from '../data/equipmentTypes';
 import { equipmentSystem } from '../core/EquipmentSystem';
 import { ItemRarity } from '../data/types';
-import { calculateEquipmentStats, calculateSublimationStatsPreview } from '../core/EquipmentStatCalculator';
+import { calculateEquipmentStats } from '../core/EquipmentStatCalculator';
+import 舰桥背景 from '../assets/images/舰桥背景.png';
 
 interface SublimationScreenProps {
   onBack: () => void;
 }
+
+// 科幻风格颜色配置
+const SCIFI_COLORS = {
+  primary: '#fbbf24',
+  secondary: '#f59e0b',
+  success: '#22c55e',
+  danger: '#ef4444',
+  warning: '#f59e0b',
+  background: 'rgba(20, 15, 0, 0.85)',
+  border: 'rgba(251, 191, 36, 0.3)',
+};
 
 const SLOT_NAMES: Record<EquipmentSlot, string> = {
   [EquipmentSlot.HEAD]: '头部',
@@ -69,11 +81,9 @@ export default function SublimationScreen({ onBack }: SublimationScreenProps) {
     if (!selectedEquipment) return;
 
     setIsProcessing(true);
-
     await new Promise(resolve => setTimeout(resolve, 800));
 
     const successRate = getSublimationRate(selectedEquipment.sublimationLevel);
-    // eslint-disable-next-line react-hooks/purity
     const success = Math.random() < successRate;
 
     const cost = calculateSublimationCost(selectedEquipment.rarity);
@@ -89,7 +99,6 @@ export default function SublimationScreen({ onBack }: SublimationScreenProps) {
           : '升华失败，装备未提升'
       });
 
-      // 保存游戏
       await saveGame();
     } else {
       setResult({
@@ -104,69 +113,78 @@ export default function SublimationScreen({ onBack }: SublimationScreenProps) {
   // 根据装备品质获取升华所需神能值
   const getSpiritCostByRarity = (rarity: ItemRarity): number => {
     switch (rarity) {
-      case ItemRarity.COMMON:
-        return 10;      // 普通装备
-      case ItemRarity.UNCOMMON:
-        return 20;      // 优秀装备
-      case ItemRarity.RARE:
-        return 40;      // 稀有装备
-      case ItemRarity.EPIC:
-        return 60;      // 史诗装备
-      case ItemRarity.LEGENDARY:
-        return 80;      // 传说装备
-      case ItemRarity.MYTHIC:
-        return 100;     // 神话装备
-      default:
-        return 10;
+      case ItemRarity.COMMON: return 10;
+      case ItemRarity.UNCOMMON: return 20;
+      case ItemRarity.RARE: return 40;
+      case ItemRarity.EPIC: return 60;
+      case ItemRarity.LEGENDARY: return 80;
+      case ItemRarity.MYTHIC: return 100;
+      default: return 10;
     }
   };
 
-  // 计算升华费用（基于装备品质）
+  // 计算升华费用
   const calculateSublimationCost = (rarity: ItemRarity) => {
     return getSpiritCostByRarity(rarity);
   };
 
   // 获取成功率颜色
   const getSuccessRateColor = (rate: number): string => {
-    if (rate >= 0.8) return '#4ade80';
+    if (rate >= 0.8) return '#22c55e';
     if (rate >= 0.6) return '#00d4ff';
-    if (rate >= 0.4) return '#fb923c';
+    if (rate >= 0.4) return '#fbbf24';
     return '#ef4444';
   };
 
   return (
     <div style={{
       height: '100vh',
-      backgroundColor: '#0a0e27',
+      position: 'relative',
+      overflow: 'hidden',
       display: 'flex',
-      flexDirection: 'column'
+      flexDirection: 'column',
     }}>
-      {/* 顶部标题栏 */}
+      {/* 背景 */}
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        backgroundImage: `url(${舰桥背景})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        zIndex: 0,
+      }} />
+      
+      {/* 扫描线效果 - 金色主题 */}
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        background: 'linear-gradient(180deg, transparent 0%, rgba(251, 191, 36, 0.02) 50%, transparent 100%)',
+        backgroundSize: '100% 4px',
+        animation: 'scanline 8s linear infinite',
+        pointerEvents: 'none',
+        zIndex: 1,
+      }} />
+
+      {/* 顶部标题栏 - 科幻风格 */}
       <header style={{
         flexShrink: 0,
-        backgroundColor: '#1a1f3a',
-        borderBottom: '1px solid #2a3050',
-        padding: '12px 16px'
+        position: 'relative',
+        zIndex: 10,
+        background: 'rgba(20, 15, 0, 0.85)',
+        backdropFilter: 'blur(12px)',
+        borderBottom: '1px solid rgba(251, 191, 36, 0.4)',
+        padding: '12px 16px',
+        boxShadow: '0 0 20px rgba(251, 191, 36, 0.2)',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <button
-            onClick={onBack}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              color: '#a1a1aa',
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: '14px'
-            }}
-          >
-            <span>←</span>
-            <span>返回</span>
-          </button>
-          <h1 style={{ color: 'white', fontWeight: 'bold', fontSize: '18px' }}>✨ 升华</h1>
-          <div style={{ width: '48px' }} />
+          <SciFiButton onClick={onBack} label="◀ 返回" variant="default" />
+          <h1 style={{ 
+            color: '#fbbf24', 
+            fontWeight: 'bold', 
+            fontSize: '18px',
+            textShadow: '0 0 15px rgba(251, 191, 36, 0.6)',
+          }}>✨ 升华圣殿</h1>
+          <div style={{ width: '70px' }} />
         </div>
       </header>
 
@@ -174,36 +192,53 @@ export default function SublimationScreen({ onBack }: SublimationScreenProps) {
       <main style={{
         flex: 1,
         overflowY: 'auto',
-        padding: '16px'
+        padding: '16px',
+        position: 'relative',
+        zIndex: 10,
       }}>
-        {/* 神能值显示 */}
+        {/* 神能值显示 - 科幻风格 */}
         <div style={{
-          backgroundColor: '#1a1f3a',
+          background: 'rgba(0, 10, 20, 0.7)',
+          backdropFilter: 'blur(8px)',
           borderRadius: '12px',
-          padding: '12px 16px',
+          padding: '14px 18px',
           marginBottom: '16px',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-between'
+          justifyContent: 'space-between',
+          border: '1px solid rgba(192, 132, 252, 0.3)',
+          boxShadow: '0 0 15px rgba(192, 132, 252, 0.1)',
         }}>
           <span style={{ color: '#a1a1aa', fontSize: '14px' }}>当前神能值</span>
-          <span style={{ color: '#c084fc', fontWeight: 'bold', fontSize: '16px' }}>
+          <span style={{ 
+            color: '#c084fc', 
+            fontWeight: 'bold', 
+            fontSize: '18px',
+            textShadow: '0 0 10px rgba(192, 132, 252, 0.5)',
+          }}>
             🔮 {player.spirit}/{player.maxSpirit}
           </span>
         </div>
 
-        {/* 装备选择 */}
+        {/* 装备选择 - 科幻风格 */}
         <div style={{
-          backgroundColor: '#1a1f3a',
-          borderRadius: '12px',
+          background: 'rgba(0, 10, 20, 0.7)',
+          backdropFilter: 'blur(8px)',
+          borderRadius: '16px',
           padding: '16px',
-          border: '1px solid #374151',
-          marginBottom: '16px'
+          border: '1px solid rgba(251, 191, 36, 0.3)',
+          marginBottom: '16px',
+          boxShadow: '0 0 20px rgba(251, 191, 36, 0.1)',
         }}>
-          <h3 style={{ color: 'white', fontSize: '14px', marginBottom: '12px' }}>
+          <h3 style={{ 
+            color: '#fbbf24', 
+            fontSize: '14px', 
+            marginBottom: '12px',
+            textShadow: '0 0 8px rgba(251, 191, 36, 0.4)',
+          }}>
             选择装备槽位
           </h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
             {ARMOR_SLOTS.map(slot => {
               const equippedItem = player.getEquipmentBySlot(slot);
               const isSelected = selectedSlot === slot;
@@ -214,34 +249,49 @@ export default function SublimationScreen({ onBack }: SublimationScreenProps) {
                   onClick={() => setSelectedSlot(slot)}
                   style={{
                     aspectRatio: '1',
-                    backgroundColor: isSelected ? '#1f2937' : '#374151',
-                    border: `2px solid ${isSelected ? '#9333ea' : (equippedItem ? RARITY_COLORS[equippedItem.rarity] : '#2a3050')}`,
-                    borderRadius: '8px',
+                    background: isSelected 
+                      ? 'linear-gradient(135deg, rgba(251, 191, 36, 0.3), rgba(251, 191, 36, 0.1))' 
+                      : 'rgba(0, 0, 0, 0.5)',
+                    border: `2px solid ${isSelected ? '#fbbf24' : (equippedItem ? RARITY_COLORS[equippedItem.rarity] : 'rgba(255,255,255,0.1)')}`,
+                    borderRadius: '12px',
                     padding: '8px',
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    boxShadow: isSelected ? '0 0 20px rgba(251, 191, 36, 0.4)' : 'none',
+                    transition: 'all 0.3s ease',
                   }}
                 >
-                  <span style={{ fontSize: '14px', color: '#a1a1aa', fontWeight: 'bold' }}>{SLOT_NAMES[slot]}</span>
+                  <span style={{ 
+                    fontSize: '13px', 
+                    color: isSelected ? '#fbbf24' : '#a1a1aa', 
+                    fontWeight: 'bold',
+                    textShadow: isSelected ? '0 0 5px rgba(251, 191, 36, 0.5)' : 'none',
+                  }}>
+                    {SLOT_NAMES[slot]}
+                  </span>
                   {equippedItem ? (
                     <>
                       <span style={{
                         fontSize: '9px',
                         color: RARITY_COLORS[equippedItem.rarity],
                         textAlign: 'center',
-                        marginTop: '2px'
+                        marginTop: '4px',
                       }}>
                         {equippedItem.name}
                       </span>
-                      <span style={{ fontSize: '8px', color: '#c084fc' }}>
+                      <span style={{ 
+                        fontSize: '8px', 
+                        color: '#c084fc',
+                        textShadow: '0 0 5px rgba(192, 132, 252, 0.5)',
+                      }}>
                         升华+{equippedItem.sublimationLevel}
                       </span>
                     </>
                   ) : (
-                    <span style={{ fontSize: '9px', color: '#6b7280', marginTop: '2px' }}>
+                    <span style={{ fontSize: '9px', color: '#6b7280', marginTop: '4px' }}>
                       未装备
                     </span>
                   )}
@@ -251,28 +301,31 @@ export default function SublimationScreen({ onBack }: SublimationScreenProps) {
           </div>
         </div>
 
-        {/* 选中装备详情 */}
+        {/* 选中装备详情 - 科幻风格 */}
         {selectedEquipment && (
           <div style={{
-            backgroundColor: '#1a1f3a',
-            borderRadius: '12px',
+            background: 'rgba(0, 10, 20, 0.8)',
+            backdropFilter: 'blur(12px)',
+            borderRadius: '16px',
             padding: '16px',
             border: `2px solid ${RARITY_COLORS[selectedEquipment.rarity]}`,
-            marginBottom: '16px'
+            marginBottom: '16px',
+            boxShadow: `0 0 30px ${RARITY_COLORS[selectedEquipment.rarity]}30`,
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
               <div style={{
-                width: '56px',
-                height: '56px',
-                backgroundColor: '#1f2937',
+                width: '60px',
+                height: '60px',
+                background: 'rgba(0, 0, 0, 0.5)',
                 borderRadius: '12px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '12px',
+                fontSize: '14px',
                 color: '#a1a1aa',
                 fontWeight: 'bold',
-                border: `2px solid ${RARITY_COLORS[selectedEquipment.rarity]}`
+                border: `2px solid ${RARITY_COLORS[selectedEquipment.rarity]}`,
+                boxShadow: `0 0 15px ${RARITY_COLORS[selectedEquipment.rarity]}50`,
               }}>
                 {SLOT_NAMES[selectedEquipment.slot]}
               </div>
@@ -281,7 +334,8 @@ export default function SublimationScreen({ onBack }: SublimationScreenProps) {
                   color: RARITY_COLORS[selectedEquipment.rarity],
                   fontWeight: 'bold',
                   fontSize: '16px',
-                  margin: '0 0 4px 0'
+                  margin: '0 0 4px 0',
+                  textShadow: `0 0 8px ${RARITY_COLORS[selectedEquipment.rarity]}50`,
                 }}>
                   {selectedEquipment.name}
                 </h3>
@@ -289,10 +343,18 @@ export default function SublimationScreen({ onBack }: SublimationScreenProps) {
                   {RARITY_NAMES[selectedEquipment.rarity]} · 星球{selectedEquipment.stationNumber}
                 </p>
                 <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
-                  <span style={{ color: '#00d4ff', fontSize: '12px' }}>
+                  <span style={{ 
+                    color: '#00d4ff', 
+                    fontSize: '12px',
+                    textShadow: '0 0 5px rgba(0, 212, 255, 0.5)',
+                  }}>
                     强化 +{selectedEquipment.enhanceLevel}
                   </span>
-                  <span style={{ color: '#c084fc', fontSize: '12px' }}>
+                  <span style={{ 
+                    color: '#c084fc', 
+                    fontSize: '12px',
+                    textShadow: '0 0 5px rgba(192, 132, 252, 0.5)',
+                  }}>
                     升华 +{selectedEquipment.sublimationLevel}
                   </span>
                 </div>
@@ -301,12 +363,13 @@ export default function SublimationScreen({ onBack }: SublimationScreenProps) {
 
             {/* 当前属性 */}
             <div style={{
-              backgroundColor: '#1f2937',
-              borderRadius: '8px',
+              background: 'rgba(0, 0, 0, 0.4)',
+              borderRadius: '12px',
               padding: '12px',
-              marginBottom: '12px'
+              marginBottom: '12px',
+              border: '1px solid rgba(0, 212, 255, 0.2)',
             }}>
-              <h4 style={{ color: '#a1a1aa', fontSize: '12px', marginBottom: '8px' }}>当前属性</h4>
+              <h4 style={{ color: '#00d4ff', fontSize: '12px', marginBottom: '8px', textShadow: '0 0 5px rgba(0, 212, 255, 0.3)' }}>当前属性</h4>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px', fontSize: '13px' }}>
                 {(() => {
                   const stats = calculateEquipmentStats(selectedEquipment);
@@ -343,30 +406,6 @@ export default function SublimationScreen({ onBack }: SublimationScreenProps) {
                       </div>
                     );
                   }
-                  if (stats.dodge > 0) {
-                    items.push(
-                      <div key="dodge" style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ color: '#a1a1aa' }}>闪避</span>
-                        <span style={{ color: '#a78bfa' }}>{stats.dodge}</span>
-                      </div>
-                    );
-                  }
-                  if (stats.hit > 0) {
-                    items.push(
-                      <div key="hit" style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ color: '#a1a1aa' }}>命中</span>
-                        <span style={{ color: '#34d399' }}>{stats.hit}</span>
-                      </div>
-                    );
-                  }
-                  if (stats.penetration > 0) {
-                    items.push(
-                      <div key="penetration" style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ color: '#a1a1aa' }}>穿透</span>
-                        <span style={{ color: '#fb923c' }}>{stats.penetration}</span>
-                      </div>
-                    );
-                  }
                   return items;
                 })()}
               </div>
@@ -374,44 +413,52 @@ export default function SublimationScreen({ onBack }: SublimationScreenProps) {
 
             {/* 升华信息 */}
             <div style={{
-              backgroundColor: '#1f2937',
-              borderRadius: '8px',
+              background: 'rgba(0, 0, 0, 0.4)',
+              borderRadius: '12px',
               padding: '12px',
-              marginBottom: '12px'
+              marginBottom: '12px',
+              border: '1px solid rgba(251, 191, 36, 0.2)',
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                 <span style={{ color: '#a1a1aa', fontSize: '14px' }}>升华成功率</span>
                 <span style={{
                   color: getSuccessRateColor(getSublimationRate(selectedEquipment.sublimationLevel)),
                   fontWeight: 'bold',
-                  fontSize: '20px'
+                  fontSize: '22px',
+                  textShadow: `0 0 10px ${getSuccessRateColor(getSublimationRate(selectedEquipment.sublimationLevel))}50`,
                 }}>
                   {Math.round(getSublimationRate(selectedEquipment.sublimationLevel) * 100)}%
                 </span>
               </div>
               <div style={{
-                backgroundColor: '#374151',
+                backgroundColor: 'rgba(255, 255, 255, 0.1)',
                 borderRadius: '9999px',
                 height: '8px',
-                overflow: 'hidden'
+                overflow: 'hidden',
               }}>
                 <div style={{
                   height: '100%',
-                  backgroundColor: getSuccessRateColor(getSublimationRate(selectedEquipment.sublimationLevel)),
-                  width: `${getSublimationRate(selectedEquipment.sublimationLevel) * 100}%`
+                  background: `linear-gradient(90deg, ${getSuccessRateColor(getSublimationRate(selectedEquipment.sublimationLevel))}80, ${getSuccessRateColor(getSublimationRate(selectedEquipment.sublimationLevel))})`,
+                  width: `${getSublimationRate(selectedEquipment.sublimationLevel) * 100}%`,
+                  boxShadow: `0 0 10px ${getSuccessRateColor(getSublimationRate(selectedEquipment.sublimationLevel))}`,
                 }} />
               </div>
             </div>
 
             <div style={{
-              backgroundColor: '#1f2937',
-              borderRadius: '8px',
+              background: 'rgba(0, 0, 0, 0.4)',
+              borderRadius: '12px',
               padding: '12px',
-              marginBottom: '12px'
+              marginBottom: '12px',
+              border: '1px solid rgba(192, 132, 252, 0.2)',
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: '#a1a1aa', fontSize: '14px' }}>升华费用</span>
-                <span style={{ color: '#c084fc', fontWeight: 'bold' }}>
+                <span style={{ 
+                  color: '#c084fc', 
+                  fontWeight: 'bold',
+                  textShadow: '0 0 5px rgba(192, 132, 252, 0.5)',
+                }}>
                   {calculateSublimationCost(selectedEquipment.rarity)} 神能
                 </span>
               </div>
@@ -423,22 +470,32 @@ export default function SublimationScreen({ onBack }: SublimationScreenProps) {
               style={{
                 width: '100%',
                 padding: '16px',
-                backgroundColor: isProcessing ? '#374151' : (selectedEquipment.sublimationLevel >= 10 ? '#374151' : '#9333ea'),
-                color: isProcessing ? '#6b7280' : (selectedEquipment.sublimationLevel >= 10 ? '#6b7280' : 'white'),
+                background: isProcessing 
+                  ? 'rgba(100, 100, 100, 0.3)' 
+                  : selectedEquipment.sublimationLevel >= 10 
+                    ? 'rgba(100, 100, 100, 0.3)' 
+                    : 'linear-gradient(135deg, rgba(251, 191, 36, 0.8), rgba(251, 191, 36, 0.4))',
+                color: isProcessing || selectedEquipment.sublimationLevel >= 10 ? '#6b7280' : 'white',
                 fontWeight: 'bold',
                 borderRadius: '12px',
-                border: 'none',
+                border: isProcessing || selectedEquipment.sublimationLevel >= 10 
+                  ? '1px solid rgba(100,100,100,0.3)' 
+                  : '1px solid rgba(251, 191, 36, 0.6)',
                 cursor: isProcessing || selectedEquipment.sublimationLevel >= 10 ? 'not-allowed' : 'pointer',
                 fontSize: '16px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: '8px'
+                gap: '8px',
+                boxShadow: isProcessing || selectedEquipment.sublimationLevel >= 10 
+                  ? 'none' 
+                  : '0 0 20px rgba(251, 191, 36, 0.4)',
+                transition: 'all 0.3s ease',
               }}
             >
               {isProcessing ? (
                 <>
-                  <span>✨</span>
+                  <span style={{ animation: 'pulse 1s infinite' }}>✨</span>
                   <span>升华中...</span>
                 </>
               ) : selectedEquipment.sublimationLevel >= 10 ? (
@@ -459,68 +516,75 @@ export default function SublimationScreen({ onBack }: SublimationScreenProps) {
         {/* 未选择装备提示 */}
         {!selectedEquipment && selectedSlot && (
           <div style={{
-            backgroundColor: '#1a1f3a',
-            borderRadius: '12px',
+            background: 'rgba(0, 10, 20, 0.7)',
+            backdropFilter: 'blur(8px)',
+            borderRadius: '16px',
             padding: '24px',
-            textAlign: 'center'
+            textAlign: 'center',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
           }}>
-            <p style={{ color: '#6b7280', fontSize: '14px' }}>
-              该槽位未装备物品
-            </p>
+            <p style={{ color: '#6b7280', fontSize: '14px' }}>该槽位未装备物品</p>
           </div>
         )}
       </main>
 
-      {/* 结果弹窗 */}
+      {/* 结果弹窗 - 科幻风格 */}
       {result && (
         <div style={{
           position: 'fixed',
           inset: 0,
           backgroundColor: 'rgba(0, 0, 0, 0.9)',
+          backdropFilter: 'blur(8px)',
           zIndex: 100,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          padding: '16px'
+          padding: '16px',
         }}>
           <div style={{
-            backgroundColor: '#1a1f3a',
-            borderRadius: '16px',
+            background: 'rgba(0, 10, 20, 0.95)',
+            backdropFilter: 'blur(20px)',
+            borderRadius: '20px',
             width: '100%',
-            maxWidth: '300px',
-            padding: '24px',
+            maxWidth: '320px',
+            padding: '28px',
             textAlign: 'center',
-            border: `2px solid ${result.success ? '#4ade80' : '#ef4444'}`
+            border: `2px solid ${result.success ? '#22c55e' : '#ef4444'}`,
+            boxShadow: `0 0 50px ${result.success ? 'rgba(34, 197, 94, 0.4)' : 'rgba(239, 68, 68, 0.4)'}`,
           }}>
             <div style={{
-              fontSize: '64px',
-              marginBottom: '16px'
+              fontSize: '72px',
+              marginBottom: '16px',
+              textShadow: `0 0 30px ${result.success ? '#22c55e' : '#ef4444'}`,
+              animation: 'bounce 0.5s ease',
             }}>
               {result.success ? '✨' : '💥'}
             </div>
             <h3 style={{
-              color: result.success ? '#4ade80' : '#ef4444',
-              fontSize: '20px',
+              color: result.success ? '#22c55e' : '#ef4444',
+              fontSize: '24px',
               fontWeight: 'bold',
-              marginBottom: '8px'
+              marginBottom: '8px',
+              textShadow: `0 0 10px ${result.success ? 'rgba(34, 197, 94, 0.5)' : 'rgba(239, 68, 68, 0.5)'}`,
             }}>
               {result.success ? '升华成功！' : '升华失败'}
             </h3>
-            <p style={{ color: '#d1d5db', fontSize: '14px', marginBottom: '16px' }}>
+            <p style={{ color: '#d1d5db', fontSize: '14px', marginBottom: '20px' }}>
               {result.message}
             </p>
             <button
               onClick={() => setResult(null)}
               style={{
                 width: '100%',
-                padding: '12px',
-                backgroundColor: result.success ? '#4ade80' : '#ef4444',
+                padding: '14px',
+                background: `linear-gradient(135deg, ${result.success ? 'rgba(34, 197, 94, 0.8)' : 'rgba(239, 68, 68, 0.8)'}, ${result.success ? 'rgba(34, 197, 94, 0.4)' : 'rgba(239, 68, 68, 0.4)'})`,
                 color: 'white',
                 fontWeight: 'bold',
-                borderRadius: '8px',
-                border: 'none',
+                borderRadius: '10px',
+                border: `1px solid ${result.success ? '#22c55e' : '#ef4444'}`,
                 cursor: 'pointer',
-                fontSize: '14px'
+                fontSize: '15px',
+                boxShadow: `0 0 20px ${result.success ? 'rgba(34, 197, 94, 0.4)' : 'rgba(239, 68, 68, 0.4)'}`,
               }}
             >
               确定
@@ -528,6 +592,64 @@ export default function SublimationScreen({ onBack }: SublimationScreenProps) {
           </div>
         </div>
       )}
+
+      {/* CSS 动画 */}
+      <style>{`
+        @keyframes scanline {
+          0% { transform: translateY(-100%); }
+          100% { transform: translateY(100vh); }
+        }
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+        @keyframes bounce {
+          0% { transform: scale(0.3); opacity: 0; }
+          50% { transform: scale(1.05); }
+          70% { transform: scale(0.9); }
+          100% { transform: scale(1); opacity: 1; }
+        }
+      `}</style>
     </div>
+  );
+}
+
+// 科幻按钮组件
+function SciFiButton({ 
+  onClick, 
+  label, 
+  variant = 'default' 
+}: { 
+  onClick: () => void; 
+  label: string; 
+  variant?: 'primary' | 'default';
+}) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '6px',
+        background: variant === 'primary' ? 'rgba(251, 191, 36, 0.2)' : 'rgba(255, 255, 255, 0.1)',
+        border: variant === 'primary' ? '1px solid rgba(251, 191, 36, 0.5)' : '1px solid rgba(255, 255, 255, 0.2)',
+        borderRadius: '8px',
+        padding: '8px 12px',
+        color: variant === 'primary' ? '#fbbf24' : '#a1a1aa',
+        fontSize: '14px',
+        cursor: 'pointer',
+        transition: 'all 0.3s ease',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.background = variant === 'primary' ? 'rgba(251, 191, 36, 0.3)' : 'rgba(255, 255, 255, 0.15)';
+        e.currentTarget.style.boxShadow = variant === 'primary' ? '0 0 10px rgba(251, 191, 36, 0.3)' : 'none';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = variant === 'primary' ? 'rgba(251, 191, 36, 0.2)' : 'rgba(255, 255, 255, 0.1)';
+        e.currentTarget.style.boxShadow = 'none';
+      }}
+    >
+      {label}
+    </button>
   );
 }
