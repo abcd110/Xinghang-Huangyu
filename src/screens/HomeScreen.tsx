@@ -449,8 +449,8 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
             <ActionButton
               iconImage={强化Img}
               label="强化"
-              color="#8b5cf6"
-              glowColor="rgba(139, 92, 246, 0.6)"
+              color="#a855f7"
+              glowColor="rgba(168, 85, 247, 0.7)"
               onClick={() => onNavigate('equipment')}
               mounted={mounted}
               delay={50}
@@ -488,8 +488,8 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
             <ActionButton
               iconImage={星骸解构Img}
               label="星骸解构"
-              color="#64748b"
-              glowColor="rgba(100, 116, 139, 0.6)"
+              color="#94a3b8"
+              glowColor="rgba(148, 163, 184, 0.7)"
               onClick={() => onNavigate('decompose')}
               mounted={mounted}
               delay={250}
