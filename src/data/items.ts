@@ -1684,6 +1684,66 @@ export const ITEMS: Record<string, Item> = {
     id: 'mat_010_void', name: '量子紧固组件(虚空)', type: ItemType.MATERIAL, rarity: ItemRarity.LEGENDARY,
     description: '虚空级精密连接材料。', sublimationLevel: 0,
   },
+
+  // ============================================
+  // 船员招募票
+  // ============================================
+  'recruit_ticket_normal': {
+    id: 'recruit_ticket_normal', name: '普通招募票', type: ItemType.SPECIAL, rarity: ItemRarity.UNCOMMON,
+    description: '用于普通招募的票据，可招募船员加入队伍。', sublimationLevel: 0,
+  },
+  'recruit_ticket_limited': {
+    id: 'recruit_ticket_limited', name: '限定招募票', type: ItemType.SPECIAL, rarity: ItemRarity.EPIC,
+    description: '用于限定招募的珍贵票据，有更高概率招募到稀有船员。', sublimationLevel: 0,
+  },
+
+  // ============================================
+  // 矿物资源
+  // ============================================
+  'mineral_iron': {
+    id: 'mineral_iron', name: '铁矿', type: ItemType.MATERIAL, rarity: ItemRarity.COMMON,
+    description: '基础矿物，用于基础建设。', sublimationLevel: 0,
+  },
+  'mineral_copper': {
+    id: 'mineral_copper', name: '铜矿', type: ItemType.MATERIAL, rarity: ItemRarity.UNCOMMON,
+    description: '导电矿物，用于电子设备。', sublimationLevel: 0,
+  },
+  'mineral_titanium': {
+    id: 'mineral_titanium', name: '钛矿', type: ItemType.MATERIAL, rarity: ItemRarity.RARE,
+    description: '高强度矿物，用于高级装备。', sublimationLevel: 0,
+  },
+  'mineral_crystal': {
+    id: 'mineral_crystal', name: '水晶矿', type: ItemType.MATERIAL, rarity: ItemRarity.EPIC,
+    description: '能量矿物，蕴含神秘力量。', sublimationLevel: 0,
+  },
+  'mineral_quantum': {
+    id: 'mineral_quantum', name: '量子矿', type: ItemType.MATERIAL, rarity: ItemRarity.LEGENDARY,
+    description: '稀有量子矿物，用于顶级科技。', sublimationLevel: 0,
+  },
+
+  // ============================================
+  // 基因材料
+  // ============================================
+  'gene_material': {
+    id: 'gene_material', name: '基因材料', type: ItemType.MATERIAL, rarity: ItemRarity.RARE,
+    description: '用于基因改造的特殊材料。', sublimationLevel: 0,
+  },
+
+  // ============================================
+  // 机械飞升材料
+  // ============================================
+  'cyber_material': {
+    id: 'cyber_material', name: '义体材料', type: ItemType.MATERIAL, rarity: ItemRarity.RARE,
+    description: '用于机械义体改造的高级材料。', sublimationLevel: 0,
+  },
+  'cyber_core': {
+    id: 'cyber_core', name: '神经核心', type: ItemType.MATERIAL, rarity: ItemRarity.EPIC,
+    description: '稀有的神经接口核心，用于高级义体。', sublimationLevel: 0,
+  },
+  'void_essence': {
+    id: 'void_essence', name: '虚空精华', type: ItemType.MATERIAL, rarity: ItemRarity.LEGENDARY,
+    description: '来自虚空的神秘能量结晶，极其稀有。', sublimationLevel: 0,
+  },
 };
 
 // 获取物品模板

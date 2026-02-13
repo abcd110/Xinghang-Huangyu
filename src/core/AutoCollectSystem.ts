@@ -153,13 +153,13 @@ export class AutoCollectSystem {
   }
 
   // 停止自动采集
-  stopCollect(): { success: boolean; message: string; rewards?: CollectReward } {
+  stopCollect(energyEfficiencyBonus: number = 0): { success: boolean; message: string; rewards?: CollectReward } {
     if (!this.state.isCollecting) {
       return { success: false, message: '当前没有进行自动采集' };
     }
 
     // 结算最终收益
-    this.calculateOfflineRewards();
+    this.calculateOfflineRewards(energyEfficiencyBonus);
 
     const rewards = { ...this.state.totalRewards };
     const robot = getCollectRobot(this.state.robotId);
@@ -176,13 +176,13 @@ export class AutoCollectSystem {
   }
 
   // 领取收益（不停止采集）
-  claimRewards(): { success: boolean; message: string; rewards?: CollectReward } {
+  claimRewards(energyEfficiencyBonus: number = 0): { success: boolean; message: string; rewards?: CollectReward } {
     if (!this.state.isCollecting) {
       return { success: false, message: '当前没有进行自动采集' };
     }
 
     // 结算收益
-    this.calculateOfflineRewards();
+    this.calculateOfflineRewards(energyEfficiencyBonus);
 
     const rewards = { ...this.state.totalRewards };
 
@@ -220,7 +220,7 @@ export class AutoCollectSystem {
   }
 
   // 计算离线收益
-  calculateOfflineRewards(): void {
+  calculateOfflineRewards(energyEfficiencyBonus: number = 0): void {
     if (!this.state.isCollecting) return;
 
     const now = Date.now();
@@ -240,8 +240,8 @@ export class AutoCollectSystem {
     const robot = getCollectRobot(this.state.robotId);
     if (!robot) return;
 
-    // 计算收益
-    const rewards = this.generateRewards(robot, effectiveHours);
+    // 计算收益（传入能源核心效率加成）
+    const rewards = this.generateRewards(robot, effectiveHours, energyEfficiencyBonus);
 
     // 累加到总收益
     this.state.totalRewards.gold += rewards.gold;
@@ -270,7 +270,7 @@ export class AutoCollectSystem {
   }
 
   // 生成收益
-  private generateRewards(robot: CollectRobot, hours: number): CollectReward {
+  private generateRewards(robot: CollectRobot, hours: number, energyEfficiencyBonus: number = 0): CollectReward {
     const mode = this.state.mode;
     const base = robot.baseRewards;
 
@@ -303,6 +303,13 @@ export class AutoCollectSystem {
     expMultiplier *= bossMultiplier;
     materialMultiplier *= bossMultiplier;
     enhanceStoneMultiplier *= bossMultiplier;
+
+    // 能源核心效率加成（影响所有收益）
+    const energyMultiplier = 1 + (energyEfficiencyBonus / 100);
+    goldMultiplier *= energyMultiplier;
+    expMultiplier *= energyMultiplier;
+    materialMultiplier *= energyMultiplier;
+    enhanceStoneMultiplier *= energyMultiplier;
 
     // 计算信用点
     const gold = Math.floor(base.gold * hours * goldMultiplier * (0.9 + Math.random() * 0.2));
@@ -370,13 +377,13 @@ export class AutoCollectSystem {
   }
 
   // 获取预计每小时收益（用于显示）
-  getEstimatedHourlyRewards(): CollectReward {
+  getEstimatedHourlyRewards(energyEfficiencyBonus: number = 0): CollectReward {
     const robot = getCollectRobot(this.state.robotId);
     if (!robot) {
       return { gold: 0, exp: 0, materials: [], enhanceStones: 0 };
     }
 
-    return this.generateRewards(robot, 1);
+    return this.generateRewards(robot, 1, energyEfficiencyBonus);
   }
 
   // 更新配置

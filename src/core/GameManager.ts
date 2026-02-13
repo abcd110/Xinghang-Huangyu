@@ -18,6 +18,16 @@ import { calculateEquipmentStats, calculateEnhancedStatsPreview } from './Equipm
 import { AutoCollectSystem } from './AutoCollectSystem';
 import { AutoCollectMode, CollectReward, getCollectRobot } from '../data/autoCollectTypes';
 import { synthesize, synthesizeBatch, getSynthesizableMaterials, QUALITY_NAMES } from './MaterialSynthesisSystem';
+import { BaseFacilitySystem, FacilityType, FACILITY_DEFINITIONS } from './BaseFacilitySystem';
+import { CrewMember, CrewMemberData, RecruitType, RECRUIT_CONFIG, RARITY_CONFIG, ROLE_CONFIG, addCrewExp, getRarityByRoll, getRandomCrewDefinition, generateCrewFromDefinition, generateFallbackCrew, serializeCrewMember, deserializeCrewMember, createPlayerCrew, isPlayerCrew } from './CrewSystem';
+import { CommEvent, CommEventData, generateCommEvent, getMaxEvents, getScanCooldown, serializeCommEvent, deserializeCommEvent, isEventExpired, COMM_EVENT_CONFIG } from './CommSystem';
+import { ResearchProject, ResearchProjectData, ResearchStatus, createResearchProject, serializeResearchProject, deserializeResearchProject, canStartResearch, getMaxConcurrentResearch, getResearchSpeedBonus, RESEARCH_PROJECTS } from './ResearchSystem';
+import { MiningTask, MiningTaskData, MiningStatus, MiningSite, MINING_SITES, MINERAL_CONFIG, MINING_EVENTS, MiningEventType, getMiningYield, getMiningDuration, getMaxMiningSlots, createMiningTask, serializeMiningTask, deserializeMiningTask, isMiningComplete, getMiningProgress, getRemainingTime, getCrewMiningBonus, checkMiningEvent, processMiningEvent, getDepthProgress, getDepthBonusDescription } from './MiningSystem';
+import { Chip, ChipData, ChipSlot, ChipRarity, createChip, upgradeChip, serializeChip, deserializeChip, getUpgradeCost, getChipStats, CHIP_RARITY_CONFIG } from './ChipSystem';
+import { GeneNode, GeneNodeData, GeneType, GENE_TREE, createGeneNode, upgradeGeneNode, getGeneUpgradeCost, getGeneTotalStats, serializeGeneNode, deserializeGeneNode, GENE_TYPE_CONFIG, GENE_RARITY_CONFIG } from './GeneSystem';
+import { Implant, ImplantData, ImplantType, ImplantRarity, IMPLANT_TEMPLATES, IMPLANT_TYPE_CONFIG, IMPLANT_RARITY_CONFIG, createImplant, upgradeImplant, getImplantStats, getImplantUpgradeCost, serializeImplant, deserializeImplant, getRandomImplantRarity, getRandomImplantByRarity } from './CyberneticSystem';
+import { MarketListing, PlayerListing, MarketTransaction, MarketItemType, MarketRarity, MARKET_MAX_LISTINGS, createMarketListing, isListingExpired, calculateTax, calculateFinalPrice, generateSystemListings, serializeMarketListing, deserializeMarketListing, serializePlayerListing, deserializePlayerListing, serializeMarketTransaction, deserializeMarketTransaction } from './MarketSystem';
+import { Ruin, ExploreMission, RuinType, RuinDifficulty, ExploreStatus, RUIN_TYPE_CONFIG, RUIN_DIFFICULTY_CONFIG, createRuin, generateRuins, calculateExploreSuccess, generateRewards, getRemainingExploreTime, formatExploreTime, serializeRuin, deserializeRuin, serializeExploreMission, deserializeExploreMission } from './RuinSystem';
 
 export interface GameState {
   player: PlayerData;
@@ -40,6 +50,24 @@ export interface GameState {
     lastBossChallengeDate: string | null;
   }]>;
   autoCollectSystem?: any; // 自动采集系统数据
+  baseFacilitySystem?: any; // 基地设施系统数据
+  lastStaminaRecoveryTime?: number; // 上次体力恢复时间戳
+  crewMembers?: CrewMemberData[]; // 船员列表
+  commEvents?: CommEventData[]; // 通讯事件列表
+  lastCommScanTime?: number; // 上次扫描时间戳
+  researchProjects?: ResearchProjectData[]; // 研究项目列表
+  completedResearch?: string[]; // 已完成的研究ID列表
+  miningTasks?: MiningTaskData[]; // 采矿任务列表
+  chips?: ChipData[]; // 芯片列表
+  equippedChips?: { [key: number]: string }; // 装备的芯片 key为槽位号
+  geneNodes?: GeneNodeData[]; // 基因节点列表
+  implants?: ImplantData[]; // 机械义体列表
+  equippedImplants?: { [key: string]: string }; // 装备的义体 key为类型
+  marketListings?: any[]; // 市场挂单列表
+  playerListings?: any[]; // 玩家挂单列表
+  marketTransactions?: any[]; // 市场交易记录
+  ruins?: any[]; // 遗迹列表
+  exploreMissions?: any[]; // 探索任务列表
 }
 
 export class GameManager {
@@ -74,8 +102,48 @@ export class GameManager {
   lastSpiritRecoveryTime: number = Date.now(); // 上次精神值回复时间戳
   lastSpiritDailyRecoveryDate: string = ''; // 上次每日精神值回复日期
 
+  // 体力现实时间回复
+  lastStaminaRecoveryTime: number = Date.now(); // 上次体力值回复时间戳
+
+  // 船员系统
+  crewMembers: CrewMember[] = [];
+
+  // 通讯系统
+  commEvents: CommEvent[] = [];
+  lastCommScanTime: number = 0;
+
+  // 研究系统
+  researchProjects: ResearchProject[] = [];
+  completedResearch: string[] = [];
+
+  // 采矿系统
+  miningTasks: MiningTask[] = [];
+
+  // 芯片系统
+  chips: Chip[] = [];
+  equippedChips: { [key: number]: string } = {};
+
+  // 基因系统
+  geneNodes: GeneNode[] = [];
+
+  // 机械飞升系统
+  implants: Implant[] = [];
+  equippedImplants: { [key: string]: string } = {};
+
+  // 星际市场系统
+  marketListings: MarketListing[] = [];
+  playerListings: PlayerListing[] = [];
+  marketTransactions: MarketTransaction[] = [];
+
+  // 遗迹探索系统
+  ruins: Ruin[] = [];
+  exploreMissions: ExploreMission[] = [];
+
   // 自动采集系统
   autoCollectSystem: AutoCollectSystem = new AutoCollectSystem();
+
+  // 基地设施系统
+  baseFacilitySystem: BaseFacilitySystem = new BaseFacilitySystem();
 
   constructor() {
     this.player = new Player();
@@ -87,10 +155,17 @@ export class GameManager {
     this.logs = [];
     this.isGameOver = false;
     this.playerName = '幸存者';
-    this.trainCoins = 100000; // 初始信用点
+    this.trainCoins = 0; // 初始信用点
 
     this.initQuests();
     this.initShop();
+
+    this.initPlayerCrew();
+  }
+
+  initPlayerCrew() {
+    const playerCrew = createPlayerCrew(this.playerName, this.player.level);
+    this.crewMembers.push(playerCrew);
   }
 
   // 检查并回复精神值（基于现实时间）
@@ -135,6 +210,43 @@ export class GameManager {
     }
 
     return { recovered: actualRecovered, minutesPassed: elapsedMinutes, dailyRecovered };
+  }
+
+  // 检查并回复体力（基于现实时间）
+  // 每分钟回复1点，受医疗舱加成
+  checkAndRecoverStamina(): { recovered: number; minutesPassed: number } {
+    const now = Date.now();
+    const oneMinute = 60 * 1000; // 1分钟的毫秒数
+
+    // 计算经过了多少分钟
+    const elapsedMs = now - this.lastStaminaRecoveryTime;
+    const elapsedMinutes = Math.floor(elapsedMs / oneMinute);
+
+    if (elapsedMinutes <= 0) {
+      return { recovered: 0, minutesPassed: 0 };
+    }
+
+    // 医疗舱加成
+    const medicalBonus = this.getMedicalRecoveryBonus();
+    const staminaRegenMultiplier = 1 + medicalBonus / 100;
+
+    // 每分钟回复1点体力，受医疗舱加成
+    const baseRecoveryPerMinute = 1;
+    const totalRecovery = Math.floor(elapsedMinutes * baseRecoveryPerMinute * staminaRegenMultiplier);
+
+    const oldStamina = this.player.stamina;
+    this.player.recoverStamina(totalRecovery);
+    const actualRecovered = this.player.stamina - oldStamina;
+
+    // 更新上次回复时间（只计算完整的分钟）
+    this.lastStaminaRecoveryTime = this.lastStaminaRecoveryTime + (elapsedMinutes * oneMinute);
+
+    if (actualRecovered > 0 && elapsedMinutes >= 5) {
+      // 只在恢复超过5分钟时记录日志，避免刷屏
+      this.addLog('体力恢复', `现实时间经过 ${elapsedMinutes} 分钟，恢复 ${actualRecovered} 体力`);
+    }
+
+    return { recovered: actualRecovered, minutesPassed: elapsedMinutes };
   }
 
   // 初始化任务
@@ -765,12 +877,17 @@ export class GameManager {
     const oldHunger = this.player.hunger;
     const oldThirst = this.player.thirst;
 
-    // 百分比恢复（基于最大值的百分比）
-    const hpRecoveryPercent = 0.30;    // 恢复30%最大生命值
-    const staminaRecoveryPercent = 0.50; // 恢复50%最大体力值
+    // 医疗舱加成
+    const medicalBonus = this.getMedicalRecoveryBonus(); // 0, 100, 200, 300, 400
+    const medicalMultiplier = 1 + medicalBonus / 100; // 1, 2, 3, 4, 5
 
-    const hpRecovery = Math.floor(this.player.totalMaxHp * hpRecoveryPercent);
-    const staminaRecovery = Math.floor(this.player.maxStamina * staminaRecoveryPercent);
+    // 基础恢复值（固定值）
+    const baseHpRecovery = 30;
+    const baseStaminaRecovery = 30;
+
+    // 应用医疗舱加成
+    const hpRecovery = Math.floor(baseHpRecovery * medicalMultiplier);
+    const staminaRecovery = Math.floor(baseStaminaRecovery * medicalMultiplier);
 
     // 恢复生命和体力
     this.player.heal(hpRecovery);
@@ -787,8 +904,8 @@ export class GameManager {
 
     this.advanceTime(120);
 
-    logs.push(`恢复 ${hpRestored} 生命 (${Math.floor(hpRecoveryPercent * 100)}%)`);
-    logs.push(`恢复 ${staminaRestored} 体力 (${Math.floor(staminaRecoveryPercent * 100)}%)`);
+    logs.push(`恢复 ${hpRestored} 生命 (基础${baseHpRecovery}${medicalBonus > 0 ? ` ×${medicalMultiplier}` : ''})`);
+    logs.push(`恢复 ${staminaRestored} 体力 (基础${baseStaminaRecovery}${medicalBonus > 0 ? ` ×${medicalMultiplier}` : ''})`);
     logs.push(`消耗 ${hungerConsumed} 能量`);
     logs.push(`消耗 ${thirstConsumed} 冷却`);
 
@@ -1008,6 +1125,24 @@ export class GameManager {
       playerName: this.playerName,
       locationProgress: Array.from(this.locationProgress.entries()),
       autoCollectSystem: this.autoCollectSystem.serialize(),
+      baseFacilitySystem: this.baseFacilitySystem.serialize(),
+      lastStaminaRecoveryTime: this.lastStaminaRecoveryTime,
+      crewMembers: this.crewMembers.map(c => serializeCrewMember(c)),
+      commEvents: this.commEvents.map(e => serializeCommEvent(e)),
+      lastCommScanTime: this.lastCommScanTime,
+      researchProjects: this.researchProjects.map(p => serializeResearchProject(p)),
+      completedResearch: this.completedResearch,
+      miningTasks: this.miningTasks.map(t => serializeMiningTask(t)),
+      chips: this.chips.map(c => serializeChip(c)),
+      equippedChips: this.equippedChips,
+      geneNodes: this.geneNodes.map(n => serializeGeneNode(n)),
+      implants: this.implants.map(i => serializeImplant(i)),
+      equippedImplants: this.equippedImplants,
+      marketListings: this.marketListings.map(l => serializeMarketListing(l)),
+      playerListings: this.playerListings.map(l => serializePlayerListing(l)),
+      marketTransactions: this.marketTransactions.map(t => serializeMarketTransaction(t)),
+      ruins: this.ruins.map(r => serializeRuin(r)),
+      exploreMissions: this.exploreMissions.map(m => serializeExploreMission(m)),
     };
   }
 
@@ -1029,12 +1164,109 @@ export class GameManager {
       console.error('[数据迁移] 错误:', migrationResult.errors);
     }
 
+    // 加载基地设施系统
+    if (state.baseFacilitySystem) {
+      this.baseFacilitySystem.deserialize(state.baseFacilitySystem);
+    }
+
+    // 更新仓库容量
+    this.inventory.setMaxSlots(this.getWarehouseCapacity());
+
+    // 加载体力恢复时间
+    if (state.lastStaminaRecoveryTime) {
+      this.lastStaminaRecoveryTime = state.lastStaminaRecoveryTime;
+    }
+
+    // 加载船员
+    if (state.crewMembers) {
+      this.crewMembers = state.crewMembers.map(c => deserializeCrewMember(c));
+    }
+
+    if (!this.crewMembers.some(c => isPlayerCrew(c.id))) {
+      const playerCrew = createPlayerCrew(this.playerName, this.player.level);
+      this.crewMembers.unshift(playerCrew);
+    }
+
+    // 加载通讯事件
+    if (state.commEvents) {
+      this.commEvents = state.commEvents
+        .map(e => deserializeCommEvent(e))
+        .filter(e => !isEventExpired(e));
+    }
+
+    if (state.lastCommScanTime) {
+      this.lastCommScanTime = state.lastCommScanTime;
+    }
+
+    // 加载研究项目
+    if (state.researchProjects) {
+      this.researchProjects = state.researchProjects.map(p => deserializeResearchProject(p));
+    }
+
+    if (state.completedResearch) {
+      this.completedResearch = state.completedResearch;
+    }
+
+    // 加载采矿任务
+    if (state.miningTasks) {
+      this.miningTasks = state.miningTasks.map(t => deserializeMiningTask(t));
+    }
+
+    // 加载芯片
+    if (state.chips) {
+      this.chips = state.chips.map(c => deserializeChip(c));
+    }
+
+    if (state.equippedChips) {
+      this.equippedChips = state.equippedChips;
+    }
+
+    // 加载基因节点
+    if (state.geneNodes) {
+      this.geneNodes = state.geneNodes.map(n => deserializeGeneNode(n));
+    }
+
+    // 加载机械飞升义体
+    if (state.implants) {
+      this.implants = state.implants.map(i => deserializeImplant(i)).filter((i): i is Implant => i !== null);
+    }
+
+    if (state.equippedImplants) {
+      this.equippedImplants = state.equippedImplants;
+    }
+
+    // 加载星际市场
+    if (state.marketListings) {
+      this.marketListings = state.marketListings.map(l => deserializeMarketListing(l));
+    } else {
+      this.marketListings = generateSystemListings();
+    }
+
+    if (state.playerListings) {
+      this.playerListings = state.playerListings.map(l => deserializePlayerListing(l));
+    }
+
+    if (state.marketTransactions) {
+      this.marketTransactions = state.marketTransactions.map(t => deserializeMarketTransaction(t));
+    }
+
+    // 加载遗迹探索
+    if (state.ruins) {
+      this.ruins = state.ruins.map(r => deserializeRuin(r));
+    } else {
+      this.ruins = generateRuins(this.getFacilityLevel(FacilityType.RUINS));
+    }
+
+    if (state.exploreMissions) {
+      this.exploreMissions = state.exploreMissions.map(m => deserializeExploreMission(m));
+    }
+
     this.day = state.day;
     this.time = state.time;
     this.currentLocation = state.currentLocation;
     this.gameTime = state.gameTime;
     this.logs = state.logs || [];
-    this.trainCoins = state.trainCoins ?? 100000;
+    this.trainCoins = state.trainCoins ?? 0;
     this.lastShopRefreshDay = state.lastShopRefreshDay ?? 1;
     this.playerName = state.playerName ?? '幸存者';
     this.isGameOver = false;
@@ -1091,6 +1323,1636 @@ export class GameManager {
 
     // 重置自动采集系统
     this.autoCollectSystem.reset();
+
+    // 重置基地设施系统
+    this.baseFacilitySystem.reset();
+  }
+
+  // ========== 基地设施系统 ==========
+
+  // 获取基地设施等级
+  getFacilityLevel(facilityId: FacilityType): number {
+    return this.baseFacilitySystem.getFacilityLevel(facilityId);
+  }
+
+  // 获取能源核心效率加成
+  getEnergyCoreEfficiency(): number {
+    return this.baseFacilitySystem.getEnergyCoreEfficiency();
+  }
+
+  // 获取仓库容量
+  getWarehouseCapacity(): number {
+    return this.baseFacilitySystem.getWarehouseCapacity();
+  }
+
+  // 获取医疗舱恢复加成
+  getMedicalRecoveryBonus(): number {
+    return this.baseFacilitySystem.getMedicalRecoveryBonus();
+  }
+
+  // 获取医疗舱效率详情
+  getMedicalEfficiency(): {
+    level: number;
+    hpRecoveryBase: number;
+    hpRecoveryActual: number;
+    staminaRecoveryBase: number;
+    staminaRecoveryActual: number;
+    staminaRegenBase: number;
+    staminaRegenActual: number;
+    bonusPercent: number;
+  } {
+    const level = this.getFacilityLevel(FacilityType.MEDICAL);
+    const bonus = this.getMedicalRecoveryBonus();
+    const multiplier = 1 + bonus / 100;
+
+    const hpRecoveryBase = 30;
+    const staminaRecoveryBase = 30;
+    const staminaRegenBase = 1; // 每分钟基础恢复1点体力（现实时间）
+
+    return {
+      level,
+      hpRecoveryBase,
+      hpRecoveryActual: Math.floor(hpRecoveryBase * multiplier),
+      staminaRecoveryBase,
+      staminaRecoveryActual: Math.floor(staminaRecoveryBase * multiplier),
+      staminaRegenBase,
+      staminaRegenActual: Math.floor(staminaRegenBase * multiplier),
+      bonusPercent: bonus,
+    };
+  }
+
+  // 获取设施升级预览
+  getFacilityUpgradePreview(facilityId: FacilityType): {
+    canUpgrade: boolean;
+    reason?: string;
+    currentLevel: number;
+    nextLevel?: number;
+    cost?: { credits: number; materials: { itemId: string; count: number }[] };
+    effect?: { description: string; value: number };
+  } {
+    const currentLevel = this.baseFacilitySystem.getFacilityLevel(facilityId);
+    const def = this.baseFacilitySystem.getFacilityDefinition(facilityId);
+
+    if (!def) {
+      return { canUpgrade: false, reason: '设施不存在', currentLevel };
+    }
+
+    if (currentLevel >= def.maxLevel) {
+      return { canUpgrade: false, reason: '已达最高等级', currentLevel };
+    }
+
+    const nextLevelData = def.levels.find(l => l.level === currentLevel + 1);
+    if (!nextLevelData) {
+      return { canUpgrade: false, reason: '无法获取升级信息', currentLevel };
+    }
+
+    const checkResult = this.baseFacilitySystem.canUpgrade(
+      facilityId,
+      this.trainCoins,
+      (itemId, count) => this.inventory.hasItem(itemId, count)
+    );
+
+    let reason = checkResult.reason;
+    if (checkResult.missingMaterials && checkResult.missingMaterials.length > 0) {
+      const materialNames = checkResult.missingMaterials.map(mat => {
+        const item = this.inventory.getItem(mat.itemId);
+        return `${item?.name || mat.itemId} x${mat.count}`;
+      });
+      reason = `材料不足: ${materialNames.join(', ')}`;
+    }
+
+    return {
+      canUpgrade: checkResult.canUpgrade,
+      reason,
+      currentLevel,
+      nextLevel: currentLevel + 1,
+      cost: nextLevelData.upgradeCost,
+      effect: nextLevelData.effects,
+    };
+  }
+
+  // 升级基地设施
+  upgradeFacility(facilityId: FacilityType): { success: boolean; message: string; newLevel?: number } {
+    const preview = this.getFacilityUpgradePreview(facilityId);
+
+    if (!preview.canUpgrade) {
+      return { success: false, message: preview.reason || '无法升级' };
+    }
+
+    if (!preview.cost || !preview.nextLevel) {
+      return { success: false, message: '升级信息错误' };
+    }
+
+    // 扣除信用点
+    this.trainCoins -= preview.cost.credits;
+
+    // 扣除材料
+    for (const mat of preview.cost.materials) {
+      this.inventory.removeItem(mat.itemId, mat.count);
+    }
+
+    // 执行升级
+    const result = this.baseFacilitySystem.upgradeFacility(facilityId);
+
+    if (result.success) {
+      const def = this.baseFacilitySystem.getFacilityDefinition(facilityId);
+      this.addLog('基地', `${def?.name || '设施'}升级成功！当前等级: ${result.newLevel}`);
+
+      // 如果是仓库升级，更新背包容量
+      if (facilityId === FacilityType.WAREHOUSE) {
+        this.inventory.setMaxSlots(this.getWarehouseCapacity());
+      }
+    }
+
+    return result;
+  }
+
+  // 获取所有基地设施状态
+  getAllFacilities() {
+    return this.baseFacilitySystem.getAllFacilities();
+  }
+
+  // 获取设施定义
+  getFacilityDefinition(facilityId: FacilityType) {
+    return this.baseFacilitySystem.getFacilityDefinition(facilityId);
+  }
+
+  // ========== 船员系统 ==========
+
+  // 获取船员舱最大容量
+  getCrewCapacity(): number {
+    const level = this.getFacilityLevel(FacilityType.CREW);
+    return level + 4; // Lv.1=5人, Lv.2=6人, ... Lv.5=9人
+  }
+
+  // 获取所有船员
+  getCrewMembers(): CrewMember[] {
+    return this.crewMembers;
+  }
+
+  // 获取战斗阵容（已分配位置的船员）
+  getBattleCrew(): CrewMember[] {
+    return this.crewMembers.filter(c => c.battleSlot > 0).sort((a, b) => a.battleSlot - b.battleSlot);
+  }
+
+  // 获取招募票数量
+  getRecruitTicketCount(recruitType: RecruitType): number {
+    const config = RECRUIT_CONFIG[recruitType];
+    const item = this.inventory.getItem(config.ticketId);
+    return item?.quantity || 0;
+  }
+
+  // 招募船员（抽卡）
+  recruitCrew(recruitType: RecruitType): { success: boolean; message: string; crew?: CrewMember; rarity?: string } {
+    const capacity = this.getCrewCapacity();
+    const config = RECRUIT_CONFIG[recruitType];
+
+    if (this.crewMembers.length >= capacity) {
+      return { success: false, message: `船员舱已满，当前容量: ${capacity}人` };
+    }
+
+    const ticketCount = this.getRecruitTicketCount(recruitType);
+    if (ticketCount <= 0) {
+      return { success: false, message: `${config.name}票不足` };
+    }
+
+    this.inventory.removeItem(config.ticketId, 1);
+
+    const roll = Math.random() * 100;
+    const rarity = getRarityByRoll(roll, recruitType);
+
+    let newCrew: CrewMember;
+    const crewDef = getRandomCrewDefinition(rarity, recruitType);
+
+    if (crewDef) {
+      newCrew = generateCrewFromDefinition(crewDef);
+    } else {
+      newCrew = generateFallbackCrew(rarity);
+    }
+
+    this.crewMembers.push(newCrew);
+
+    const rarityConfig = RARITY_CONFIG[newCrew.rarity];
+    this.addLog('船员招募', `[${config.name}] 获得${rarityConfig.name}品质船员「${newCrew.name}」`);
+
+    return { success: true, message: `成功招募「${newCrew.name}」`, crew: newCrew, rarity: rarityConfig.name };
+  }
+
+  // 十连招募
+  recruitCrewTen(recruitType: RecruitType): { success: boolean; message: string; crews?: CrewMember[] } {
+    const capacity = this.getCrewCapacity();
+    const config = RECRUIT_CONFIG[recruitType];
+
+    const availableSlots = capacity - this.crewMembers.length;
+    if (availableSlots <= 0) {
+      return { success: false, message: `船员舱已满` };
+    }
+
+    const ticketCount = this.getRecruitTicketCount(recruitType);
+    if (ticketCount < 10) {
+      return { success: false, message: `${config.name}票不足，需要10张` };
+    }
+
+    const actualCount = Math.min(10, availableSlots);
+    this.inventory.removeItem(config.ticketId, actualCount);
+
+    const crews: CrewMember[] = [];
+    for (let i = 0; i < actualCount; i++) {
+      const roll = Math.random() * 100;
+      const rarity = getRarityByRoll(roll, recruitType);
+
+      let newCrew: CrewMember;
+      const crewDef = getRandomCrewDefinition(rarity, recruitType);
+
+      if (crewDef) {
+        newCrew = generateCrewFromDefinition(crewDef);
+      } else {
+        newCrew = generateFallbackCrew(rarity);
+      }
+
+      this.crewMembers.push(newCrew);
+      crews.push(newCrew);
+
+      const rarityConfig = RARITY_CONFIG[newCrew.rarity];
+      this.addLog('船员招募', `[${config.name}] 获得${rarityConfig.name}品质船员「${newCrew.name}」`);
+    }
+
+    return { success: true, message: `成功招募${crews.length}名船员`, crews };
+  }
+
+  // 设置船员战斗位置
+  setCrewBattleSlot(crewId: string, slot: number): { success: boolean; message: string } {
+    const crew = this.crewMembers.find(c => c.id === crewId);
+
+    if (!crew) {
+      return { success: false, message: '船员不存在' };
+    }
+
+    if (slot < 0 || slot > 6) {
+      return { success: false, message: '无效的位置编号' };
+    }
+
+    // 如果要设置到某个位置，先检查该位置是否已被占用
+    if (slot > 0) {
+      const existingCrew = this.crewMembers.find(c => c.battleSlot === slot && c.id !== crewId);
+      if (existingCrew) {
+        // 将原来的船员移出
+        existingCrew.battleSlot = 0;
+      }
+    }
+
+    crew.battleSlot = slot;
+    this.addLog('船员配置', `${crew.name} ${slot > 0 ? `已设置到${slot}号位` : '已移出战斗阵容'}`);
+
+    return { success: true, message: slot > 0 ? `已设置到${slot}号位` : '已移出战斗阵容' };
+  }
+
+  // 解雇船员
+  dismissCrew(crewId: string): { success: boolean; message: string } {
+    if (isPlayerCrew(crewId)) {
+      return { success: false, message: '主角不能被解雇' };
+    }
+
+    const index = this.crewMembers.findIndex(c => c.id === crewId);
+
+    if (index === -1) {
+      return { success: false, message: '船员不存在' };
+    }
+
+    const crew = this.crewMembers[index];
+    this.crewMembers.splice(index, 1);
+    this.addLog('船员管理', `解雇了船员「${crew.name}」`);
+
+    return { success: true, message: `已解雇「${crew.name}」` };
+  }
+
+  // 给船员增加经验
+  giveCrewExp(crewId: string, exp: number): { success: boolean; message: string; leveledUp?: boolean; newLevel?: number } {
+    const crew = this.crewMembers.find(c => c.id === crewId);
+
+    if (!crew) {
+      return { success: false, message: '船员不存在' };
+    }
+
+    const result = addCrewExp(crew, exp);
+
+    if (result.leveledUp) {
+      this.addLog('船员升级', `${crew.name}升级到Lv.${result.newLevel}！`);
+    }
+
+    return { success: true, message: `获得${exp}经验`, ...result };
+  }
+
+  // ========== 通讯系统 ==========
+
+  // 获取通讯阵列等级
+  getCommLevel(): number {
+    return this.getFacilityLevel(FacilityType.COMM);
+  }
+
+  // 获取当前通讯事件
+  getCommEvents(): CommEvent[] {
+    this.commEvents = this.commEvents.filter(e => !isEventExpired(e));
+    return this.commEvents;
+  }
+
+  // 扫描新信号
+  scanCommSignals(): { success: boolean; message: string; newEvents?: CommEvent[] } {
+    const level = this.getCommLevel();
+    const cooldown = getScanCooldown(level);
+    const now = Date.now();
+
+    if (now - this.lastCommScanTime < cooldown * 60 * 1000) {
+      const remaining = cooldown * 60 * 1000 - (now - this.lastCommScanTime);
+      const minutes = Math.ceil(remaining / 60000);
+      return { success: false, message: `扫描冷却中，还需${minutes}分钟` };
+    }
+
+    this.lastCommScanTime = now;
+    this.commEvents = this.commEvents.filter(e => !isEventExpired(e));
+
+    const maxEvents = getMaxEvents(level);
+    const currentCount = this.commEvents.length;
+
+    if (currentCount >= maxEvents) {
+      return { success: true, message: '信号列表已满', newEvents: [] };
+    }
+
+    const newEvents: CommEvent[] = [];
+    const numToGenerate = Math.min(2, maxEvents - currentCount);
+
+    for (let i = 0; i < numToGenerate; i++) {
+      if (Math.random() < 0.7) {
+        const event = generateCommEvent(level);
+        if (event) {
+          this.commEvents.push(event);
+          newEvents.push(event);
+        }
+      }
+    }
+
+    if (newEvents.length > 0) {
+      this.addLog('通讯阵列', `扫描发现${newEvents.length}个新信号`);
+    } else {
+      this.addLog('通讯阵列', '扫描完成，未发现新信号');
+    }
+
+    return { success: true, message: `扫描完成，发现${newEvents.length}个新信号`, newEvents };
+  }
+
+  // 响应通讯事件
+  respondToCommEvent(eventId: string): { success: boolean; message: string; rewards?: string } {
+    const eventIndex = this.commEvents.findIndex(e => e.id === eventId);
+
+    if (eventIndex === -1) {
+      return { success: false, message: '事件不存在或已过期' };
+    }
+
+    const event = this.commEvents[eventIndex];
+
+    if (event.responded) {
+      return { success: false, message: '已响应过此事件' };
+    }
+
+    if (isEventExpired(event)) {
+      this.commEvents.splice(eventIndex, 1);
+      return { success: false, message: '事件已过期' };
+    }
+
+    if (event.requirements?.stamina && this.player.stamina < event.requirements.stamina) {
+      return { success: false, message: `体力不足，需要${event.requirements.stamina}点体力` };
+    }
+
+    if (event.requirements?.stamina) {
+      this.player.stamina -= event.requirements.stamina;
+    }
+
+    event.responded = true;
+
+    const rewardMessages: string[] = [];
+
+    if (event.rewards.credits && event.rewards.credits > 0) {
+      this.trainCoins += event.rewards.credits;
+      rewardMessages.push(`${event.rewards.credits}信用点`);
+    }
+
+    if (event.rewards.items && event.rewards.items.length > 0) {
+      event.rewards.items.forEach(item => {
+        this.inventory.addItem(item.itemId, item.count);
+        const itemTemplate = getItemTemplate(item.itemId);
+        const itemName = itemTemplate?.name || item.itemId;
+        rewardMessages.push(`${itemName} x${item.count}`);
+      });
+    }
+
+    if (event.rewards.exp && event.rewards.exp > 0) {
+      this.player.addExp(event.rewards.exp);
+      rewardMessages.push(`${event.rewards.exp}经验`);
+    }
+
+    const eventConfig = COMM_EVENT_CONFIG[event.type];
+    this.addLog('通讯事件', `响应「${event.title}」，获得: ${rewardMessages.join('、')}`);
+
+    this.commEvents.splice(eventIndex, 1);
+
+    return {
+      success: true,
+      message: `成功响应「${event.title}」`,
+      rewards: rewardMessages.join('、'),
+    };
+  }
+
+  // 忽略通讯事件
+  ignoreCommEvent(eventId: string): { success: boolean; message: string } {
+    const eventIndex = this.commEvents.findIndex(e => e.id === eventId);
+
+    if (eventIndex === -1) {
+      return { success: false, message: '事件不存在' };
+    }
+
+    const event = this.commEvents[eventIndex];
+    this.commEvents.splice(eventIndex, 1);
+    this.addLog('通讯事件', `忽略了信号「${event.title}」`);
+
+    return { success: true, message: `已忽略「${event.title}」` };
+  }
+
+  // 获取扫描冷却剩余时间
+  getCommScanCooldown(): number {
+    const level = this.getCommLevel();
+    const cooldown = getScanCooldown(level);
+    const elapsed = Date.now() - this.lastCommScanTime;
+    const remaining = cooldown * 60 * 1000 - elapsed;
+    return Math.max(0, remaining);
+  }
+
+  // ========== 研究系统 ==========
+
+  // 获取科研实验室等级
+  getResearchLevel(): number {
+    return this.getFacilityLevel(FacilityType.RESEARCH);
+  }
+
+  // 初始化研究项目
+  initResearchProjects(): void {
+    RESEARCH_PROJECTS.forEach(template => {
+      if (!this.researchProjects.some(p => p.id === template.id)) {
+        const project = createResearchProject(template.id);
+        if (project) {
+          this.researchProjects.push(project);
+        }
+      }
+    });
+    this.updateResearchStatus();
+  }
+
+  // 更新研究项目状态
+  updateResearchStatus(): void {
+    this.researchProjects.forEach(project => {
+      if (project.status === ResearchStatus.COMPLETED) return;
+
+      if (this.completedResearch.includes(project.id)) {
+        project.status = ResearchStatus.COMPLETED;
+        return;
+      }
+
+      if (project.status === ResearchStatus.IN_PROGRESS) return;
+
+      const prereqsMet = project.prerequisites.every(p => this.completedResearch.includes(p));
+      if (prereqsMet) {
+        project.status = ResearchStatus.AVAILABLE;
+      } else {
+        project.status = ResearchStatus.LOCKED;
+      }
+    });
+  }
+
+  // 获取所有研究项目
+  getResearchProjects(): ResearchProject[] {
+    this.updateResearchStatus();
+    return this.researchProjects;
+  }
+
+  // 获取进行中的研究
+  getActiveResearch(): ResearchProject[] {
+    return this.researchProjects.filter(p => p.status === ResearchStatus.IN_PROGRESS);
+  }
+
+  // 开始研究
+  startResearch(projectId: string): { success: boolean; message: string } {
+    const project = this.researchProjects.find(p => p.id === projectId);
+
+    if (!project) {
+      return { success: false, message: '研究项目不存在' };
+    }
+
+    const level = this.getResearchLevel();
+    const maxConcurrent = getMaxConcurrentResearch(level);
+    const activeCount = this.getActiveResearch().length;
+
+    if (activeCount >= maxConcurrent) {
+      return { success: false, message: `最多同时进行${maxConcurrent}项研究` };
+    }
+
+    const checkResult = canStartResearch(
+      project,
+      this.trainCoins,
+      (itemId, count) => this.inventory.hasItem(itemId, count),
+      this.completedResearch
+    );
+
+    if (!checkResult.canStart) {
+      return { success: false, message: checkResult.reason || '无法开始研究' };
+    }
+
+    this.trainCoins -= project.cost.credits;
+    project.cost.materials.forEach(mat => {
+      this.inventory.removeItem(mat.itemId, mat.count);
+    });
+
+    project.status = ResearchStatus.IN_PROGRESS;
+    project.progress = 0;
+
+    this.addLog('科研实验室', `开始研究「${project.name}」`);
+
+    return { success: true, message: `开始研究「${project.name}」` };
+  }
+
+  // 更新研究进度
+  updateResearchProgress(): void {
+    const level = this.getResearchLevel();
+    const speedBonus = getResearchSpeedBonus(level);
+
+    this.researchProjects.forEach(project => {
+      if (project.status !== ResearchStatus.IN_PROGRESS) return;
+
+      const progressGain = 1 + speedBonus / 100;
+      project.progress += progressGain;
+
+      if (project.progress >= project.totalProgress) {
+        project.status = ResearchStatus.COMPLETED;
+        project.progress = project.totalProgress;
+        this.completedResearch.push(project.id);
+
+        this.applyResearchEffects(project);
+        this.addLog('科研实验室', `研究完成「${project.name}」`);
+      }
+    });
+  }
+
+  // 应用研究效果
+  applyResearchEffects(project: ResearchProject): void {
+    project.effects.forEach(effect => {
+      switch (effect.type) {
+        case 'warehouse_capacity':
+          this.inventory.setMaxSlots(this.getWarehouseCapacity() + effect.value);
+          break;
+      }
+    });
+  }
+
+  // 取消研究
+  cancelResearch(projectId: string): { success: boolean; message: string } {
+    const project = this.researchProjects.find(p => p.id === projectId);
+
+    if (!project) {
+      return { success: false, message: '研究项目不存在' };
+    }
+
+    if (project.status !== ResearchStatus.IN_PROGRESS) {
+      return { success: false, message: '该研究未在进行中' };
+    }
+
+    project.status = ResearchStatus.AVAILABLE;
+    project.progress = 0;
+
+    this.addLog('科研实验室', `取消研究「${project.name}」`);
+
+    return { success: true, message: `已取消研究「${project.name}」` };
+  }
+
+  // 获取研究加成效果
+  getResearchBonus(type: string): number {
+    let bonus = 0;
+    this.completedResearch.forEach(id => {
+      const project = this.researchProjects.find(p => p.id === id);
+      if (project) {
+        project.effects.forEach(effect => {
+          if (effect.type === type) {
+            bonus += effect.value;
+          }
+        });
+      }
+    });
+    return bonus;
+  }
+
+  // ========== 采矿系统 ==========
+
+  // 获取采矿平台等级
+  getMiningLevel(): number {
+    return this.getFacilityLevel(FacilityType.MINING);
+  }
+
+  // 获取可用的采矿点
+  getAvailableMiningSites(): MiningSite[] {
+    const level = this.getMiningLevel();
+    return MINING_SITES.map(site => ({
+      ...site,
+      unlocked: site.unlocked || (site.unlockCondition?.facilityLevel && site.unlockCondition.facilityLevel <= level) || false,
+    }));
+  }
+
+  // 获取当前采矿任务
+  getMiningTasks(): MiningTask[] {
+    return this.miningTasks.filter(t => t.status === MiningStatus.MINING);
+  }
+
+  // 开始采矿（带船员派遣）
+  startMiningWithCrew(siteId: string, crewIds: string[]): { success: boolean; message: string; task?: MiningTask } {
+    const level = this.getMiningLevel();
+    const sites = this.getAvailableMiningSites();
+    const site = sites.find(s => s.id === siteId);
+
+    if (!site) {
+      return { success: false, message: '采矿点不存在' };
+    }
+
+    if (!site.unlocked) {
+      return { success: false, message: '采矿点未解锁' };
+    }
+
+    const maxSlots = getMaxMiningSlots(level);
+    const activeTasks = this.getMiningTasks();
+
+    if (activeTasks.length >= maxSlots) {
+      return { success: false, message: `最多同时进行${maxSlots}个采矿任务` };
+    }
+
+    if (activeTasks.some(t => t.siteId === siteId)) {
+      return { success: false, message: '该采矿点已在进行中' };
+    }
+
+    for (const crewId of crewIds) {
+      const assignedTask = activeTasks.find(t => t.assignedCrew.includes(crewId));
+      if (assignedTask) {
+        const crew = this.crewMembers.find(c => c.id === crewId);
+        return { success: false, message: `${crew?.name || '船员'}已被分配到其他任务` };
+      }
+    }
+
+    const task = createMiningTask(siteId, level, crewIds);
+    this.miningTasks.push(task);
+
+    const crewNames = crewIds.map(id => this.crewMembers.find(c => c.id === id)?.name).filter(Boolean).join('、');
+    this.addLog('采矿平台', `开始在「${site.name}」采矿${crewNames ? `，派遣船员：${crewNames}` : ''}`);
+
+    return { success: true, message: `开始在「${site.name}」采矿`, task };
+  }
+
+  // 开始采矿（简化版，无船员）
+  startMining(siteId: string): { success: boolean; message: string } {
+    const result = this.startMiningWithCrew(siteId, []);
+    return { success: result.success, message: result.message };
+  }
+
+  // 计算船员采矿加成
+  calculateCrewMiningBonus(crewIds: string[]): number {
+    return crewIds.reduce((total, id) => {
+      const crew = this.crewMembers.find(c => c.id === id);
+      if (crew) {
+        return total + getCrewMiningBonus({
+          attack: crew.stats.attack,
+          defense: crew.stats.defense,
+          speed: crew.stats.speed,
+        });
+      }
+      return total;
+    }, 0);
+  }
+
+  // 处理采矿随机事件
+  processMiningRandomEvent(siteId: string): { event: string; message: string; bonus?: number; items?: { itemId: string; count: number }[] } | null {
+    const task = this.miningTasks.find(t => t.siteId === siteId);
+    if (!task || task.status !== MiningStatus.MINING) return null;
+
+    const site = MINING_SITES.find(s => s.id === siteId);
+    if (!site) return null;
+
+    const event = checkMiningEvent(task, site);
+    if (!event) return null;
+
+    const result = processMiningEvent(event, task, site);
+
+    task.events.push({
+      type: event.type,
+      timestamp: Date.now(),
+      resolved: true,
+      result: result.message,
+    });
+
+    if (result.bonus) {
+      task.accumulated += result.bonus;
+    }
+
+    if (result.damage) {
+      task.accumulated = Math.max(0, task.accumulated - result.damage);
+    }
+
+    if (result.items) {
+      result.items.forEach(item => {
+        this.inventory.addItem(item.itemId, item.count);
+      });
+    }
+
+    this.addLog('采矿事件', `「${site.name}」${result.message}`);
+
+    return {
+      event: event.name,
+      message: result.message,
+      bonus: result.bonus,
+      items: result.items,
+    };
+  }
+
+  // 更新采矿深度
+  updateMiningDepth(siteId: string): void {
+    const task = this.miningTasks.find(t => t.siteId === siteId);
+    if (!task || task.status !== MiningStatus.MINING) return;
+
+    const site = MINING_SITES.find(s => s.id === siteId);
+    if (!site) return;
+
+    const progress = getMiningProgress(task);
+    const newDepth = Math.floor((progress / 100) * site.maxDepth);
+    
+    if (newDepth > task.currentDepth) {
+      task.currentDepth = newDepth;
+    }
+  }
+
+  // 收集采矿成果
+  collectMining(siteId: string): { success: boolean; message: string; yield?: number; mineral?: string; depth?: number; events?: number } {
+    const taskIndex = this.miningTasks.findIndex(t => t.siteId === siteId);
+
+    if (taskIndex === -1) {
+      return { success: false, message: '采矿任务不存在' };
+    }
+
+    const task = this.miningTasks[taskIndex];
+
+    if (task.status !== MiningStatus.MINING) {
+      return { success: false, message: '采矿任务未在进行中' };
+    }
+
+    const site = MINING_SITES.find(s => s.id === siteId);
+    if (!site) {
+      return { success: false, message: '采矿点不存在' };
+    }
+
+    const level = this.getMiningLevel();
+    const energyEfficiency = this.getEnergyCoreEfficiency();
+    const crewBonus = this.calculateCrewMiningBonus(task.assignedCrew);
+    const yieldAmount = getMiningYield(site, level, energyEfficiency, crewBonus, task.currentDepth);
+
+    const mineralConfig = MINERAL_CONFIG[site.mineralType];
+    this.inventory.addItem(mineralConfig.itemId, yieldAmount);
+
+    const depthBonus = getDepthBonusDescription(task.currentDepth, site);
+    this.miningTasks.splice(taskIndex, 1);
+
+    this.addLog('采矿平台', `从「${site.name}」收集了${yieldAmount}个${mineralConfig.name}（深度${task.currentDepth}m，${depthBonus}）`);
+
+    return {
+      success: true,
+      message: `收集了${yieldAmount}个${mineralConfig.name}`,
+      yield: yieldAmount,
+      mineral: mineralConfig.name,
+      depth: task.currentDepth,
+      events: task.events.length,
+    };
+  }
+
+  // 取消采矿
+  cancelMining(siteId: string): { success: boolean; message: string } {
+    const taskIndex = this.miningTasks.findIndex(t => t.siteId === siteId);
+
+    if (taskIndex === -1) {
+      return { success: false, message: '采矿任务不存在' };
+    }
+
+    const task = this.miningTasks[taskIndex];
+    const site = MINING_SITES.find(s => s.id === siteId);
+
+    this.miningTasks.splice(taskIndex, 1);
+
+    this.addLog('采矿平台', `取消了「${site?.name || siteId}」的采矿任务`);
+
+    return { success: true, message: '已取消采矿任务' };
+  }
+
+  // 检查并自动收集完成的采矿任务
+  checkMiningCompletion(): void {
+    this.miningTasks.forEach(task => {
+      if (isMiningComplete(task)) {
+        const site = MINING_SITES.find(s => s.id === task.siteId);
+        if (site) {
+          const level = this.getMiningLevel();
+          const energyEfficiency = this.getEnergyCoreEfficiency();
+          const crewBonus = this.calculateCrewMiningBonus(task.assignedCrew);
+          const yieldAmount = getMiningYield(site, level, energyEfficiency, crewBonus, task.currentDepth);
+          const mineralConfig = MINERAL_CONFIG[site.mineralType];
+
+          this.inventory.addItem(mineralConfig.itemId, yieldAmount);
+          this.addLog('采矿平台', `「${site.name}」采矿完成，获得${yieldAmount}个${mineralConfig.name}`);
+        }
+      }
+    });
+
+    this.miningTasks = this.miningTasks.filter(t => !isMiningComplete(t));
+  }
+
+  // ========== 芯片系统 ==========
+
+  // 获取芯片研发等级
+  getChipLevel(): number {
+    return this.getFacilityLevel(FacilityType.CHIP);
+  }
+
+  // 获取可用芯片槽位数
+  getAvailableChipSlots(): number {
+    const level = this.getChipLevel();
+    const slotsByLevel: Record<number, number> = { 1: 2, 2: 2, 3: 3, 4: 3, 5: 4 };
+    return slotsByLevel[level] || 2;
+  }
+
+  // 获取所有芯片
+  getChips(): Chip[] {
+    return this.chips;
+  }
+
+  // 获取已装备的芯片
+  getEquippedChips(): Chip[] {
+    return Object.values(this.equippedChips)
+      .map(id => this.chips.find(c => c.id === id))
+      .filter((c): c is Chip => c !== undefined);
+  }
+
+  // 制作芯片
+  craftChip(slot: ChipSlot, rarity: ChipRarity): { success: boolean; message: string; chip?: Chip } {
+    const level = this.getChipLevel();
+    const maxSlots = this.getAvailableChipSlots();
+
+    if (slot > maxSlots as unknown as ChipSlot) {
+      return { success: false, message: `当前只能使用${maxSlots}个芯片槽位` };
+    }
+
+    const cost = {
+      credits: 500 * (Object.keys(ChipRarity).indexOf(rarity) + 1),
+      materials: {
+        [ChipRarity.COMMON]: { itemId: 'mineral_iron', count: 10 },
+        [ChipRarity.UNCOMMON]: { itemId: 'mineral_copper', count: 8 },
+        [ChipRarity.RARE]: { itemId: 'mineral_titanium', count: 5 },
+        [ChipRarity.EPIC]: { itemId: 'mineral_crystal', count: 3 },
+        [ChipRarity.LEGENDARY]: { itemId: 'mineral_quantum', count: 2 },
+      }[rarity],
+    };
+
+    if (this.trainCoins < cost.credits) {
+      return { success: false, message: `信用点不足，需要${cost.credits}` };
+    }
+
+    if (!this.inventory.hasItem(cost.materials.itemId, cost.materials.count)) {
+      return { success: false, message: `材料不足，需要${cost.materials.count}个${cost.materials.itemId}` };
+    }
+
+    this.trainCoins -= cost.credits;
+    this.inventory.removeItem(cost.materials.itemId, cost.materials.count);
+
+    const chip = createChip(slot, rarity);
+    this.chips.push(chip);
+
+    const rarityConfig = CHIP_RARITY_CONFIG[rarity];
+    this.addLog('芯片研发', `制作了${rarityConfig.name}品质的${chip.slot}号位芯片`);
+
+    return { success: true, message: `成功制作芯片`, chip };
+  }
+
+  // 升级芯片
+  upgradeChip(chipId: string, materialCount: number): { success: boolean; message: string; newLevel?: number; unlockedSubStat?: string } {
+    const chip = this.chips.find(c => c.id === chipId);
+
+    if (!chip) {
+      return { success: false, message: '芯片不存在' };
+    }
+
+    const cost = getUpgradeCost(chip.level);
+    const totalCost = {
+      credits: cost.credits * materialCount,
+      materials: cost.materials * materialCount,
+    };
+
+    if (this.trainCoins < totalCost.credits) {
+      return { success: false, message: `信用点不足，需要${totalCost.credits}` };
+    }
+
+    if (!this.inventory.hasItem('mineral_titanium', totalCost.materials)) {
+      return { success: false, message: `钛矿不足，需要${totalCost.materials}个` };
+    }
+
+    this.trainCoins -= totalCost.credits;
+    this.inventory.removeItem('mineral_titanium', totalCost.materials);
+
+    const result = upgradeChip(chip, materialCount);
+
+    if (result.success) {
+      this.addLog('芯片研发', `芯片升级到Lv.${result.newLevel}`);
+    }
+
+    return {
+      success: result.success,
+      message: result.success ? `升级成功` : '已达最高等级',
+      newLevel: result.newLevel,
+      unlockedSubStat: result.unlockedSubStat ? CHIP_RARITY_CONFIG[chip.rarity].name : undefined,
+    };
+  }
+
+  // 装备芯片
+  equipChip(chipId: string): { success: boolean; message: string } {
+    const chip = this.chips.find(c => c.id === chipId);
+
+    if (!chip) {
+      return { success: false, message: '芯片不存在' };
+    }
+
+    const maxSlots = this.getAvailableChipSlots();
+    if (chip.slot > maxSlots as unknown as ChipSlot) {
+      return { success: false, message: `当前只能使用${maxSlots}个芯片槽位` };
+    }
+
+    const currentEquipped = this.equippedChips[chip.slot];
+    if (currentEquipped === chipId) {
+      return { success: false, message: '该芯片已装备' };
+    }
+
+    this.equippedChips[chip.slot] = chipId;
+    this.addLog('芯片研发', `装备了${chip.slot}号位芯片`);
+
+    return { success: true, message: `已装备到${chip.slot}号位` };
+  }
+
+  // 卸下芯片
+  unequipChip(slot: ChipSlot): { success: boolean; message: string } {
+    const chipId = this.equippedChips[slot];
+
+    if (!chipId) {
+      return { success: false, message: '该槽位没有装备芯片' };
+    }
+
+    delete this.equippedChips[slot];
+    this.addLog('芯片研发', `卸下了${slot}号位芯片`);
+
+    return { success: true, message: '已卸下芯片' };
+  }
+
+  // 分解芯片
+  decomposeChip(chipId: string): { success: boolean; message: string; rewards?: string } {
+    const chipIndex = this.chips.findIndex(c => c.id === chipId);
+
+    if (chipIndex === -1) {
+      return { success: false, message: '芯片不存在' };
+    }
+
+    const chip = this.chips[chipIndex];
+
+    if (this.equippedChips[chip.slot] === chipId) {
+      return { success: false, message: '请先卸下芯片' };
+    }
+
+    const rarityIndex = Object.keys(ChipRarity).indexOf(chip.rarity);
+    const rewards: string[] = [];
+
+    const credits = 100 * (rarityIndex + 1) * chip.level;
+    this.trainCoins += credits;
+    rewards.push(`${credits}信用点`);
+
+    const materialReward = {
+      [ChipRarity.COMMON]: { itemId: 'mineral_iron', count: 5 },
+      [ChipRarity.UNCOMMON]: { itemId: 'mineral_copper', count: 3 },
+      [ChipRarity.RARE]: { itemId: 'mineral_titanium', count: 2 },
+      [ChipRarity.EPIC]: { itemId: 'mineral_crystal', count: 1 },
+      [ChipRarity.LEGENDARY]: { itemId: 'mineral_quantum', count: 1 },
+    }[chip.rarity];
+
+    if (materialReward) {
+      this.inventory.addItem(materialReward.itemId, materialReward.count);
+      rewards.push(`${materialReward.count}个材料`);
+    }
+
+    this.chips.splice(chipIndex, 1);
+    this.addLog('芯片研发', `分解了芯片，获得${rewards.join('、')}`);
+
+    return { success: true, message: '分解成功', rewards: rewards.join('、') };
+  }
+
+  // 获取芯片总属性加成
+  getChipStatBonus(): Record<string, number> {
+    const totalStats: Record<string, number> = {};
+
+    this.getEquippedChips().forEach(chip => {
+      const stats = getChipStats(chip);
+      Object.entries(stats).forEach(([stat, value]) => {
+        totalStats[stat] = (totalStats[stat] || 0) + value;
+      });
+    });
+
+    return totalStats;
+  }
+
+  // ========== 基因系统 ==========
+
+  // 获取基因工程等级
+  getGeneLevel(): number {
+    return this.getFacilityLevel(FacilityType.GENE);
+  }
+
+  // 初始化基因树
+  initGeneTree(): void {
+    if (this.geneNodes.length === 0) {
+      GENE_TREE.forEach(template => {
+        this.geneNodes.push(createGeneNode(template));
+      });
+    }
+    this.updateGeneUnlockStatus();
+  }
+
+  // 更新基因解锁状态
+  updateGeneUnlockStatus(): void {
+    const level = this.getGeneLevel();
+    const maxUnlocked = 3 + (level - 1) * 2;
+
+    this.geneNodes.forEach((node, index) => {
+      if (index < maxUnlocked) {
+        const prereqsMet = node.prerequisites.every(p => {
+          const prereqNode = this.geneNodes.find(n => n.id === p);
+          return prereqNode && prereqNode.level > 0;
+        });
+        node.unlocked = prereqsMet || node.prerequisites.length === 0;
+      } else {
+        node.unlocked = false;
+      }
+    });
+  }
+
+  // 获取基因节点
+  getGeneNodes(): GeneNode[] {
+    this.updateGeneUnlockStatus();
+    return this.geneNodes;
+  }
+
+  // 升级基因节点
+  upgradeGeneNode(nodeId: string): { success: boolean; message: string; newValue?: number } {
+    const node = this.geneNodes.find(n => n.id === nodeId);
+
+    if (!node) {
+      return { success: false, message: '基因节点不存在' };
+    }
+
+    if (!node.unlocked) {
+      return { success: false, message: '基因节点未解锁' };
+    }
+
+    if (node.level >= node.maxLevel) {
+      return { success: false, message: '已达最高等级' };
+    }
+
+    const cost = getGeneUpgradeCost(node);
+
+    if (this.trainCoins < cost.credits) {
+      return { success: false, message: `信用点不足，需要${cost.credits}` };
+    }
+
+    if (!this.inventory.hasItem(cost.materials.itemId, cost.materials.count)) {
+      return { success: false, message: `基因材料不足，需要${cost.materials.count}个` };
+    }
+
+    this.trainCoins -= cost.credits;
+    this.inventory.removeItem(cost.materials.itemId, cost.materials.count);
+
+    const result = upgradeGeneNode(node);
+
+    if (result.success) {
+      const typeConfig = GENE_TYPE_CONFIG[node.type];
+      this.addLog('基因工程', `${typeConfig.name}基因升级到Lv.${node.level}`);
+    }
+
+    return { success: result.success, message: result.success ? '升级成功' : '升级失败', newValue: result.newValue };
+  }
+
+  // 获取基因总属性
+  getGeneTotalStats(): Record<GeneType, number> {
+    return getGeneTotalStats(this.geneNodes);
+  }
+
+  // ========== 机械飞升系统 ==========
+
+  // 获取机械飞升等级
+  getCyberneticLevel(): number {
+    return this.getFacilityLevel(FacilityType.ARENA);
+  }
+
+  // 获取可用的义体槽位
+  getAvailableImplantSlots(): ImplantType[] {
+    const level = this.getCyberneticLevel();
+    const slots: ImplantType[] = [ImplantType.NEURAL];
+
+    if (level >= 2) slots.push(ImplantType.SKELETAL);
+    if (level >= 3) slots.push(ImplantType.MUSCULAR);
+    if (level >= 4) slots.push(ImplantType.SENSORY);
+    if (level >= 5) {
+      slots.push(ImplantType.CARDIO);
+      slots.push(ImplantType.INTEGRATED);
+    }
+
+    return slots;
+  }
+
+  // 获取所有义体
+  getImplants(): Implant[] {
+    return this.implants;
+  }
+
+  // 获取已装备的义体
+  getEquippedImplants(): Implant[] {
+    return Object.values(this.equippedImplants)
+      .map(id => this.implants.find(i => i.id === id))
+      .filter((i): i is Implant => i !== undefined);
+  }
+
+  // 制造义体
+  craftImplant(rarity: ImplantRarity): { success: boolean; message: string; implant?: Implant } {
+    const level = this.getCyberneticLevel();
+
+    const rarityCost = {
+      [ImplantRarity.COMMON]: { credits: 500, materials: 5 },
+      [ImplantRarity.UNCOMMON]: { credits: 1000, materials: 8 },
+      [ImplantRarity.RARE]: { credits: 2000, materials: 12 },
+      [ImplantRarity.EPIC]: { credits: 5000, materials: 20 },
+      [ImplantRarity.LEGENDARY]: { credits: 10000, materials: 30 },
+    };
+
+    const cost = rarityCost[rarity];
+
+    if (this.trainCoins < cost.credits) {
+      return { success: false, message: `信用点不足，需要${cost.credits}` };
+    }
+
+    if (!this.inventory.hasItem('cyber_material', cost.materials)) {
+      return { success: false, message: `义体材料不足，需要${cost.materials}个` };
+    }
+
+    this.trainCoins -= cost.credits;
+    this.inventory.removeItem('cyber_material', cost.materials);
+
+    const implant = getRandomImplantByRarity(rarity);
+    if (!implant) {
+      return { success: false, message: '无法生成义体' };
+    }
+
+    this.implants.push(implant);
+
+    const rarityConfig = IMPLANT_RARITY_CONFIG[implant.rarity];
+    this.addLog('机械飞升', `制造了${rarityConfig.name}品质的${implant.name}`);
+
+    return { success: true, message: `成功制造${implant.name}`, implant };
+  }
+
+  // 升级义体
+  upgradeImplantItem(implantId: string): { success: boolean; message: string; newLevel?: number } {
+    const implant = this.implants.find(i => i.id === implantId);
+
+    if (!implant) {
+      return { success: false, message: '义体不存在' };
+    }
+
+    if (implant.level >= implant.maxLevel) {
+      return { success: false, message: '已达最高等级' };
+    }
+
+    const cost = getImplantUpgradeCost(implant);
+
+    if (this.trainCoins < cost.credits) {
+      return { success: false, message: `信用点不足，需要${cost.credits}` };
+    }
+
+    if (!this.inventory.hasItem(cost.materials.itemId, cost.materials.count)) {
+      return { success: false, message: `材料不足，需要${cost.materials.count}个` };
+    }
+
+    this.trainCoins -= cost.credits;
+    this.inventory.removeItem(cost.materials.itemId, cost.materials.count);
+
+    const result = upgradeImplant(implant);
+
+    if (result.success) {
+      const typeConfig = IMPLANT_TYPE_CONFIG[implant.type];
+      this.addLog('机械飞升', `${implant.name}升级到Lv.${implant.level}`);
+    }
+
+    return { success: result.success, message: result.success ? '升级成功' : '升级失败', newLevel: result.newLevel };
+  }
+
+  // 装备义体
+  equipImplant(implantId: string): { success: boolean; message: string } {
+    const implant = this.implants.find(i => i.id === implantId);
+
+    if (!implant) {
+      return { success: false, message: '义体不存在' };
+    }
+
+    const availableSlots = this.getAvailableImplantSlots();
+    if (!availableSlots.includes(implant.type)) {
+      return { success: false, message: '该类型义体槽位未解锁' };
+    }
+
+    const currentEquipped = this.equippedImplants[implant.type];
+    if (currentEquipped === implantId) {
+      return { success: false, message: '该义体已装备' };
+    }
+
+    this.equippedImplants[implant.type] = implantId;
+    this.addLog('机械飞升', `装备了${implant.name}`);
+
+    return { success: true, message: `已装备${implant.name}` };
+  }
+
+  // 卸下义体
+  unequipImplant(type: ImplantType): { success: boolean; message: string } {
+    const implantId = this.equippedImplants[type];
+
+    if (!implantId) {
+      return { success: false, message: '该槽位没有装备义体' };
+    }
+
+    const implant = this.implants.find(i => i.id === implantId);
+    delete this.equippedImplants[type];
+    this.addLog('机械飞升', `卸下了${implant?.name || type}`);
+
+    return { success: true, message: '已卸下义体' };
+  }
+
+  // 分解义体
+  decomposeImplant(implantId: string): { success: boolean; message: string; rewards?: string } {
+    const implantIndex = this.implants.findIndex(i => i.id === implantId);
+
+    if (implantIndex === -1) {
+      return { success: false, message: '义体不存在' };
+    }
+
+    const implant = this.implants[implantIndex];
+
+    if (this.equippedImplants[implant.type] === implantId) {
+      return { success: false, message: '请先卸下义体' };
+    }
+
+    const rarityIndex = Object.keys(ImplantRarity).indexOf(implant.rarity);
+    const rewards: string[] = [];
+
+    const credits = 200 * (rarityIndex + 1) * implant.level;
+    this.trainCoins += credits;
+    rewards.push(`${credits}信用点`);
+
+    const materialReward = 2 + rarityIndex * 2 + Math.floor(implant.level / 3);
+    this.inventory.addItem('cyber_material', materialReward);
+    rewards.push(`${materialReward}个义体材料`);
+
+    this.implants.splice(implantIndex, 1);
+    this.addLog('机械飞升', `分解了义体，获得${rewards.join('、')}`);
+
+    return { success: true, message: '分解成功', rewards: rewards.join('、') };
+  }
+
+  // 获取义体总属性加成
+  getImplantTotalStats(): Record<string, number> {
+    const totalStats: Record<string, number> = {};
+
+    this.getEquippedImplants().forEach(implant => {
+      const stats = getImplantStats(implant);
+      Object.entries(stats).forEach(([stat, value]) => {
+        totalStats[stat] = (totalStats[stat] || 0) + value;
+      });
+    });
+
+    return totalStats;
+  }
+
+  // ========== 星际市场系统 ==========
+
+  // 获取市场等级
+  getMarketLevel(): number {
+    return this.getFacilityLevel(FacilityType.MARKET);
+  }
+
+  // 获取市场挂单列表
+  getMarketListings(): MarketListing[] {
+    this.marketListings = this.marketListings.filter(l => !isListingExpired(l));
+
+    if (this.marketListings.length === 0) {
+      this.marketListings = generateSystemListings();
+    }
+
+    return this.marketListings;
+  }
+
+  // 获取玩家挂单列表
+  getPlayerListings(): PlayerListing[] {
+    this.playerListings = this.playerListings.filter(l => l.status === 'active');
+    return this.playerListings;
+  }
+
+  // 获取交易记录
+  getMarketTransactions(): MarketTransaction[] {
+    return this.marketTransactions.slice(-50);
+  }
+
+  // 挂单出售物品
+  listMarketItem(
+    itemId: string,
+    quantity: number,
+    price: number
+  ): { success: boolean; message: string; listing?: PlayerListing } {
+    if (this.playerListings.filter(l => l.status === 'active').length >= MARKET_MAX_LISTINGS) {
+      return { success: false, message: `最多同时挂${MARKET_MAX_LISTINGS}个单` };
+    }
+
+    const item = this.inventory.getItem(itemId);
+    if (!item) {
+      return { success: false, message: '物品不存在' };
+    }
+
+    if (item.quantity < quantity) {
+      return { success: false, message: `物品数量不足，当前有${item.quantity}个` };
+    }
+
+    if (price <= 0) {
+      return { success: false, message: '价格必须大于0' };
+    }
+
+    this.inventory.removeItem(itemId, quantity);
+
+    const listing: PlayerListing = {
+      ...createMarketListing(
+        itemId,
+        item.name,
+        item.type === ItemType.WEAPON || item.type === ItemType.ARMOR || item.type === ItemType.ACCESSORY
+          ? MarketItemType.EQUIPMENT
+          : item.type === ItemType.CONSUMABLE
+            ? MarketItemType.CONSUMABLE
+            : MarketItemType.MATERIAL,
+        item.rarity as unknown as MarketRarity,
+        quantity,
+        price,
+        this.playerName
+      ),
+      status: 'active',
+    };
+
+    this.playerListings.push(listing);
+    this.addLog('星际市场', `挂单出售${item.name}x${quantity}，单价${price}`);
+
+    return { success: true, message: '挂单成功', listing };
+  }
+
+  // 取消挂单
+  cancelMarketListing(listingId: string): { success: boolean; message: string } {
+    const listingIndex = this.playerListings.findIndex(l => l.id === listingId && l.status === 'active');
+
+    if (listingIndex === -1) {
+      return { success: false, message: '挂单不存在或已成交' };
+    }
+
+    const listing = this.playerListings[listingIndex];
+    this.inventory.addItem(listing.itemId, listing.quantity);
+    listing.status = 'expired';
+
+    this.addLog('星际市场', `取消挂单${listing.itemName}x${listing.quantity}`);
+
+    return { success: true, message: '取消成功，物品已返还' };
+  }
+
+  // 购买市场物品
+  buyMarketItem(listingId: string): { success: boolean; message: string } {
+    const listingIndex = this.marketListings.findIndex(l => l.id === listingId);
+
+    if (listingIndex === -1) {
+      return { success: false, message: '挂单不存在' };
+    }
+
+    const listing = this.marketListings[listingIndex];
+
+    if (isListingExpired(listing)) {
+      this.marketListings.splice(listingIndex, 1);
+      return { success: false, message: '挂单已过期' };
+    }
+
+    const totalPrice = listing.price * listing.quantity;
+
+    if (this.trainCoins < totalPrice) {
+      return { success: false, message: `信用点不足，需要${totalPrice}` };
+    }
+
+    this.trainCoins -= totalPrice;
+    this.inventory.addItem(listing.itemId, listing.quantity);
+
+    const transaction: MarketTransaction = {
+      id: `tx_${Date.now()}`,
+      itemId: listing.itemId,
+      itemName: listing.itemName,
+      quantity: listing.quantity,
+      price: listing.price,
+      type: 'buy',
+      timestamp: Date.now(),
+    };
+    this.marketTransactions.push(transaction);
+
+    this.marketListings.splice(listingIndex, 1);
+
+    this.addLog('星际市场', `购买${listing.itemName}x${listing.quantity}，花费${totalPrice}信用点`);
+
+    return { success: true, message: `购买成功，获得${listing.itemName}x${listing.quantity}` };
+  }
+
+  // 刷新市场
+  refreshMarket(): { success: boolean; message: string } {
+    this.marketListings = generateSystemListings();
+    this.addLog('星际市场', '市场已刷新');
+    return { success: true, message: '市场已刷新' };
+  }
+
+  // ========== 遗迹探索系统 ==========
+
+  // 获取遗迹探索等级
+  getRuinLevel(): number {
+    return this.getFacilityLevel(FacilityType.RUINS);
+  }
+
+  // 获取遗迹列表
+  getRuins(): Ruin[] {
+    const level = this.getRuinLevel();
+    const availableRuins = generateRuins(level);
+
+    availableRuins.forEach(ar => {
+      const existing = this.ruins.find(r => r.id === ar.id);
+      if (existing) {
+        ar.completedCount = existing.completedCount;
+      }
+    });
+
+    this.ruins = availableRuins;
+    return this.ruins;
+  }
+
+  // 获取探索任务列表
+  getExploreMissions(): ExploreMission[] {
+    return this.exploreMissions;
+  }
+
+  // 开始探索
+  startExplore(ruinId: string, crewIds: string[]): { success: boolean; message: string; mission?: ExploreMission } {
+    const ruin = this.ruins.find(r => r.id === ruinId);
+
+    if (!ruin) {
+      return { success: false, message: '遗迹不存在' };
+    }
+
+    if (ruin.status === ExploreStatus.EXPLORING) {
+      return { success: false, message: '该遗迹正在探索中' };
+    }
+
+    if (crewIds.length === 0) {
+      return { success: false, message: '请选择至少一名船员' };
+    }
+
+    const crewMembers = crewIds.map(id => this.crewMembers.find(c => c.id === id)).filter((c): c is CrewMember => c !== undefined);
+
+    if (crewMembers.length !== crewIds.length) {
+      return { success: false, message: '部分船员不存在' };
+    }
+
+    for (const crew of crewMembers) {
+      const assignedMission = this.exploreMissions.find(m => m.status === 'ongoing' && m.crewIds.includes(crew.id));
+      if (assignedMission) {
+        return { success: false, message: `${crew.name}正在执行其他任务` };
+      }
+    }
+
+    const mission: ExploreMission = {
+      id: `explore_${Date.now()}`,
+      ruinId,
+      crewIds,
+      startTime: Date.now(),
+      endTime: Date.now() + ruin.duration,
+      status: 'ongoing',
+    };
+
+    ruin.status = ExploreStatus.EXPLORING;
+    ruin.assignedCrew = crewIds;
+    this.exploreMissions.push(mission);
+
+    const typeConfig = RUIN_TYPE_CONFIG[ruin.type];
+    this.addLog('遗迹探索', `开始探索${typeConfig.name}：${ruin.name}`);
+
+    return { success: true, message: '探索已开始', mission };
+  }
+
+  // 完成探索
+  completeExplore(missionId: string): { success: boolean; message: string; rewards?: { credits: number; items: { itemId: string; count: number }[]; experience: number } } {
+    const missionIndex = this.exploreMissions.findIndex(m => m.id === missionId);
+
+    if (missionIndex === -1) {
+      return { success: false, message: '任务不存在' };
+    }
+
+    const mission = this.exploreMissions[missionIndex];
+
+    if (mission.status !== 'ongoing') {
+      return { success: false, message: '任务已完成' };
+    }
+
+    if (Date.now() < mission.endTime) {
+      return { success: false, message: '探索尚未完成' };
+    }
+
+    const ruin = this.ruins.find(r => r.id === mission.ruinId);
+    if (!ruin) {
+      return { success: false, message: '遗迹不存在' };
+    }
+
+    const crewPower = mission.crewIds.reduce((total, id) => {
+      const crew = this.crewMembers.find(c => c.id === id);
+      return total + (crew?.stats.attack || 0) + (crew?.stats.defense || 0);
+    }, 0);
+
+    const successRate = calculateExploreSuccess(crewPower, ruin.difficulty);
+    const isSuccess = Math.random() * 100 < successRate;
+
+    const rewards = generateRewards(ruin.rewards, isSuccess);
+
+    this.trainCoins += rewards.credits;
+    rewards.items.forEach(item => {
+      this.inventory.addItem(item.itemId, item.count);
+    });
+
+    ruin.status = ExploreStatus.AVAILABLE;
+    ruin.assignedCrew = undefined;
+    ruin.completedCount += 1;
+
+    mission.status = isSuccess ? 'completed' : 'failed';
+    this.exploreMissions.splice(missionIndex, 1);
+
+    const typeConfig = RUIN_TYPE_CONFIG[ruin.type];
+    this.addLog('遗迹探索', `${isSuccess ? '成功' : '失败'}探索${typeConfig.name}：${ruin.name}，获得${rewards.credits}信用点`);
+
+    return {
+      success: true,
+      message: isSuccess ? '探索成功！' : '探索失败，但获得部分奖励',
+      rewards,
+    };
+  }
+
+  // 取消探索
+  cancelExplore(missionId: string): { success: boolean; message: string } {
+    const missionIndex = this.exploreMissions.findIndex(m => m.id === missionId);
+
+    if (missionIndex === -1) {
+      return { success: false, message: '任务不存在' };
+    }
+
+    const mission = this.exploreMissions[missionIndex];
+
+    if (mission.status !== 'ongoing') {
+      return { success: false, message: '任务已完成' };
+    }
+
+    const ruin = this.ruins.find(r => r.id === mission.ruinId);
+    if (ruin) {
+      ruin.status = ExploreStatus.AVAILABLE;
+      ruin.assignedCrew = undefined;
+    }
+
+    this.exploreMissions.splice(missionIndex, 1);
+    this.addLog('遗迹探索', '取消了探索任务');
+
+    return { success: true, message: '已取消探索' };
+  }
+
+  // 检查并完成已结束的探索任务
+  checkExploreMissions(): void {
+    this.exploreMissions.forEach(mission => {
+      if (mission.status === 'ongoing' && Date.now() >= mission.endTime) {
+        // 任务已完成，等待玩家领取奖励
+      }
+    });
   }
 
   // ========== 自动采集系统 ==========
@@ -1107,7 +2969,8 @@ export class GameManager {
 
   // 停止自动采集
   stopAutoCollect(): { success: boolean; message: string; rewards?: CollectReward } {
-    const result = this.autoCollectSystem.stopCollect();
+    const energyEfficiency = this.getEnergyCoreEfficiency();
+    const result = this.autoCollectSystem.stopCollect(energyEfficiency);
     if (result.success && result.rewards) {
       this.applyCollectRewards(result.rewards);
       this.addLog('自动采集', `停止采集，获得 ${result.rewards.gold} 信用点、${result.rewards.exp} 经验值`);
@@ -1117,7 +2980,8 @@ export class GameManager {
 
   // 领取采集收益（不停止）
   claimAutoCollectRewards(): { success: boolean; message: string; rewards?: CollectReward } {
-    const result = this.autoCollectSystem.claimRewards();
+    const energyEfficiency = this.getEnergyCoreEfficiency();
+    const result = this.autoCollectSystem.claimRewards(energyEfficiency);
     if (result.success && result.rewards) {
       this.applyCollectRewards(result.rewards);
       this.addLog('自动采集', `领取收益：${result.rewards.gold} 信用点、${result.rewards.exp} 经验值`);
@@ -1166,7 +3030,8 @@ export class GameManager {
 
   // 获取预计每小时收益
   getEstimatedHourlyRewards() {
-    return this.autoCollectSystem.getEstimatedHourlyRewards();
+    const energyEfficiency = this.getEnergyCoreEfficiency();
+    return this.autoCollectSystem.getEstimatedHourlyRewards(energyEfficiency);
   }
 
   // 获取可用的采集地点

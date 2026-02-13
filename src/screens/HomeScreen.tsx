@@ -594,6 +594,7 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
             playerLevel={player.level}
             defeatedBossCount={gameManager.autoCollectSystem.defeatedBosses.size}
             remainingDailyHours={gameManager.autoCollectSystem.getRemainingDailyHours()}
+            energyEfficiency={gameManager.getEnergyCoreEfficiency()}
           />
         )}
       </div>
@@ -1211,6 +1212,7 @@ function AutoCollectModal({
   playerLevel,
   defeatedBossCount,
   remainingDailyHours,
+  energyEfficiency,
 }: {
   onClose: () => void;
   onStart: (locationId: string, mode: AutoCollectMode) => void;
@@ -1221,6 +1223,7 @@ function AutoCollectModal({
   playerLevel: number;
   defeatedBossCount: number;
   remainingDailyHours: number;
+  energyEfficiency: number;
 }) {
   const [selectedLocation, setSelectedLocation] = useState(availableLocations[0]?.id || 'robot_lv1');
   const [selectedMode, setSelectedMode] = useState<AutoCollectMode>(currentMode || AutoCollectMode.BALANCED);
@@ -1236,7 +1239,7 @@ function AutoCollectModal({
   };
 
   // 计算每小时收益
-  const calculateHourlyRewards = (robot: CollectRobot | null, mode: AutoCollectMode, bossCount: number) => {
+  const calculateHourlyRewards = (robot: CollectRobot | null, mode: AutoCollectMode, bossCount: number, energyBonus: number) => {
     if (!robot) return null;
 
     const base = robot.baseRewards;
@@ -1271,17 +1274,22 @@ function AutoCollectModal({
     const bossMultiplier = 1 + bossCount * 0.2;
     const bossBonus = bossCount > 0 ? `+${Math.round((bossMultiplier - 1) * 100)}%` : null;
 
+    // 能源核心加成
+    const energyMultiplier = 1 + energyBonus / 100;
+    const energyBonusText = energyBonus > 0 ? `+${energyBonus}%` : null;
+
     return {
-      gold: Math.round(goldRate * bossMultiplier),
-      exp: Math.round(expRate * bossMultiplier),
-      materials: Math.round(materialRate * bossMultiplier),
-      stones: Math.round(stoneRate * bossMultiplier),
+      gold: Math.round(goldRate * bossMultiplier * energyMultiplier),
+      exp: Math.round(expRate * bossMultiplier * energyMultiplier),
+      materials: Math.round(materialRate * bossMultiplier * energyMultiplier),
+      stones: Math.round(stoneRate * bossMultiplier * energyMultiplier),
       modeBonus,
-      bossBonus
+      bossBonus,
+      energyBonus: energyBonusText
     };
   };
 
-  const hourlyRewards = calculateHourlyRewards(robot, selectedMode, defeatedBossCount);
+  const hourlyRewards = calculateHourlyRewards(robot, selectedMode, defeatedBossCount, energyEfficiency);
 
   return (
     <div style={{
@@ -1485,6 +1493,12 @@ function AutoCollectModal({
                   <span style={{ color: '#f59e0b', fontSize: '11px' }}>🎯 模式加成: </span>
                   <span style={{ color: '#fbbf24', fontSize: '11px' }}>{hourlyRewards.modeBonus}</span>
                 </div>
+                {hourlyRewards.energyBonus && (
+                  <div style={{ marginBottom: '6px' }}>
+                    <span style={{ color: '#22c55e', fontSize: '11px' }}>⚡ 能源核心加成: </span>
+                    <span style={{ color: '#4ade80', fontSize: '11px' }}>{hourlyRewards.energyBonus}</span>
+                  </div>
+                )}
                 {hourlyRewards.bossBonus && (
                   <div>
                     <span style={{ color: '#c084fc', fontSize: '11px' }}>🏆 星球首领加成: </span>

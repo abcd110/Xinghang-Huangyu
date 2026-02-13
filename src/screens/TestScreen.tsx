@@ -297,11 +297,11 @@ export default function TestScreen({ onBack }: TestScreenProps) {
 
   // ==================== 货币与道具 ====================
 
-  // 添加金币
+  // 添加信用点
   const addCoins = (amount: number) => {
-    gameManager.inventory.addItem('coin', amount);
+    gameManager.trainCoins += amount;
     forceRefresh();
-    showMessage(`💰 已添加 ${amount.toLocaleString()} 金币`);
+    showMessage(`💰 已添加 ${amount.toLocaleString()} 信用点`);
   };
 
   // 添加强化石
@@ -433,7 +433,7 @@ export default function TestScreen({ onBack }: TestScreenProps) {
                   cursor: 'pointer',
                 }}
               >
-                💰 +100,000 金币
+                💰 +100,000 信用点
               </button>
               <button
                 onClick={() => addEnhanceStones(999)}

@@ -15,6 +15,22 @@ export class Inventory {
     this.maxSlots = maxSlots;
   }
 
+  setMaxSlots(maxSlots: number): void {
+    this.maxSlots = maxSlots;
+  }
+
+  getUsedSlots(): number {
+    return this.items.length + this.equipment.length;
+  }
+
+  getRemainingSlots(): number {
+    return this.maxSlots - this.getUsedSlots();
+  }
+
+  isFull(): boolean {
+    return this.getUsedSlots() >= this.maxSlots;
+  }
+
   // 添加物品
   addItem(itemId: string, quantity: number = 1): boolean {
     // 检查是否可堆叠

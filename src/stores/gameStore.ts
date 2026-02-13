@@ -87,6 +87,109 @@ interface GameStore {
   getEstimatedHourlyRewards: () => CollectReward;
   getAvailableCollectLocations: () => import('../data/autoCollectTypes').CollectLocation[];
 
+  // 基地设施系统
+  getFacilityLevel: (facilityId: import('../core/BaseFacilitySystem').FacilityType) => number;
+  getEnergyCoreEfficiency: () => number;
+  getWarehouseCapacity: () => number;
+  getMedicalRecoveryBonus: () => number;
+  getMedicalEfficiency: () => {
+    level: number;
+    hpRecoveryBase: number;
+    hpRecoveryActual: number;
+    staminaRecoveryBase: number;
+    staminaRecoveryActual: number;
+    staminaRegenBase: number;
+    staminaRegenActual: number;
+    bonusPercent: number;
+  };
+  getFacilityUpgradePreview: (facilityId: import('../core/BaseFacilitySystem').FacilityType) => {
+    canUpgrade: boolean;
+    reason?: string;
+    currentLevel: number;
+    nextLevel?: number;
+    cost?: { credits: number; materials: { itemId: string; count: number }[] };
+    effect?: { description: string; value: number };
+  };
+  upgradeFacility: (facilityId: import('../core/BaseFacilitySystem').FacilityType) => { success: boolean; message: string; newLevel?: number };
+  getAllFacilities: () => import('../core/BaseFacilitySystem').FacilityState[];
+  getFacilityDefinition: (facilityId: import('../core/BaseFacilitySystem').FacilityType) => import('../core/BaseFacilitySystem').FacilityDefinition | undefined;
+
+  // 船员系统
+  getCrewMembers: () => import('../core/CrewSystem').CrewMember[];
+  getBattleCrew: () => import('../core/CrewSystem').CrewMember[];
+  getCrewCapacity: () => number;
+  getRecruitTicketCount: (recruitType: import('../core/CrewSystem').RecruitType) => number;
+  recruitCrew: (recruitType: import('../core/CrewSystem').RecruitType) => { success: boolean; message: string; crew?: import('../core/CrewSystem').CrewMember; rarity?: string };
+  recruitCrewTen: (recruitType: import('../core/CrewSystem').RecruitType) => { success: boolean; message: string; crews?: import('../core/CrewSystem').CrewMember[] };
+  setCrewBattleSlot: (crewId: string, slot: number) => { success: boolean; message: string };
+  dismissCrew: (crewId: string) => { success: boolean; message: string };
+
+  // 通讯系统
+  getCommEvents: () => import('../core/CommSystem').CommEvent[];
+  scanCommSignals: () => { success: boolean; message: string; newEvents?: import('../core/CommSystem').CommEvent[] };
+  respondToCommEvent: (eventId: string) => { success: boolean; message: string; rewards?: string };
+  ignoreCommEvent: (eventId: string) => { success: boolean; message: string };
+  getCommScanCooldown: () => number;
+
+  // 研究系统
+  getResearchProjects: () => import('../core/ResearchSystem').ResearchProject[];
+  getActiveResearch: () => import('../core/ResearchSystem').ResearchProject[];
+  startResearch: (projectId: string) => { success: boolean; message: string };
+  cancelResearch: (projectId: string) => { success: boolean; message: string };
+  getResearchBonus: (type: string) => number;
+
+  // 采矿系统
+  getAvailableMiningSites: () => ReturnType<GameManager['getAvailableMiningSites']>;
+  getMiningTasks: () => import('../core/MiningSystem').MiningTask[];
+  startMining: (siteId: string) => { success: boolean; message: string };
+  startMiningWithCrew: (siteId: string, crewIds: string[]) => { success: boolean; message: string; task?: import('../core/MiningSystem').MiningTask };
+  collectMining: (siteId: string) => { success: boolean; message: string; yield?: number; mineral?: string; depth?: number; events?: number };
+  cancelMining: (siteId: string) => { success: boolean; message: string };
+  processMiningRandomEvent: (siteId: string) => { event: string; message: string; bonus?: number; items?: { itemId: string; count: number }[] } | null;
+  calculateCrewMiningBonus: (crewIds: string[]) => number;
+
+  // 芯片系统
+  getChips: () => import('../core/ChipSystem').Chip[];
+  getEquippedChips: () => import('../core/ChipSystem').Chip[];
+  getAvailableChipSlots: () => number;
+  craftChip: (slot: import('../core/ChipSystem').ChipSlot, rarity: import('../core/ChipSystem').ChipRarity) => { success: boolean; message: string; chip?: import('../core/ChipSystem').Chip };
+  upgradeChip: (chipId: string, materialCount: number) => { success: boolean; message: string; newLevel?: number };
+  equipChip: (chipId: string) => { success: boolean; message: string };
+  unequipChip: (slot: import('../core/ChipSystem').ChipSlot) => { success: boolean; message: string };
+  decomposeChip: (chipId: string) => { success: boolean; message: string; rewards?: string };
+
+  // 基因系统
+  getGeneNodes: () => import('../core/GeneSystem').GeneNode[];
+  upgradeGeneNode: (nodeId: string) => { success: boolean; message: string; newValue?: number };
+  getGeneTotalStats: () => Record<import('../core/GeneSystem').GeneType, number>;
+
+  // 机械飞升系统
+  getImplants: () => import('../core/CyberneticSystem').Implant[];
+  getEquippedImplants: () => import('../core/CyberneticSystem').Implant[];
+  getAvailableImplantSlots: () => import('../core/CyberneticSystem').ImplantType[];
+  craftImplant: (rarity: import('../core/CyberneticSystem').ImplantRarity) => { success: boolean; message: string; implant?: import('../core/CyberneticSystem').Implant };
+  upgradeImplant: (implantId: string) => { success: boolean; message: string; newLevel?: number };
+  equipImplant: (implantId: string) => { success: boolean; message: string };
+  unequipImplant: (type: import('../core/CyberneticSystem').ImplantType) => { success: boolean; message: string };
+  decomposeImplant: (implantId: string) => { success: boolean; message: string; rewards?: string };
+  getImplantTotalStats: () => Record<string, number>;
+
+  // 星际市场系统
+  getMarketListings: () => import('../core/MarketSystem').MarketListing[];
+  getPlayerListings: () => import('../core/MarketSystem').PlayerListing[];
+  getMarketTransactions: () => import('../core/MarketSystem').MarketTransaction[];
+  listMarketItem: (itemId: string, quantity: number, price: number) => { success: boolean; message: string; listing?: import('../core/MarketSystem').PlayerListing };
+  cancelMarketListing: (listingId: string) => { success: boolean; message: string };
+  buyMarketItem: (listingId: string) => { success: boolean; message: string };
+  refreshMarket: () => { success: boolean; message: string };
+
+  // 遗迹探索系统
+  getRuins: () => import('../core/RuinSystem').Ruin[];
+  getExploreMissions: () => import('../core/RuinSystem').ExploreMission[];
+  startExplore: (ruinId: string, crewIds: string[]) => { success: boolean; message: string; mission?: import('../core/RuinSystem').ExploreMission };
+  completeExplore: (missionId: string) => { success: boolean; message: string; rewards?: { credits: number; items: { itemId: string; count: number }[]; experience: number } };
+  cancelExplore: (missionId: string) => { success: boolean; message: string };
+
   // 获取器
   getPlayer: () => GameManager['player'];
   getInventory: () => GameManager['inventory'];
@@ -301,6 +404,93 @@ export const useGameStore = create<GameStore>((set, get) => {
     getAutoCollectDuration: () => get().gameManager.getAutoCollectDuration(),
     getEstimatedHourlyRewards: () => get().gameManager.getEstimatedHourlyRewards(),
     getAvailableCollectLocations: () => get().gameManager.getAvailableCollectLocations(),
+
+    // 基地设施系统
+    getFacilityLevel: (facilityId) => get().gameManager.getFacilityLevel(facilityId),
+    getEnergyCoreEfficiency: () => get().gameManager.getEnergyCoreEfficiency(),
+    getWarehouseCapacity: () => get().gameManager.getWarehouseCapacity(),
+    getMedicalRecoveryBonus: () => get().gameManager.getMedicalRecoveryBonus(),
+    getMedicalEfficiency: () => get().gameManager.getMedicalEfficiency(),
+    getFacilityUpgradePreview: (facilityId) => get().gameManager.getFacilityUpgradePreview(facilityId),
+    upgradeFacility: (facilityId) => executeGameAction(() => get().gameManager.upgradeFacility(facilityId)),
+    getAllFacilities: () => get().gameManager.getAllFacilities(),
+    getFacilityDefinition: (facilityId) => get().gameManager.getFacilityDefinition(facilityId),
+
+    // 船员系统
+    getCrewMembers: () => get().gameManager.getCrewMembers(),
+    getBattleCrew: () => get().gameManager.getBattleCrew(),
+    getCrewCapacity: () => get().gameManager.getCrewCapacity(),
+    getRecruitTicketCount: (recruitType) => get().gameManager.getRecruitTicketCount(recruitType),
+    recruitCrew: (recruitType) => executeGameAction(() => get().gameManager.recruitCrew(recruitType)),
+    recruitCrewTen: (recruitType) => executeGameAction(() => get().gameManager.recruitCrewTen(recruitType)),
+    setCrewBattleSlot: (crewId, slot) => executeGameAction(() => get().gameManager.setCrewBattleSlot(crewId, slot)),
+    dismissCrew: (crewId) => executeGameAction(() => get().gameManager.dismissCrew(crewId)),
+
+    // 通讯系统
+    getCommEvents: () => get().gameManager.getCommEvents(),
+    scanCommSignals: () => executeGameAction(() => get().gameManager.scanCommSignals()),
+    respondToCommEvent: (eventId) => executeGameAction(() => get().gameManager.respondToCommEvent(eventId)),
+    ignoreCommEvent: (eventId) => executeGameAction(() => get().gameManager.ignoreCommEvent(eventId)),
+    getCommScanCooldown: () => get().gameManager.getCommScanCooldown(),
+
+    // 研究系统
+    getResearchProjects: () => get().gameManager.getResearchProjects(),
+    getActiveResearch: () => get().gameManager.getActiveResearch(),
+    startResearch: (projectId) => executeGameAction(() => get().gameManager.startResearch(projectId)),
+    cancelResearch: (projectId) => executeGameAction(() => get().gameManager.cancelResearch(projectId)),
+    getResearchBonus: (type) => get().gameManager.getResearchBonus(type),
+
+    // 采矿系统
+    getAvailableMiningSites: () => get().gameManager.getAvailableMiningSites(),
+    getMiningTasks: () => get().gameManager.getMiningTasks(),
+    startMining: (siteId) => executeGameAction(() => get().gameManager.startMining(siteId)),
+    startMiningWithCrew: (siteId, crewIds) => executeGameAction(() => get().gameManager.startMiningWithCrew(siteId, crewIds)),
+    collectMining: (siteId) => executeGameAction(() => get().gameManager.collectMining(siteId)),
+    cancelMining: (siteId) => executeGameAction(() => get().gameManager.cancelMining(siteId)),
+    processMiningRandomEvent: (siteId) => executeGameAction(() => get().gameManager.processMiningRandomEvent(siteId)),
+    calculateCrewMiningBonus: (crewIds) => get().gameManager.calculateCrewMiningBonus(crewIds),
+
+    // 芯片系统
+    getChips: () => get().gameManager.getChips(),
+    getEquippedChips: () => get().gameManager.getEquippedChips(),
+    getAvailableChipSlots: () => get().gameManager.getAvailableChipSlots(),
+    craftChip: (slot, rarity) => executeGameAction(() => get().gameManager.craftChip(slot, rarity)),
+    upgradeChip: (chipId, materialCount) => executeGameAction(() => get().gameManager.upgradeChip(chipId, materialCount)),
+    equipChip: (chipId) => executeGameAction(() => get().gameManager.equipChip(chipId)),
+    unequipChip: (slot) => executeGameAction(() => get().gameManager.unequipChip(slot)),
+    decomposeChip: (chipId) => executeGameAction(() => get().gameManager.decomposeChip(chipId)),
+
+    // 基因系统
+    getGeneNodes: () => get().gameManager.getGeneNodes(),
+    upgradeGeneNode: (nodeId) => executeGameAction(() => get().gameManager.upgradeGeneNode(nodeId)),
+    getGeneTotalStats: () => get().gameManager.getGeneTotalStats(),
+
+    // 机械飞升系统
+    getImplants: () => get().gameManager.getImplants(),
+    getEquippedImplants: () => get().gameManager.getEquippedImplants(),
+    getAvailableImplantSlots: () => get().gameManager.getAvailableImplantSlots(),
+    craftImplant: (rarity) => executeGameAction(() => get().gameManager.craftImplant(rarity)),
+    upgradeImplant: (implantId) => executeGameAction(() => get().gameManager.upgradeImplantItem(implantId)),
+    equipImplant: (implantId) => executeGameAction(() => get().gameManager.equipImplant(implantId)),
+    unequipImplant: (type) => executeGameAction(() => get().gameManager.unequipImplant(type)),
+    decomposeImplant: (implantId) => executeGameAction(() => get().gameManager.decomposeImplant(implantId)),
+    getImplantTotalStats: () => get().gameManager.getImplantTotalStats(),
+
+    // 星际市场系统
+    getMarketListings: () => get().gameManager.getMarketListings(),
+    getPlayerListings: () => get().gameManager.getPlayerListings(),
+    getMarketTransactions: () => get().gameManager.getMarketTransactions(),
+    listMarketItem: (itemId, quantity, price) => executeGameAction(() => get().gameManager.listMarketItem(itemId, quantity, price)),
+    cancelMarketListing: (listingId) => executeGameAction(() => get().gameManager.cancelMarketListing(listingId)),
+    buyMarketItem: (listingId) => executeGameAction(() => get().gameManager.buyMarketItem(listingId)),
+    refreshMarket: () => executeGameAction(() => get().gameManager.refreshMarket()),
+
+    // 遗迹探索系统
+    getRuins: () => get().gameManager.getRuins(),
+    getExploreMissions: () => get().gameManager.getExploreMissions(),
+    startExplore: (ruinId, crewIds) => executeGameAction(() => get().gameManager.startExplore(ruinId, crewIds)),
+    completeExplore: (missionId) => executeGameAction(() => get().gameManager.completeExplore(missionId)),
+    cancelExplore: (missionId) => executeGameAction(() => get().gameManager.cancelExplore(missionId)),
 
     // 获取器
     getPlayer: () => get().gameManager.player,

@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import StartScreen from './screens/StartScreen';
 import HomeScreen from './screens/HomeScreen';
 import PlayerScreen from './screens/PlayerScreen';
@@ -93,7 +93,25 @@ function App() {
   const [mythologyBattlePending, setMythologyBattlePending] = useState(false);
   const [returnToActionSelect, setReturnToActionSelect] = useState(false);
   const [planetTypeFilter, setPlanetTypeFilter] = useState<string | null>(null);
-  const { saveGame, toasts, removeToast } = useGameStore();
+  const { saveGame, toasts, removeToast, gameManager } = useGameStore();
+
+  // 现实时间体力恢复
+  useEffect(() => {
+    if (currentScreen === 'start') return;
+
+    // 每分钟检查一次体力恢复
+    const checkStaminaRecovery = () => {
+      gameManager.checkAndRecoverStamina();
+    };
+
+    // 初始检查
+    checkStaminaRecovery();
+
+    // 设置定时器
+    const interval = setInterval(checkStaminaRecovery, 60000); // 每分钟检查一次
+
+    return () => clearInterval(interval);
+  }, [currentScreen, gameManager]);
 
   const handleStartGame = useCallback(() => {
     setCurrentScreen('home');
