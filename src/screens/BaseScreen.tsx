@@ -1699,7 +1699,7 @@ function MiningContent() {
             if (!site) return null;
             const mineralConfig = MINERAL_CONFIG[site.mineralType];
             const progress = getMiningProgress(task);
-            const remaining = getRemainingTime(task);
+            const remaining = getMiningRemainingTime(task);
             const depthBonus = getDepthBonusDescription(task.currentDepth || 0, site);
             const assignedCrewNames = (task.assignedCrew || []).map(id => crewMembers.find(c => c.id === id)?.name).filter(Boolean);
 
