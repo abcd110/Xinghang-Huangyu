@@ -3,10 +3,10 @@ import { useGameStore } from '../stores/gameStore';
 import 基地背景 from '../assets/images/基地背景.jpg';
 import { FacilityType } from '../core/BaseFacilitySystem';
 import { QUALITY_NAMES } from '../core/MaterialSynthesisSystem';
-import { CommEvent, COMM_EVENT_CONFIG, getRemainingTime, formatRemainingTime } from '../core/CommSystem';
+import { CommEvent, COMM_EVENT_CONFIG, getRemainingTime, formatRemainingTime, getMaxEvents, getScanCooldown, getRareEventChance } from '../core/CommSystem';
 import { getItemTemplate } from '../data/items';
 import { ResearchStatus, ResearchCategory, RESEARCH_CATEGORY_CONFIG } from '../core/ResearchSystem';
-import { MINERAL_CONFIG, MINING_EVENTS, MiningEventType, getMiningProgress, getRemainingTime as getMiningRemainingTime, formatMiningTime, getDepthBonusDescription, getCrewMiningBonus } from '../core/MiningSystem';
+import { MINERAL_CONFIG, MINING_EVENTS, MiningEventType, getMiningProgress, getRemainingTime as getMiningRemainingTime, formatMiningTime, getDepthBonusDescription, getCrewMiningBonus, getMiningEfficiencyBonus, getMiningSpeedBonus, getMiningEventChanceBonus, getMiningDepthBonus, getMaxMiningSlots } from '../core/MiningSystem';
 import { Chip, ChipSlot, ChipRarity, ChipSet, CHIP_RARITY_CONFIG, CHIP_MAIN_STAT_CONFIG, CHIP_SUB_STAT_CONFIG, CHIP_SET_CONFIG, CHIP_CRAFT_COST, getEnhanceCost, getRerollCost } from '../core/ChipSystem';
 import { GeneType, GENE_TYPE_CONFIG, GENE_RARITY_CONFIG } from '../core/GeneSystem';
 import { Implant, ImplantType, ImplantRarity, IMPLANT_TYPE_CONFIG, IMPLANT_RARITY_CONFIG, getImplantStats } from '../core/CyberneticSystem';
@@ -1143,17 +1143,26 @@ function CommContent() {
         marginBottom: '12px',
         border: '1px solid rgba(139, 92, 246, 0.2)',
       }}>
-        <div style={{ color: '#a1a1aa', fontSize: '12px', marginBottom: '8px' }}>当前状态:</div>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '8px' }}>
           <div>
-            <span style={{ color: '#8b5cf6', fontWeight: 'bold' }}>{events.length}</span>
-            <span style={{ color: '#a1a1aa' }}> 个信号</span>
+            <span style={{ color: '#a1a1aa' }}>信号容量: </span>
+            <span style={{ color: '#8b5cf6', fontWeight: 'bold' }}>{events.length}/{getMaxEvents(level)}</span>
           </div>
+          <div>
+            <span style={{ color: '#a1a1aa' }}>设施等级: </span>
+            <span style={{ color: '#8b5cf6', fontWeight: 'bold' }}>Lv.{level}</span>
+          </div>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
           <div>
             <span style={{ color: '#a1a1aa' }}>扫描冷却: </span>
             <span style={{ color: cooldown > 0 ? '#f59e0b' : '#10b981' }}>
               {formatCooldown(cooldown)}
             </span>
+          </div>
+          <div>
+            <span style={{ color: '#a1a1aa' }}>稀有事件率: </span>
+            <span style={{ color: '#10b981' }}>+{getRareEventChance(level)}%</span>
           </div>
         </div>
       </div>
@@ -1676,14 +1685,32 @@ function MiningContent() {
         marginBottom: '12px',
         border: '1px solid rgba(245, 158, 11, 0.2)',
       }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '8px' }}>
           <div>
             <span style={{ color: '#a1a1aa' }}>采矿槽: </span>
-            <span style={{ color: '#f59e0b', fontWeight: 'bold' }}>{tasks.length}/{maxSlots}</span>
+            <span style={{ color: '#f59e0b', fontWeight: 'bold' }}>{tasks.length}/{getMaxMiningSlots(level)}</span>
           </div>
           <div>
             <span style={{ color: '#a1a1aa' }}>设施等级: </span>
             <span style={{ color: '#f59e0b', fontWeight: 'bold' }}>Lv.{level}</span>
+          </div>
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', fontSize: '10px' }}>
+          <div>
+            <span style={{ color: '#a1a1aa' }}>效率: </span>
+            <span style={{ color: '#10b981' }}>+{getMiningEfficiencyBonus(level)}%</span>
+          </div>
+          <div>
+            <span style={{ color: '#a1a1aa' }}>速度: </span>
+            <span style={{ color: '#10b981' }}>+{getMiningSpeedBonus(level)}%</span>
+          </div>
+          <div>
+            <span style={{ color: '#a1a1aa' }}>事件率: </span>
+            <span style={{ color: '#10b981' }}>+{getMiningEventChanceBonus(level)}%</span>
+          </div>
+          <div>
+            <span style={{ color: '#a1a1aa' }}>深度加成: </span>
+            <span style={{ color: '#10b981' }}>+{getMiningDepthBonus(level)}m</span>
           </div>
         </div>
       </div>
@@ -3872,7 +3899,7 @@ function RuinsContent() {
         marginBottom: '12px',
         border: '1px solid rgba(245, 158, 11, 0.2)',
       }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '8px' }}>
           <div>
             <span style={{ color: '#a1a1aa' }}>探索等级: </span>
             <span style={{ color: '#f59e0b', fontWeight: 'bold' }}>Lv.{level}</span>
@@ -3880,6 +3907,16 @@ function RuinsContent() {
           <div>
             <span style={{ color: '#a1a1aa' }}>进行中: </span>
             <span style={{ color: '#f59e0b', fontWeight: 'bold' }}>{missions.filter(m => m.status === 'ongoing').length}</span>
+          </div>
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', fontSize: '10px' }}>
+          <div>
+            <span style={{ color: '#a1a1aa' }}>可探索遗迹: </span>
+            <span style={{ color: '#10b981' }}>{ruins.length}个</span>
+          </div>
+          <div>
+            <span style={{ color: '#a1a1aa' }}>芯片材料副本: </span>
+            <span style={{ color: '#06b6d4' }}>{ruins.filter(r => r.type === RuinType.CHIP_FACTORY || r.type === RuinType.NEURAL_NEXUS).length}个</span>
           </div>
         </div>
       </div>
