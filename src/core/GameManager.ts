@@ -68,6 +68,7 @@ export interface GameState {
   marketTransactions?: any[]; // 市场交易记录
   ruins?: any[]; // 遗迹列表
   exploreMissions?: any[]; // 探索任务列表
+  lastSaveTime?: number; // 上次保存时间戳（用于离线进度计算）
 }
 
 export class GameManager {
@@ -159,6 +160,7 @@ export class GameManager {
 
     this.initQuests();
     this.initShop();
+    this.initResearchProjects();
 
     this.initPlayerCrew();
   }
@@ -1143,6 +1145,7 @@ export class GameManager {
       marketTransactions: this.marketTransactions.map(t => serializeMarketTransaction(t)),
       ruins: this.ruins.map(r => serializeRuin(r)),
       exploreMissions: this.exploreMissions.map(m => serializeExploreMission(m)),
+      lastSaveTime: Date.now(),
     };
   }
 
@@ -1299,6 +1302,80 @@ export class GameManager {
     if (state.autoCollectSystem) {
       this.autoCollectSystem.load(state.autoCollectSystem);
     }
+
+    // 计算离线进度
+    if (state.lastSaveTime) {
+      this.processOfflineProgress(state.lastSaveTime);
+    }
+  }
+
+  // 处理离线进度
+  private processOfflineProgress(lastSaveTime: number): void {
+    const now = Date.now();
+    const offlineSeconds = Math.floor((now - lastSaveTime) / 1000);
+
+    if (offlineSeconds <= 0) return;
+
+    // 离线时间上限为24小时
+    const maxOfflineSeconds = 24 * 60 * 60;
+    const effectiveSeconds = Math.min(offlineSeconds, maxOfflineSeconds);
+
+    // 处理离线研究进度
+    this.processOfflineResearch(effectiveSeconds);
+
+    // 处理离线采矿进度
+    this.processOfflineMining(effectiveSeconds);
+
+    if (effectiveSeconds > 60) {
+      const hours = Math.floor(effectiveSeconds / 3600);
+      const minutes = Math.floor((effectiveSeconds % 3600) / 60);
+      const timeStr = hours > 0 ? `${hours}小时${minutes}分钟` : `${minutes}分钟`;
+      this.addLog('系统', `离线收益已结算：离线${timeStr}`);
+    }
+  }
+
+  // 处理离线研究进度
+  private processOfflineResearch(offlineSeconds: number): void {
+    const level = this.getResearchLevel();
+    const speedBonus = getResearchSpeedBonus(level);
+    const progressGain = 1 + speedBonus / 100;
+
+    this.researchProjects.forEach(project => {
+      if (project.status !== ResearchStatus.IN_PROGRESS) return;
+
+      project.progress += progressGain * offlineSeconds;
+
+      if (project.progress >= project.totalProgress) {
+        project.status = ResearchStatus.COMPLETED;
+        project.progress = project.totalProgress;
+        this.completedResearch.push(project.id);
+        this.applyResearchEffects(project);
+        this.addLog('科研实验室', `离线完成研究「${project.name}」`);
+      }
+    });
+  }
+
+  // 处理离线采矿进度
+  private processOfflineMining(offlineSeconds: number): void {
+    this.miningTasks.forEach(task => {
+      if (task.status !== MiningStatus.IN_PROGRESS) return;
+
+      const site = MINING_SITES.find(s => s.id === task.siteId);
+      if (!site) return;
+
+      task.progress += offlineSeconds;
+
+      // 更新深度
+      const progressPercent = getMiningProgress(task);
+      task.currentDepth = Math.floor((progressPercent / 100) * site.maxDepth);
+
+      if (task.progress >= task.totalTime) {
+        task.status = MiningStatus.COMPLETED;
+        task.progress = task.totalTime;
+        task.currentDepth = site.maxDepth;
+        this.addLog('采矿平台', `离线完成采矿任务`);
+      }
+    });
   }
 
   // 重置游戏
@@ -1415,8 +1492,9 @@ export class GameManager {
     let reason = checkResult.reason;
     if (checkResult.missingMaterials && checkResult.missingMaterials.length > 0) {
       const materialNames = checkResult.missingMaterials.map(mat => {
-        const item = this.inventory.getItem(mat.itemId);
-        return `${item?.name || mat.itemId} x${mat.count}`;
+        const template = getItemTemplate(mat.itemId);
+        const itemName = template?.name || mat.itemId;
+        return `${itemName} x${mat.count}`;
       });
       reason = `材料不足: ${materialNames.join(', ')}`;
     }
@@ -1481,8 +1559,7 @@ export class GameManager {
 
   // 获取船员舱最大容量
   getCrewCapacity(): number {
-    const level = this.getFacilityLevel(FacilityType.CREW);
-    return level + 4; // Lv.1=5人, Lv.2=6人, ... Lv.5=9人
+    return 8; // 固定8人容量
   }
 
   // 获取所有船员
@@ -1900,12 +1977,49 @@ export class GameManager {
     });
   }
 
+  // 更新采矿进度（每秒调用）
+  updateMiningProgress(): void {
+    this.miningTasks.forEach(task => {
+      if (task.status !== MiningStatus.MINING) return;
+
+      const site = MINING_SITES.find(s => s.id === task.siteId);
+      if (!site) return;
+
+      // 更新深度
+      const progressPercent = getMiningProgress(task);
+      task.currentDepth = Math.floor((progressPercent / 100) * site.maxDepth);
+
+      // 检查是否完成
+      if (task.progress >= task.totalTime) {
+        task.status = MiningStatus.COMPLETED;
+        task.progress = task.totalTime;
+        task.currentDepth = site.maxDepth;
+      }
+    });
+  }
+
   // 应用研究效果
   applyResearchEffects(project: ResearchProject): void {
     project.effects.forEach(effect => {
       switch (effect.type) {
         case 'warehouse_capacity':
           this.inventory.setMaxSlots(this.getWarehouseCapacity() + effect.value);
+          break;
+        case 'mining_upgrade':
+          // 采矿平台升级效果已在研究完成时自动应用（通过设施等级系统）
+          this.addLog('科研实验室', `采矿平台已升级到 Lv.${effect.value}`);
+          break;
+        case 'chip_unlock':
+          // 芯片解锁效果
+          this.addLog('科研实验室', `已解锁新的芯片类型`);
+          break;
+        case 'gene_unlock':
+          // 基因解锁效果
+          this.addLog('科研实验室', `已解锁新的基因节点`);
+          break;
+        case 'cybernetic_unlock':
+          // 机械飞升解锁效果
+          this.addLog('科研实验室', `已解锁新的义体类型`);
           break;
       }
     });
@@ -1949,9 +2063,17 @@ export class GameManager {
 
   // ========== 采矿系统 ==========
 
-  // 获取采矿平台等级
+  // 获取采矿平台等级（根据研究进度）
   getMiningLevel(): number {
-    return this.getFacilityLevel(FacilityType.MINING);
+    // 根据已完成的研究计算等级
+    let level = 1;
+    for (let i = 5; i >= 2; i--) {
+      if (this.completedResearch.includes(`mining_lv${i}`)) {
+        level = i;
+        break;
+      }
+    }
+    return level;
   }
 
   // 获取可用的采矿点
@@ -2174,14 +2296,34 @@ export class GameManager {
 
   // ========== 芯片系统 ==========
 
-  // 获取芯片研发等级
+  // 获取芯片研发等级（根据研究进度，最高3级）
   getChipLevel(): number {
-    return this.getFacilityLevel(FacilityType.CHIP);
+    let level = 1;
+    for (let i = 3; i >= 2; i--) {
+      if (this.completedResearch.includes(`chip_lv${i}`)) {
+        level = i;
+        break;
+      }
+    }
+    return level;
   }
 
   // 获取可用芯片槽位数（所有槽位默认解锁）
   getAvailableChipSlots(): number {
     return 4;
+  }
+
+  // 获取可制作的芯片品质（根据研发等级）
+  getCraftableRarities(): ChipRarity[] {
+    const level = this.getChipLevel();
+    const rarities: ChipRarity[] = [ChipRarity.RARE]; // 1级可制作稀有
+    if (level >= 2) {
+      rarities.push(ChipRarity.EPIC); // 2级可制作史诗
+    }
+    if (level >= 3) {
+      rarities.push(ChipRarity.LEGENDARY); // 3级可制作传说
+    }
+    return rarities;
   }
 
   // 获取所有芯片
@@ -2198,6 +2340,14 @@ export class GameManager {
 
   // 制作芯片
   craftChip(slot: ChipSlot, rarity: ChipRarity): { success: boolean; message: string; chip?: Chip } {
+    // 检查研发等级是否足够制作该品质
+    const craftableRarities = this.getCraftableRarities();
+    if (!craftableRarities.includes(rarity)) {
+      const level = this.getChipLevel();
+      const requiredLevel = rarity === ChipRarity.EPIC ? 2 : rarity === ChipRarity.LEGENDARY ? 3 : 1;
+      return { success: false, message: `芯片研发等级不足，需要${requiredLevel}级才能制作${CHIP_RARITY_CONFIG[rarity].name}品质芯片（当前${level}级）` };
+    }
+
     const cost = CHIP_CRAFT_COST[rarity];
 
     if (this.trainCoins < cost.credits) {
@@ -2206,7 +2356,9 @@ export class GameManager {
 
     for (const material of cost.materials) {
       if (!this.inventory.hasItem(material.itemId, material.count)) {
-        return { success: false, message: `材料不足，需要${material.count}个${material.itemId}` };
+        const template = getItemTemplate(material.itemId);
+        const itemName = template?.name || material.itemId;
+        return { success: false, message: `材料不足，需要${material.count}个${itemName}` };
       }
     }
 
@@ -2463,8 +2615,16 @@ export class GameManager {
   // ========== 基因系统 ==========
 
   // 获取基因工程等级
+  // 获取基因工程等级（根据研究进度）
   getGeneLevel(): number {
-    return this.getFacilityLevel(FacilityType.GENE);
+    let level = 1;
+    for (let i = 5; i >= 2; i--) {
+      if (this.completedResearch.includes(`gene_lv${i}`)) {
+        level = i;
+        break;
+      }
+    }
+    return level;
   }
 
   // 初始化基因树
@@ -2548,24 +2708,34 @@ export class GameManager {
   // ========== 机械飞升系统 ==========
 
   // 获取机械飞升等级
+  // 获取机械飞升等级（根据研究进度）
   getCyberneticLevel(): number {
-    return this.getFacilityLevel(FacilityType.ARENA);
+    let level = 1;
+    for (let i = 3; i >= 2; i--) {
+      if (this.completedResearch.includes(`cybernetic_lv${i}`)) {
+        level = i;
+        break;
+      }
+    }
+    return level;
   }
 
-  // 获取可用的义体槽位
+  // 获取可用的义体槽位（1级全部开放）
   getAvailableImplantSlots(): ImplantType[] {
+    return [ImplantType.NEURAL, ImplantType.SKELETAL, ImplantType.MUSCULAR, ImplantType.CARDIO];
+  }
+
+  // 获取可制造的义体品质（根据研发等级）
+  getCraftableImplantRarities(): ImplantRarity[] {
     const level = this.getCyberneticLevel();
-    const slots: ImplantType[] = [ImplantType.NEURAL];
-
-    if (level >= 2) slots.push(ImplantType.SKELETAL);
-    if (level >= 3) slots.push(ImplantType.MUSCULAR);
-    if (level >= 4) slots.push(ImplantType.SENSORY);
-    if (level >= 5) {
-      slots.push(ImplantType.CARDIO);
-      slots.push(ImplantType.INTEGRATED);
+    const rarities: ImplantRarity[] = [ImplantRarity.RARE]; // 1级可制造稀有
+    if (level >= 2) {
+      rarities.push(ImplantRarity.EPIC); // 2级可制造史诗
     }
-
-    return slots;
+    if (level >= 3) {
+      rarities.push(ImplantRarity.LEGENDARY); // 3级可制造传说
+    }
+    return rarities;
   }
 
   // 获取所有义体
@@ -2581,12 +2751,16 @@ export class GameManager {
   }
 
   // 制造义体
-  craftImplant(rarity: ImplantRarity): { success: boolean; message: string; implant?: Implant } {
-    const level = this.getCyberneticLevel();
+  craftImplant(type: ImplantType, rarity: ImplantRarity): { success: boolean; message: string; implant?: Implant } {
+    // 检查研发等级是否足够制造该品质
+    const craftableRarities = this.getCraftableImplantRarities();
+    if (!craftableRarities.includes(rarity)) {
+      const level = this.getCyberneticLevel();
+      const requiredLevel = rarity === ImplantRarity.EPIC ? 2 : rarity === ImplantRarity.LEGENDARY ? 3 : 1;
+      return { success: false, message: `机械飞升等级不足，需要${requiredLevel}级才能制造${IMPLANT_RARITY_CONFIG[rarity].name}品质义体（当前${level}级）` };
+    }
 
     const rarityCost = {
-      [ImplantRarity.COMMON]: { credits: 500, materials: 5 },
-      [ImplantRarity.UNCOMMON]: { credits: 1000, materials: 8 },
       [ImplantRarity.RARE]: { credits: 2000, materials: 12 },
       [ImplantRarity.EPIC]: { credits: 5000, materials: 20 },
       [ImplantRarity.LEGENDARY]: { credits: 10000, materials: 30 },
@@ -2605,7 +2779,9 @@ export class GameManager {
     this.trainCoins -= cost.credits;
     this.inventory.removeItem('cyber_material', cost.materials);
 
-    const implant = getRandomImplantByRarity(rarity);
+    // 根据类型和品质获取对应模板
+    const templateId = `implant_${type}_${rarity}`;
+    const implant = createImplant(templateId);
     if (!implant) {
       return { success: false, message: '无法生成义体' };
     }
@@ -2613,7 +2789,8 @@ export class GameManager {
     this.implants.push(implant);
 
     const rarityConfig = IMPLANT_RARITY_CONFIG[implant.rarity];
-    this.addLog('机械飞升', `制造了${rarityConfig.name}品质的${implant.name}`);
+    const typeConfig = IMPLANT_TYPE_CONFIG[implant.type];
+    this.addLog('机械飞升', `制造了${rarityConfig.name}品质的${typeConfig.name}`);
 
     return { success: true, message: `成功制造${implant.name}`, implant };
   }
@@ -2671,10 +2848,16 @@ export class GameManager {
       return { success: false, message: '该义体已装备' };
     }
 
+    // 如果槽位已有义体，自动卸下
+    if (currentEquipped) {
+      const oldImplant = this.implants.find(i => i.id === currentEquipped);
+      this.addLog('机械飞升', `自动卸下了${oldImplant?.name || '义体'}`);
+    }
+
     this.equippedImplants[implant.type] = implantId;
     this.addLog('机械飞升', `装备了${implant.name}`);
 
-    return { success: true, message: `已装备${implant.name}` };
+    return { success: true, message: `已装备${implant.name}${currentEquipped ? '（旧义体已自动卸下）' : ''}` };
   }
 
   // 卸下义体
@@ -2701,6 +2884,10 @@ export class GameManager {
     }
 
     const implant = this.implants[implantIndex];
+
+    if (implant.locked) {
+      return { success: false, message: '义体已锁定，请先解锁' };
+    }
 
     if (this.equippedImplants[implant.type] === implantId) {
       return { success: false, message: '请先卸下义体' };
@@ -2735,6 +2922,35 @@ export class GameManager {
     });
 
     return totalStats;
+  }
+
+  // 获取已装备义体的特殊效果
+  getEquippedImplantEffects(): { implant: Implant; effect: NonNullable<Implant['specialEffect']> }[] {
+    const effects: { implant: Implant; effect: NonNullable<Implant['specialEffect']> }[] = [];
+
+    this.getEquippedImplants().forEach(implant => {
+      if (implant.specialEffect) {
+        effects.push({ implant, effect: implant.specialEffect });
+      }
+    });
+
+    return effects;
+  }
+
+  // 切换义体锁定状态
+  toggleImplantLock(implantId: string): { success: boolean; message: string; locked?: boolean } {
+    const implant = this.implants.find(i => i.id === implantId);
+
+    if (!implant) {
+      return { success: false, message: '义体不存在' };
+    }
+
+    if (this.equippedImplants[implant.type] === implantId) {
+      return { success: false, message: '请先卸下义体再切换锁定状态' };
+    }
+
+    implant.locked = !implant.locked;
+    return { success: true, message: implant.locked ? '已锁定' : '已解锁', locked: implant.locked };
   }
 
   // ========== 星际市场系统 ==========
