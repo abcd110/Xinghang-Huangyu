@@ -110,19 +110,6 @@ export default function PlanetExplorationScreen({
   // 获取当前主题
   const currentTheme = PLANET_THEMES[planetTypeFilter || 'tech'] || PLANET_THEMES.tech;
 
-  // 处理从战斗返回的情况
-  useEffect(() => {
-    if (returnToActionSelect && initialPlanetId && onActionSelectHandled) {
-      const planet = getPlanetById(initialPlanetId);
-      if (planet) {
-        setSelectedPlanet(planet);
-        setPhase('exploring');
-        addLog(`🔄 返回 ${planet.name}，继续探索`);
-      }
-      onActionSelectHandled();
-    }
-  }, [returnToActionSelect, initialPlanetId, onActionSelectHandled]);
-
   // 获取所有星球
   const allPlanets = ALL_PLANETS_FULL;
 
@@ -151,9 +138,25 @@ export default function PlanetExplorationScreen({
 
   const titleInfo = getFilterTitle();
 
+  // addLog 必须在 useEffect 之前定义
   const addLog = useCallback((message: string) => {
     setLogs(prev => [message, ...prev.slice(0, 9)]);
   }, []);
+
+  // 处理从战斗返回的情况
+  useEffect(() => {
+    if (returnToActionSelect && initialPlanetId && onActionSelectHandled) {
+      const planet = getPlanetById(initialPlanetId);
+      if (planet) {
+        requestAnimationFrame(() => {
+          setSelectedPlanet(planet);
+          setPhase('exploring');
+          addLog(`🔄 返回 ${planet.name}，继续探索`);
+        });
+      }
+      onActionSelectHandled();
+    }
+  }, [returnToActionSelect, initialPlanetId, onActionSelectHandled, addLog]);
 
   // 选择星球
   const selectPlanet = (planet: Planet) => {
@@ -230,7 +233,8 @@ export default function PlanetExplorationScreen({
 
     setIsCollecting(true);
     addLog(`📦 采集 ${selectedPlanet.name} 的资源...`);
-    gameManager.player.stamina -= 5;
+    const { gameManager: gm } = useGameStore.getState();
+    gm.player.stamina -= 5;
 
     const randomMaterial = NEW_MATERIAL_IDS[Math.floor(Math.random() * NEW_MATERIAL_IDS.length)];
     const count = Math.floor(Math.random() * (randomMaterial.maxAmount - randomMaterial.minAmount + 1)) + randomMaterial.minAmount;
@@ -451,9 +455,9 @@ export default function PlanetExplorationScreen({
               {/* 科技星区域 */}
               {techStars.length > 0 && (
                 <div>
-                  <h3 style={{ 
-                    color: PLANET_THEMES.tech.primary, 
-                    fontSize: '16px', 
+                  <h3 style={{
+                    color: PLANET_THEMES.tech.primary,
+                    fontSize: '16px',
                     marginBottom: '12px',
                     textShadow: `0 0 10px ${PLANET_THEMES.tech.glow}`,
                     display: 'flex',
@@ -481,9 +485,9 @@ export default function PlanetExplorationScreen({
               {/* 神域星区域 */}
               {godDomains.length > 0 && (
                 <div>
-                  <h3 style={{ 
-                    color: PLANET_THEMES.god.primary, 
-                    fontSize: '16px', 
+                  <h3 style={{
+                    color: PLANET_THEMES.god.primary,
+                    fontSize: '16px',
                     marginBottom: '12px',
                     textShadow: `0 0 10px ${PLANET_THEMES.god.glow}`,
                     display: 'flex',
@@ -511,9 +515,9 @@ export default function PlanetExplorationScreen({
               {/* 废土星区域 */}
               {wastelands.length > 0 && (
                 <div>
-                  <h3 style={{ 
-                    color: PLANET_THEMES.wasteland.primary, 
-                    fontSize: '16px', 
+                  <h3 style={{
+                    color: PLANET_THEMES.wasteland.primary,
+                    fontSize: '16px',
                     marginBottom: '12px',
                     textShadow: `0 0 10px ${PLANET_THEMES.wasteland.glow}`,
                     display: 'flex',
@@ -572,8 +576,8 @@ export default function PlanetExplorationScreen({
                   pointerEvents: 'none'
                 }} />
 
-                <h3 style={{ 
-                  color: currentTheme.primary, 
+                <h3 style={{
+                  color: currentTheme.primary,
                   margin: '0 0 8px 0',
                   fontSize: '18px',
                   textShadow: `0 0 10px ${currentTheme.glow}`,
@@ -582,9 +586,9 @@ export default function PlanetExplorationScreen({
                 }}>
                   🪐 {selectedPlanet.name}
                 </h3>
-                <p style={{ 
-                  color: 'rgba(255,255,255,0.6)', 
-                  fontSize: '13px', 
+                <p style={{
+                  color: 'rgba(255,255,255,0.6)',
+                  fontSize: '13px',
                   margin: 0,
                   position: 'relative',
                   zIndex: 1
@@ -720,7 +724,7 @@ function PlanetCard({
       style={{
         position: 'relative',
         padding: '14px',
-        background: isHovered 
+        background: isHovered
           ? `linear-gradient(135deg, rgba(0,0,0,0.6) 0%, ${theme.glow}15 50%, rgba(0,0,0,0.6) 100%)`
           : 'rgba(0, 10, 20, 0.5)',
         border: `1px solid ${isHovered ? theme.primary : `${theme.primary}40`}`,
@@ -730,7 +734,7 @@ function PlanetCard({
         color: 'white',
         transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
         backdropFilter: 'blur(8px)',
-        boxShadow: isHovered 
+        boxShadow: isHovered
           ? `0 0 25px ${theme.glow}, inset 0 0 20px ${theme.glow}20`
           : `0 0 10px ${theme.glow}20`,
         overflow: 'hidden'
@@ -754,15 +758,15 @@ function PlanetCard({
         opacity: isHovered ? 1 : 0.5
       }} />
 
-      <div style={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        gap: '10px', 
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '10px',
         marginBottom: '8px',
         position: 'relative',
         zIndex: 1
       }}>
-        <span style={{ 
+        <span style={{
           fontSize: '22px',
           filter: isHovered ? `drop-shadow(0 0 8px ${theme.glow})` : 'none',
           transition: 'all 0.3s ease'
@@ -777,8 +781,8 @@ function PlanetCard({
           {planet.name}
         </span>
       </div>
-      <div style={{ 
-        fontSize: '11px', 
+      <div style={{
+        fontSize: '11px',
         color: 'rgba(255,255,255,0.5)',
         position: 'relative',
         zIndex: 1
@@ -829,9 +833,9 @@ function ActionButton({
       style={{
         position: 'relative',
         padding: '16px',
-        background: disabled 
-          ? 'rgba(50, 50, 50, 0.3)' 
-          : isHovered 
+        background: disabled
+          ? 'rgba(50, 50, 50, 0.3)'
+          : isHovered
             ? `linear-gradient(135deg, rgba(0,0,0,0.5) 0%, ${theme.glow}20 50%, rgba(0,0,0,0.5) 100%)`
             : 'rgba(0, 10, 20, 0.5)',
         border: `1px solid ${disabled ? 'rgba(100,100,100,0.3)' : isHovered ? color : `${color}60`}`,
@@ -844,29 +848,29 @@ function ActionButton({
         gap: '6px',
         transition: 'all 0.3s ease',
         backdropFilter: 'blur(8px)',
-        boxShadow: disabled 
-          ? 'none' 
-          : isHovered 
+        boxShadow: disabled
+          ? 'none'
+          : isHovered
             ? `0 0 20px ${theme.glow}, inset 0 0 15px ${theme.glow}20`
             : `0 0 10px ${theme.glow}20`,
         overflow: 'hidden'
       }}
     >
-      <span style={{ 
-        fontSize: '26px', 
+      <span style={{
+        fontSize: '26px',
         opacity: disabled ? 0.4 : 1,
         filter: isHovered && !disabled ? `drop-shadow(0 0 8px ${color})` : 'none',
         transition: 'all 0.3s ease'
       }}>{icon}</span>
-      <span style={{ 
-        fontSize: '14px', 
-        fontWeight: 'bold', 
+      <span style={{
+        fontSize: '14px',
+        fontWeight: 'bold',
         color: disabled ? '#666' : color,
         textShadow: isHovered && !disabled ? `0 0 10px ${color}` : 'none',
         transition: 'all 0.3s ease'
       }}>{label}</span>
-      <span style={{ 
-        fontSize: '10px', 
+      <span style={{
+        fontSize: '10px',
         color: disabled ? '#555' : 'rgba(255,255,255,0.5)'
       }}>{description}</span>
 

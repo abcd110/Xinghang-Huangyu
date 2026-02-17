@@ -2,11 +2,6 @@
 // 将《列车求生》旧存档迁移到新系统
 
 import type { GameState } from '../core/GameManager';
-import {
-  FactionType,
-  PlanetType,
-  FactionReputation,
-} from '../data/types_new';
 import { createInitialReputations } from '../data/factions';
 
 // ==================== 旧存档类型定义 ====================
@@ -29,7 +24,7 @@ interface OldGameState {
     attack: number;
     defense: number;
     attackSpeed: number;
-    equipment: any[];
+    equipment: unknown[];
     lastSpiritRecoveryTime?: number;
   };
   train: {
@@ -42,22 +37,22 @@ interface OldGameState {
     cargoCapacity: number;
     energy: number;
     maxEnergy: number;
-    modules: any[];
+    modules: unknown[];
   };
   inventory: {
-    items: any[];
-    equipment: any[];
+    items: unknown[];
+    equipment: unknown[];
   };
   day: number;
   gameTime: number;
   currentLocation: string;
   trainCoins: number;
   logs: string[];
-  quests: any[];
-  activeSkills: any[];
-  passiveSkills: any[];
+  quests: unknown[];
+  activeSkills: unknown[];
+  passiveSkills: unknown[];
   availableSkills: string[];
-  shopItems: any[];
+  shopItems: unknown[];
   lastShopRefreshDay: number;
   locationProgress: Record<string, {
     materialProgress: number;
@@ -133,7 +128,7 @@ export class SaveMigration {
   /**
    * 检测存档版本
    */
-  static detectVersion(saveData: any): SaveVersion {
+  static detectVersion(saveData: Record<string, unknown>): SaveVersion {
     // 检查是否有版本标记
     if (saveData._version) {
       return saveData._version as SaveVersion;
@@ -155,7 +150,7 @@ export class SaveMigration {
   /**
    * 检查是否需要迁移
    */
-  static needsMigration(saveData: any): boolean {
+  static needsMigration(saveData: Record<string, unknown>): boolean {
     const version = this.detectVersion(saveData);
     return version.version !== CURRENT_VERSION.version;
   }
@@ -222,13 +217,13 @@ export class SaveMigration {
   ): GameState {
 
     // 1. 迁移玩家数据
-    const playerData = this.migratePlayerData(oldData.player, warnings);
+    const playerData = this.migratePlayerData(oldData.player);
 
     // 2. 迁移航船数据（列车 -> 航船）
-    const spaceshipData = this.migrateTrainToSpaceship(oldData.train, warnings);
+    const spaceshipData = this.migrateTrainToSpaceship(oldData.train);
 
     // 3. 迁移背包数据
-    const inventoryData = this.migrateInventory(oldData.inventory, warnings);
+    const inventoryData = this.migrateInventory(oldData.inventory);
 
     // 4. 迁移星球进度（站台 -> 星球）
     const planetProgress = this.migrateLocationProgress(
@@ -270,8 +265,7 @@ export class SaveMigration {
    * 迁移玩家数据
    */
   private static migratePlayerData(
-    oldPlayer: OldGameState['player'],
-    warnings: string[]
+    oldPlayer: OldGameState['player']
   ): GameState['player'] {
 
     // 添加势力声望（新系统）
@@ -311,8 +305,7 @@ export class SaveMigration {
    * 迁移列车数据到航船
    */
   private static migrateTrainToSpaceship(
-    oldTrain: OldGameState['train'],
-    warnings: string[]
+    oldTrain: OldGameState['train']
   ): GameState['spaceship'] {
 
     // 转换模块数据
@@ -342,8 +335,7 @@ export class SaveMigration {
    * 迁移背包数据
    */
   private static migrateInventory(
-    oldInventory: OldGameState['inventory'],
-    warnings: string[]
+    oldInventory: OldGameState['inventory']
   ): GameState['inventory'] {
 
     // 迁移物品

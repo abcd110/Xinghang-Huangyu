@@ -2,7 +2,6 @@
 // 替代原有的 Train.ts，实现航船核心逻辑
 
 import {
-  Spaceship as SpaceshipData,
   SpaceshipModule,
   ModuleSlot,
   ModuleItem,

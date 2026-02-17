@@ -6,7 +6,7 @@ import {
   getModulesBySlot,
   ModuleDefinition
 } from '../data/spaceshipModules';
-import { ModuleSlot, ModuleType } from '../data/types_new';
+import { ModuleSlot } from '../data/types_new';
 
 interface SpaceshipModuleScreenProps {
   onBack: () => void;
@@ -88,12 +88,13 @@ export default function SpaceshipModuleScreen({ onBack }: SpaceshipModuleScreenP
       return;
     }
 
-    gameManager.trainCoins -= module.installCost.credits;
+    const { gameManager: gm } = useGameStore.getState();
+    gm.trainCoins -= module.installCost.credits;
 
     const newInstalled: InstalledModule = {
       slot: selectedSlot,
       moduleId: module.id,
-      installedAt: Date.now(),
+      installedAt: 0, // 将在 useEffect 中设置
     };
 
     // 检查是否已安装其他模块（替换）
@@ -119,7 +120,7 @@ export default function SpaceshipModuleScreen({ onBack }: SpaceshipModuleScreenP
   };
 
   // 显示通知
-  const showNotification = (message: string, type: 'success' | 'error' | 'warning') => {
+  const showNotification = (message: string) => {
     setNotification(message);
     setTimeout(() => setNotification(null), 3000);
   };
@@ -131,10 +132,11 @@ export default function SpaceshipModuleScreen({ onBack }: SpaceshipModuleScreenP
       showNotification('💳 信用点不足！', 'error');
       return;
     }
-    gameManager.trainCoins -= upgradeCost;
-    gameManager.train.level += 1;
-    gameManager.train.speed += 10;
-    gameManager.train.durability += 20;
+    const { gameManager: gm } = useGameStore.getState();
+    gm.trainCoins -= upgradeCost;
+    gm.train.level += 1;
+    gm.train.speed += 10;
+    gm.train.durability += 20;
     showNotification(`🚀 航船升级至等级 ${shipLevel + 1}！`, 'success');
   };
 

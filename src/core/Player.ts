@@ -1,6 +1,4 @@
 import type { InventoryItem } from '../data/types';
-import { ItemType } from '../data/types';
-import { calculateEnhanceBonus } from './EnhanceSystem';
 import { EquipmentSlot } from '../data/equipmentTypes';
 import { EquipmentInstance, CalculatedStats, equipmentSystem } from './EquipmentSystem';
 
@@ -467,9 +465,24 @@ export class Player {
   }
 
   // 获取所有套装效果
-  getSetBonuses(): { description: string; effects: any[] }[] {
-    const equippedIds = this.equippedItems.map(item => item.id);
-    return equipmentSystem.calculateEquipmentStats(this.equippedItems) as any;
+  getSetBonuses(): { description: string; effects: { stat: string; value: number }[] }[] {
+    const stats = equipmentSystem.calculateEquipmentStats(this.equippedItems);
+    return [{
+      description: '装备属性加成',
+      effects: [
+        { stat: 'attack', value: stats.attack },
+        { stat: 'defense', value: stats.defense },
+        { stat: 'hp', value: stats.hp },
+        { stat: 'agility', value: stats.agility },
+        { stat: 'speed', value: stats.speed },
+        { stat: 'crit', value: stats.crit },
+        { stat: 'critDamage', value: stats.critDamage },
+        { stat: 'penetration', value: stats.penetration },
+        { stat: 'trueDamage', value: stats.trueDamage },
+        { stat: 'guard', value: stats.guard },
+        { stat: 'luck', value: stats.luck },
+      ].filter(e => e.value > 0)
+    }];
   }
 
   // 消耗饥饿值

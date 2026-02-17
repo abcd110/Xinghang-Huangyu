@@ -210,8 +210,7 @@ export function generateFallbackCrew(rarity: CrewRarity): CrewMember {
   const roles = Object.values(CrewRole);
   const role = roles[Math.floor(Math.random() * roles.length)];
   const rarityConfig = RARITY_CONFIG[rarity];
-  const roleConfig = ROLE_CONFIG[role];
-  
+
   const baseStats: CrewStats = {
     attack: 20,
     defense: 15,

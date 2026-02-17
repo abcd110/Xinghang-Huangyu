@@ -16,9 +16,6 @@ import {
 import { getItemTemplate } from '../data/items';
 import { ArmorQuality } from '../data/nanoArmorRecipes';
 
-// 强化石ID
-const ENHANCE_STONE_ID = 'enhance_stone';
-
 // 材料品质后缀映射
 const QUALITY_SUFFIX: Record<ArmorQuality, string> = {
   [ArmorQuality.STARDUST]: '_stardust',
@@ -31,6 +28,16 @@ const QUALITY_SUFFIX: Record<ArmorQuality, string> = {
 // 每日最大挂机时间（小时）
 const MAX_DAILY_HOURS = 24;
 // 单次最大挂机时间（小时）
+
+// 自动采集数据接口
+interface AutoCollectData {
+  state: AutoCollectState;
+  config: AutoCollectConfig;
+  lastSaveTime: number;
+  dailyCollectHours: number;
+  lastCollectDate: string;
+  defeatedBosses: string[];
+}
 const MAX_SESSION_HOURS = 8;
 
 export class AutoCollectSystem {
@@ -79,7 +86,7 @@ export class AutoCollectSystem {
   }
 
   // 从存档加载
-  load(data: any): void {
+  load(data: AutoCollectData | null): void {
     if (data) {
       this.state = data.state || this.state;
       this.config = data.config || this.config;
@@ -406,7 +413,7 @@ export class AutoCollectSystem {
   }
 
   // 获取可用的采集地点（兼容旧接口，返回机器人列表）
-  getAvailableLocations(playerLevel: number): { id: string; name: string; description: string; icon: string; unlockRequirement?: { level?: number } }[] {
+  getAvailableLocations(): { id: string; name: string; description: string; icon: string; unlockRequirement?: { level?: number } }[] {
     return getAvailableRobots().map(robot => ({
       id: robot.id,
       name: robot.name,

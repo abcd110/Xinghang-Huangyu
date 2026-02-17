@@ -16,7 +16,6 @@ import SublimationScreen from './screens/SublimationScreen';
 import TestScreen from './screens/TestScreen';
 import ExplorationSelectScreen from './screens/ExplorationSelectScreen';
 import PlanetExplorationScreen from './screens/PlanetExplorationScreen';
-import SpaceshipModuleScreen from './screens/SpaceshipModuleScreen';
 import BottomNav from './components/BottomNav';
 import { ToastContainer } from './components/Toast';
 import { useGameStore } from './stores/gameStore';
@@ -86,11 +85,14 @@ interface BattleParams {
   isElite?: boolean;
 }
 
+interface NavigateParams {
+  locationId?: string;
+  planetType?: string;
+}
+
 function App() {
   const [currentScreen, setCurrentScreen] = useState<ScreenType>('start');
   const [battleParams, setBattleParams] = useState<BattleParams | null>(null);
-  const [mythologyLocationId, setMythologyLocationId] = useState<string | null>(null);
-  const [mythologyBattlePending, setMythologyBattlePending] = useState(false);
   const [returnToActionSelect, setReturnToActionSelect] = useState(false);
   const [planetTypeFilter, setPlanetTypeFilter] = useState<string | null>(null);
   const { saveGame, toasts, removeToast, gameManager } = useGameStore();
@@ -113,11 +115,53 @@ function App() {
     return () => clearInterval(interval);
   }, [currentScreen, gameManager]);
 
+  // 研究进度更新 - 每秒更新
+  useEffect(() => {
+    if (currentScreen === 'start') return;
+
+    const updateProgress = () => {
+      gameManager.updateResearchProgress();
+    };
+
+    // 每秒更新研究进度
+    const interval = setInterval(updateProgress, 1000);
+
+    return () => clearInterval(interval);
+  }, [currentScreen, gameManager]);
+
+  // 采矿进度更新 - 每秒更新
+  useEffect(() => {
+    if (currentScreen === 'start') return;
+
+    const updateMining = () => {
+      gameManager.updateMiningProgress();
+    };
+
+    // 每秒更新采矿进度
+    const interval = setInterval(updateMining, 1000);
+
+    return () => clearInterval(interval);
+  }, [currentScreen, gameManager]);
+
+  // 定期自动保存 - 每30秒保存一次
+  useEffect(() => {
+    if (currentScreen === 'start') return;
+
+    const { saveGame } = useGameStore.getState();
+
+    // 每30秒自动保存
+    const interval = setInterval(() => {
+      saveGame();
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [currentScreen]);
+
   const handleStartGame = useCallback(() => {
     setCurrentScreen('home');
   }, []);
 
-  const handleNavigate = useCallback((screen: string, params?: any) => {
+  const handleNavigate = useCallback((screen: string, params?: NavigateParams) => {
     // 类型守卫检查
     if (!isValidScreen(screen)) {
       console.warn(`Invalid screen type: ${screen}`);

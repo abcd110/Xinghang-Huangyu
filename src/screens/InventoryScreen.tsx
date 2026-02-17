@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useGameStore } from '../stores/gameStore';
 import { ItemType, ItemRarity, TYPE_NAMES } from '../data/types';
 import type { InventoryItem } from '../data/types';
@@ -11,17 +11,6 @@ interface InventoryScreenProps {
   onBack: () => void;
   onNavigate?: (screen: string) => void;
 }
-
-// 科幻风格颜色配置
-const SCIFI_COLORS = {
-  primary: '#00d4ff',
-  secondary: '#7c3aed',
-  warning: '#f59e0b',
-  danger: '#ef4444',
-  success: '#22c55e',
-  background: 'rgba(0, 20, 40, 0.85)',
-  border: 'rgba(0, 212, 255, 0.3)',
-};
 
 const RARITY_COLORS_MAP: Record<ItemRarity, string> = {
   [ItemRarity.COMMON]: '#9ca3af',
@@ -124,7 +113,7 @@ const CATEGORIES = [
 ];
 
 export default function InventoryScreen({ onBack, onNavigate }: InventoryScreenProps) {
-  const { gameManager, useItem, equipItem, unequipItem, sublimateItem, getEnhancePreview, saveGame } = useGameStore();
+  const { gameManager, useItem: applyItem, equipItem, unequipItem, sublimateItem, getEnhancePreview, saveGame } = useGameStore();
   const inventory = gameManager.inventory;
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
@@ -160,7 +149,7 @@ export default function InventoryScreen({ onBack, onNavigate }: InventoryScreenP
     if (!selectedItem) return;
 
     if (action === 'use') {
-      useItem(selectedItem.id);
+      applyItem(selectedItem.id);
       setSelectedItem(null);
     } else if (action === 'equip') {
       await equipItem(selectedItem.id);

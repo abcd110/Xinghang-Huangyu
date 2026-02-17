@@ -1,18 +1,15 @@
 // 星械锻造所 - 纳米战甲制造界面（优化版）
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useGameStore } from '../stores/gameStore';
 import {
   NanoArmorSlot,
   NANO_ARMOR_SLOT_NAMES,
   NANO_ARMOR_SLOT_ICONS,
-  ALL_NANO_ARMOR_RECIPES,
   getRecipeBySlot,
   ArmorQuality,
   ARMOR_QUALITY_NAMES,
   ARMOR_QUALITY_COLORS,
   calculateQualityMultiplier,
-  TOTAL_MATERIALS_NEEDED,
-  NANO_ARMOR_RECIPES,
 } from '../data/nanoArmorRecipes';
 import { EquipmentSlot } from '../data/equipmentTypes';
 import { ItemRarity } from '../data/types';
@@ -59,6 +56,67 @@ const QUALITY_GLOW: Record<ArmorQuality, string> = {
   [ArmorQuality.VOID]: '0 0 30px rgba(250, 204, 21, 0.7)',
 };
 
+// 套装效果展示组件
+interface SetBonusDisplayProps {
+  equippedCount: number;
+}
+
+function SetBonusDisplay({ equippedCount }: SetBonusDisplayProps) {
+  const bonuses = [
+    { count: 2, name: '能量共鸣', effect: '攻击 +10%', active: equippedCount >= 2 },
+    { count: 4, name: '力场强化', effect: '攻击 +20%，暴击率 +5%', active: equippedCount >= 4 },
+    { count: 6, name: '纳米觉醒', effect: '攻击 +35%，暴击率 +10%，战斗护盾', active: equippedCount >= 6 },
+  ];
+
+  return (
+    <div style={{
+      backgroundColor: '#1a1f3a',
+      borderRadius: '12px',
+      padding: '16px',
+      border: '1px solid #2a3050',
+    }}>
+      <h3 style={{ color: '#f59e0b', fontSize: '14px', margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        ⚡ 纳米战甲套装效果
+        <span style={{ color: '#6b7280', fontSize: '12px', fontWeight: 'normal' }}>
+          (当前: {equippedCount}/6)
+        </span>
+      </h3>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        {bonuses.map((bonus) => (
+          <div
+            key={bonus.count}
+            style={{
+              padding: '12px',
+              backgroundColor: bonus.active ? 'rgba(245, 158, 11, 0.1)' : '#0f172a',
+              borderRadius: '8px',
+              border: `1px solid ${bonus.active ? 'rgba(245, 158, 11, 0.3)' : '#2a3050'}`,
+              opacity: bonus.active ? 1 : 0.5,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+              <span style={{
+                padding: '2px 8px',
+                backgroundColor: bonus.active ? '#f59e0b' : '#374151',
+                color: bonus.active ? '#000' : '#9ca3af',
+                borderRadius: '4px',
+                fontSize: '11px',
+                fontWeight: 'bold',
+              }}>
+                {bonus.count}件套
+              </span>
+              <span style={{ color: bonus.active ? '#f59e0b' : '#9ca3af', fontSize: '13px', fontWeight: 'bold' }}>
+                {bonus.name}
+              </span>
+              {bonus.active && <span style={{ color: '#4ade80', fontSize: '12px' }}>✓ 已激活</span>}
+            </div>
+            <p style={{ color: '#a1a1aa', fontSize: '12px', margin: 0 }}>{bonus.effect}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function NanoArmorCraftingScreen({ onBack }: NanoArmorCraftingScreenProps) {
   const { gameManager, saveGame } = useGameStore();
   const [selectedSlot, setSelectedSlot] = useState<NanoArmorSlot>(NanoArmorSlot.HELMET);
@@ -68,7 +126,6 @@ export default function NanoArmorCraftingScreen({ onBack }: NanoArmorCraftingScr
     message: string;
     quality?: ArmorQuality;
   } | null>(null);
-  const [showTotalMaterials, setShowTotalMaterials] = useState(false);
   const [activeTab, setActiveTab] = useState<'craft' | 'set'>('craft');
 
   const inventory = gameManager.inventory;
@@ -84,16 +141,16 @@ export default function NanoArmorCraftingScreen({ onBack }: NanoArmorCraftingScr
   };
 
   // 获取材料数量（指定品质）
-  const getMaterialQuantity = (baseMaterialId: string, quality: ArmorQuality): number => {
+  const getMaterialQuantity = useCallback((baseMaterialId: string, quality: ArmorQuality): number => {
     const qualityId = getQualityMaterialId(baseMaterialId, quality);
     return inventory.getItem(qualityId)?.quantity ?? 0;
-  };
+  }, [inventory]);
 
   // 检查是否可以制造（指定品质）
   const canCraft = useMemo(() => {
     if (!recipe) return false;
     return recipe.materials.every(m => getMaterialQuantity(m.itemId, selectedQuality) >= m.count);
-  }, [recipe, selectedQuality, inventory]);
+  }, [recipe, selectedQuality, getMaterialQuantity]);
 
   // 计算已拥有的装备部位数量
   const equippedCount = useMemo(() => {
@@ -104,7 +161,7 @@ export default function NanoArmorCraftingScreen({ onBack }: NanoArmorCraftingScr
   }, [inventory.equipment]);
 
   // 计算制造后的属性
-  const calculateFinalStats = (baseStats: any, quality: ArmorQuality) => {
+  const calculateFinalStats = (baseStats: { attack?: number; defense: number; hp?: number; speed?: number; critRate?: number; critDamage?: number; hit?: number; dodge?: number }, quality: ArmorQuality) => {
     const multiplier = calculateQualityMultiplier(quality);
     return {
       attack: Math.floor((baseStats.attack || 0) * multiplier),
@@ -338,63 +395,6 @@ export default function NanoArmorCraftingScreen({ onBack }: NanoArmorCraftingScr
             缺 {count - hasCount} 个
           </span>
         )}
-      </div>
-    );
-  };
-
-  // 套装效果展示
-  const SetBonusDisplay = () => {
-    const bonuses = [
-      { count: 2, name: '能量共鸣', effect: '攻击 +10%', active: equippedCount >= 2 },
-      { count: 4, name: '力场强化', effect: '攻击 +20%，暴击率 +5%', active: equippedCount >= 4 },
-      { count: 6, name: '纳米觉醒', effect: '攻击 +35%，暴击率 +10%，战斗护盾', active: equippedCount >= 6 },
-    ];
-
-    return (
-      <div style={{
-        backgroundColor: '#1a1f3a',
-        borderRadius: '12px',
-        padding: '16px',
-        border: '1px solid #2a3050',
-      }}>
-        <h3 style={{ color: '#f59e0b', fontSize: '14px', margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          ⚡ 纳米战甲套装效果
-          <span style={{ color: '#6b7280', fontSize: '12px', fontWeight: 'normal' }}>
-            (当前: {equippedCount}/6)
-          </span>
-        </h3>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {bonuses.map((bonus, index) => (
-            <div
-              key={bonus.count}
-              style={{
-                padding: '12px',
-                backgroundColor: bonus.active ? 'rgba(245, 158, 11, 0.1)' : '#0f172a',
-                borderRadius: '8px',
-                border: `1px solid ${bonus.active ? 'rgba(245, 158, 11, 0.3)' : '#2a3050'}`,
-                opacity: bonus.active ? 1 : 0.5,
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                <span style={{
-                  padding: '2px 8px',
-                  backgroundColor: bonus.active ? '#f59e0b' : '#374151',
-                  color: bonus.active ? '#000' : '#9ca3af',
-                  borderRadius: '4px',
-                  fontSize: '11px',
-                  fontWeight: 'bold',
-                }}>
-                  {bonus.count}件套
-                </span>
-                <span style={{ color: bonus.active ? '#f59e0b' : '#9ca3af', fontSize: '13px', fontWeight: 'bold' }}>
-                  {bonus.name}
-                </span>
-                {bonus.active && <span style={{ color: '#4ade80', fontSize: '12px' }}>✓ 已激活</span>}
-              </div>
-              <p style={{ color: '#a1a1aa', fontSize: '12px', margin: 0 }}>{bonus.effect}</p>
-            </div>
-          ))}
-        </div>
       </div>
     );
   };
@@ -688,7 +688,7 @@ export default function NanoArmorCraftingScreen({ onBack }: NanoArmorCraftingScr
             )}
           </>
         ) : (
-          <SetBonusDisplay />
+          <SetBonusDisplay equippedCount={equippedCount} />
         )}
       </main>
 

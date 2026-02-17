@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { GameManager, type GameState } from '../core/GameManager';
+import { GameManager } from '../core/GameManager';
 import { GameStorage } from '../core/Storage';
 import type { Location } from '../data/types';
 import { AutoCollectMode, CollectReward } from '../data/autoCollectTypes';
@@ -50,8 +50,8 @@ interface GameStore {
   craftItem: (slot: import('../data/equipmentTypes').EquipmentSlot, selection: import('../core/CraftingSystem').MaterialSelection) => { success: boolean; message: string };
 
   // 分解系统
-  decomposeItem: (itemId: string) => { success: boolean; message: string; rewards?: any[] };
-  getDecomposePreview: (itemId: string) => { success: boolean; preview?: any; message?: string };
+  decomposeItem: (itemId: string) => { success: boolean; message: string; rewards?: { itemId: string; name: string; quantity: number }[] };
+  getDecomposePreview: (itemId: string) => { success: boolean; preview?: { baseRewards: { itemId: string; name: string; quantity: number }[]; typeBonus: { itemId: string; name: string; quantity: number }[]; sublimationBonus: { itemId: string; name: string; quantity: number }[] }; message?: string };
 
   // 升华系统
   sublimateItem: (itemId: string) => Promise<{ success: boolean; message: string; levelUp?: boolean }>;
@@ -69,12 +69,12 @@ interface GameStore {
 
   // 列车系统
   repairTrain: () => { success: boolean; message: string };
-  upgradeTrain: (type: any) => { success: boolean; message: string };
+  upgradeTrain: (type: 'speed' | 'defense' | 'cargo' | 'energy') => { success: boolean; message: string };
 
   // 战斗系统
-  startBattle: (locationId: string, isBoss?: boolean, isElite?: boolean) => { success: boolean; message: string; enemy?: any };
-  endBattleVictory: (enemy: any) => { exp: number; loot: any[]; logs: string[] };
-  attemptEscape: (enemy: any) => { success: boolean; message: string; logs: string[] };
+  startBattle: (locationId: string, isBoss?: boolean, isElite?: boolean) => { success: boolean; message: string; enemy?: import('../data/enemies').ExpandedEnemy };
+  endBattleVictory: (enemy: import('../data/enemies').ExpandedEnemy) => { exp: number; loot: { itemId: string; quantity: number; name: string }[]; logs: string[] };
+  attemptEscape: (enemy: import('../data/enemies').ExpandedEnemy) => { success: boolean; message: string; logs: string[] };
 
   // 自动采集系统
   startAutoCollect: (locationId: string, mode: AutoCollectMode) => { success: boolean; message: string };
@@ -173,12 +173,15 @@ interface GameStore {
   getImplants: () => import('../core/CyberneticSystem').Implant[];
   getEquippedImplants: () => import('../core/CyberneticSystem').Implant[];
   getAvailableImplantSlots: () => import('../core/CyberneticSystem').ImplantType[];
-  craftImplant: (rarity: import('../core/CyberneticSystem').ImplantRarity) => { success: boolean; message: string; implant?: import('../core/CyberneticSystem').Implant };
+  craftImplant: (type: import('../core/CyberneticSystem').ImplantType, rarity: import('../core/CyberneticSystem').ImplantRarity) => { success: boolean; message: string; implant?: import('../core/CyberneticSystem').Implant };
   upgradeImplant: (implantId: string) => { success: boolean; message: string; newLevel?: number };
   equipImplant: (implantId: string) => { success: boolean; message: string };
   unequipImplant: (type: import('../core/CyberneticSystem').ImplantType) => { success: boolean; message: string };
   decomposeImplant: (implantId: string) => { success: boolean; message: string; rewards?: string };
   getImplantTotalStats: () => Record<string, number>;
+  getCraftableImplantRarities: () => import('../core/CyberneticSystem').ImplantRarity[];
+  getEquippedImplantEffects: () => { implant: import('../core/CyberneticSystem').Implant; effect: NonNullable<import('../core/CyberneticSystem').Implant['specialEffect']> }[];
+  toggleImplantLock: (implantId: string) => { success: boolean; message: string; locked?: boolean };
 
   // 星际市场系统
   getMarketListings: () => import('../core/MarketSystem').MarketListing[];
@@ -216,7 +219,8 @@ export const useGameStore = create<GameStore>((set, get) => {
     if (save) {
       get().saveGame();
     }
-    set({ logs: gameManager.logs });
+    // 强制更新gameManager引用以触发UI刷新
+    set({ gameManager, logs: gameManager.logs });
     return result;
   };
 
@@ -371,14 +375,14 @@ export const useGameStore = create<GameStore>((set, get) => {
       executeGameAction(() => get().gameManager.repairTrain()),
 
     // 升级列车
-    upgradeTrain: (type: any) =>
+    upgradeTrain: (type: 'speed' | 'defense' | 'cargo' | 'energy') =>
       executeGameAction(() => get().gameManager.upgradeTrain(type)),
 
     // 战斗系统
     startBattle: (locationId: string, isBoss: boolean = false, isElite: boolean = false) =>
       executeGameAction(() => get().gameManager.startBattle(locationId, isBoss, isElite)),
 
-    endBattleVictory: (enemy: any) => {
+    endBattleVictory: (enemy: import('../data/enemies').ExpandedEnemy) => {
       const { gameManager } = get();
       const result = gameManager.endBattleVictory(enemy);
       // 战斗胜利后恢复生命值至满（包含装备加成）
@@ -388,7 +392,7 @@ export const useGameStore = create<GameStore>((set, get) => {
       return result;
     },
 
-    attemptEscape: (enemy: any) =>
+    attemptEscape: (enemy: import('../data/enemies').ExpandedEnemy) =>
       executeGameAction(() => get().gameManager.attemptEscape(enemy)),
 
     // 自动采集系统
@@ -481,12 +485,15 @@ export const useGameStore = create<GameStore>((set, get) => {
     getImplants: () => get().gameManager.getImplants(),
     getEquippedImplants: () => get().gameManager.getEquippedImplants(),
     getAvailableImplantSlots: () => get().gameManager.getAvailableImplantSlots(),
-    craftImplant: (rarity) => executeGameAction(() => get().gameManager.craftImplant(rarity)),
+    craftImplant: (type, rarity) => executeGameAction(() => get().gameManager.craftImplant(type, rarity)),
     upgradeImplant: (implantId) => executeGameAction(() => get().gameManager.upgradeImplantItem(implantId)),
     equipImplant: (implantId) => executeGameAction(() => get().gameManager.equipImplant(implantId)),
     unequipImplant: (type) => executeGameAction(() => get().gameManager.unequipImplant(type)),
     decomposeImplant: (implantId) => executeGameAction(() => get().gameManager.decomposeImplant(implantId)),
     getImplantTotalStats: () => get().gameManager.getImplantTotalStats(),
+    getCraftableImplantRarities: () => get().gameManager.getCraftableImplantRarities(),
+    getEquippedImplantEffects: () => get().gameManager.getEquippedImplantEffects(),
+    toggleImplantLock: (implantId) => executeGameAction(() => get().gameManager.toggleImplantLock(implantId)),
 
     // 星际市场系统
     getMarketListings: () => get().gameManager.getMarketListings(),

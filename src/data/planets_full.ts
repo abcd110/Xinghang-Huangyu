@@ -6,7 +6,6 @@ import {
   PlanetType,
   PlanetCategory,
   FactionType,
-  GodDomain,
 } from './types_new';
 
 // ==================== 核心神域星（8个）====================

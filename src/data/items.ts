@@ -1744,6 +1744,14 @@ export const ITEMS: Record<string, Item> = {
     id: 'void_essence', name: '虚空精华', type: ItemType.MATERIAL, rarity: ItemRarity.LEGENDARY,
     description: '来自虚空的神秘能量结晶，极其稀有。', sublimationLevel: 0,
   },
+
+  // ============================================
+  // 芯片材料
+  // ============================================
+  'chip_material': {
+    id: 'chip_material', name: '芯片材料', type: ItemType.MATERIAL, rarity: ItemRarity.UNCOMMON,
+    description: '用于研发战斗芯片的基础材料。', sublimationLevel: 0,
+  },
 };
 
 // 获取物品模板

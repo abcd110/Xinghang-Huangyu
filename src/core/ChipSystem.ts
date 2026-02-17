@@ -75,24 +75,24 @@ export const CHIP_RARITY_CONFIG: Record<ChipRarity, { name: string; color: strin
 };
 
 export const CHIP_MAIN_STAT_CONFIG: Record<ChipMainStat, { name: string; baseValue: number; growth: number }> = {
-  [ChipMainStat.HP]: { name: '生命值', baseValue: 100, growth: 20 },
-  [ChipMainStat.ATTACK]: { name: '攻击力', baseValue: 10, growth: 2 },
-  [ChipMainStat.DEFENSE]: { name: '防御力', baseValue: 8, growth: 1.5 },
-  [ChipMainStat.CRIT_RATE]: { name: '暴击率', baseValue: 2, growth: 0.5 },
-  [ChipMainStat.CRIT_DAMAGE]: { name: '暴击伤害', baseValue: 10, growth: 2 },
-  [ChipMainStat.SPEED]: { name: '速度', baseValue: 2, growth: 0.3 },
+  [ChipMainStat.HP]: { name: '生命', baseValue: 100, growth: 20 },
+  [ChipMainStat.ATTACK]: { name: '攻击', baseValue: 10, growth: 2 },
+  [ChipMainStat.DEFENSE]: { name: '防御', baseValue: 8, growth: 1.5 },
+  [ChipMainStat.CRIT_RATE]: { name: '会心', baseValue: 2, growth: 0.5 },
+  [ChipMainStat.CRIT_DAMAGE]: { name: '暴伤', baseValue: 10, growth: 2 },
+  [ChipMainStat.SPEED]: { name: '攻速', baseValue: 2, growth: 0.3 },
 };
 
 export const CHIP_SUB_STAT_CONFIG: Record<ChipSubStat, { name: string; minValue: number; maxValue: number; enhanceValue: number }> = {
-  [ChipSubStat.HP]: { name: '生命值', minValue: 20, maxValue: 50, enhanceValue: 5 },
-  [ChipSubStat.ATTACK]: { name: '攻击力', minValue: 3, maxValue: 8, enhanceValue: 1 },
-  [ChipSubStat.DEFENSE]: { name: '防御力', minValue: 2, maxValue: 6, enhanceValue: 0.5 },
-  [ChipSubStat.CRIT_RATE]: { name: '暴击率', minValue: 1, maxValue: 3, enhanceValue: 0.3 },
-  [ChipSubStat.CRIT_DAMAGE]: { name: '暴击伤害', minValue: 3, maxValue: 8, enhanceValue: 1 },
-  [ChipSubStat.SPEED]: { name: '速度', minValue: 1, maxValue: 3, enhanceValue: 0.2 },
-  [ChipSubStat.HP_PERCENT]: { name: '生命值%', minValue: 1, maxValue: 4, enhanceValue: 0.5 },
-  [ChipSubStat.ATTACK_PERCENT]: { name: '攻击力%', minValue: 1, maxValue: 3, enhanceValue: 0.3 },
-  [ChipSubStat.DEFENSE_PERCENT]: { name: '防御力%', minValue: 1, maxValue: 3, enhanceValue: 0.3 },
+  [ChipSubStat.HP]: { name: '生命', minValue: 20, maxValue: 50, enhanceValue: 5 },
+  [ChipSubStat.ATTACK]: { name: '攻击', minValue: 3, maxValue: 8, enhanceValue: 1 },
+  [ChipSubStat.DEFENSE]: { name: '防御', minValue: 2, maxValue: 6, enhanceValue: 0.5 },
+  [ChipSubStat.CRIT_RATE]: { name: '会心', minValue: 1, maxValue: 3, enhanceValue: 0.3 },
+  [ChipSubStat.CRIT_DAMAGE]: { name: '暴伤', minValue: 3, maxValue: 8, enhanceValue: 1 },
+  [ChipSubStat.SPEED]: { name: '攻速', minValue: 1, maxValue: 3, enhanceValue: 0.2 },
+  [ChipSubStat.HP_PERCENT]: { name: '生命%', minValue: 1, maxValue: 4, enhanceValue: 0.5 },
+  [ChipSubStat.ATTACK_PERCENT]: { name: '攻击%', minValue: 1, maxValue: 3, enhanceValue: 0.3 },
+  [ChipSubStat.DEFENSE_PERCENT]: { name: '防御%', minValue: 1, maxValue: 3, enhanceValue: 0.3 },
 };
 
 export const CHIP_SET_CONFIG: Record<ChipSet, { name: string; icon: string; color: string; bonus2: string; bonus4: string }> = {
@@ -255,7 +255,7 @@ export function enhanceChip(chip: Chip, subStatIndex: number): { success: boolea
   return { success: true, message: `强化成功，${config.name}+${enhanceResult.toFixed(1)}` };
 }
 
-export function rerollSubStat(chip: Chip, subStatIndex: number): { success: boolean; message: string; newValue?: number } {
+export function rerollSubStat(chip: Chip, subStatIndex: number): { success: boolean; message: string; newStat?: ChipSubStat; newValue?: number } {
   if (chip.locked) {
     return { success: false, message: '芯片已锁定，无法重随' };
   }
@@ -264,13 +264,28 @@ export function rerollSubStat(chip: Chip, subStatIndex: number): { success: bool
     return { success: false, message: '无效的副属性索引' };
   }
 
-  const subStat = chip.subStats[subStatIndex];
-  const config = CHIP_SUB_STAT_CONFIG[subStat.stat];
+  // 获取所有可能的副属性类型
+  const allSubStats = Object.values(ChipSubStat);
   
+  // 随机选择一个新属性类型（可以与原来相同）
+  const newStat = allSubStats[Math.floor(Math.random() * allSubStats.length)];
+  const config = CHIP_SUB_STAT_CONFIG[newStat];
+  
+  // 在新属性的范围内随机生成数值
   const newValue = config.minValue + Math.random() * (config.maxValue - config.minValue);
-  subStat.value = Math.round(newValue * 10) / 10;
+  
+  // 更新副属性
+  chip.subStats[subStatIndex] = {
+    stat: newStat,
+    value: Math.round(newValue * 10) / 10
+  };
 
-  return { success: true, message: `重随成功，新数值: ${subStat.value}`, newValue: subStat.value };
+  return { 
+    success: true, 
+    message: `重随成功，新属性: ${config.name} +${chip.subStats[subStatIndex].value}`,
+    newStat,
+    newValue: chip.subStats[subStatIndex].value 
+  };
 }
 
 export function rerollAllSubStats(chip: Chip): { success: boolean; message: string } {

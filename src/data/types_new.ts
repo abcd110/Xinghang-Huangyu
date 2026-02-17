@@ -1,6 +1,9 @@
 // 《星航荒宇》游戏数据类型定义
 // 基于《列车求生》改造的新世界观
 
+import type { Quest } from '../core/QuestSystem';
+import type { ShopItem } from '../core/ShopSystem';
+
 // ==================== 基础枚举 ====================
 
 export enum ItemType {
@@ -420,11 +423,11 @@ export interface GameState {
   gameTime: number;
   logs: string[];
   federationCredits: number;    // 联邦信用点（原列车币）
-  quests: any[];
-  activeSkills: any[];
-  passiveSkills: any[];
+  quests: Quest[];
+  activeSkills: string[];
+  passiveSkills: string[];
   availableSkills: string[];
-  shopItems: any[];
+  shopItems: ShopItem[];
   lastShopRefreshDay: number;
   playerName: string;
   planetProgress: Array<[string, {

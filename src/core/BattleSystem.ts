@@ -1,6 +1,5 @@
 import { Player } from './Player';
 import { equipmentSystem, BattleContext } from './EquipmentSystem';
-import { EffectTrigger } from '../data/equipmentTypes';
 
 export interface BattleEnemy {
   id: string;

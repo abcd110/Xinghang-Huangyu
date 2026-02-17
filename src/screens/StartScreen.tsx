@@ -14,16 +14,6 @@ export default function StartScreen({ onStartGame }: StartScreenProps) {
   useEffect(() => {
     init();
 
-    // 生成随机星星
-    const newStars = Array.from({ length: 50 }, (_, i) => ({
-      id: i,
-      x: Math.random() * 100,
-      y: Math.random() * 100,
-      size: Math.random() * 3 + 1,
-      delay: Math.random() * 3,
-    }));
-    setStars(newStars);
-
     // 动画序列
     const titleTimer = setTimeout(() => setShowTitle(true), 300);
     const buttonsTimer = setTimeout(() => setShowButtons(true), 800);
@@ -33,6 +23,22 @@ export default function StartScreen({ onStartGame }: StartScreenProps) {
       clearTimeout(buttonsTimer);
     };
   }, [init]);
+
+  // 生成随机星星 - 使用 requestAnimationFrame 避免在 effect 中直接 setState
+  useEffect(() => {
+    const generateStars = () => {
+      const newStars = Array.from({ length: 50 }, (_, i) => ({
+        id: i,
+        x: Math.random() * 100,
+        y: Math.random() * 100,
+        size: Math.random() * 3 + 1,
+        delay: Math.random() * 3,
+      }));
+      setStars(newStars);
+    };
+
+    requestAnimationFrame(generateStars);
+  }, []);
 
   const handleNewGame = () => {
     newGame();

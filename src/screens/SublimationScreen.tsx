@@ -10,16 +10,7 @@ interface SublimationScreenProps {
   onBack: () => void;
 }
 
-// 科幻风格颜色配置
-const SCIFI_COLORS = {
-  primary: '#fbbf24',
-  secondary: '#f59e0b',
-  success: '#22c55e',
-  danger: '#ef4444',
-  warning: '#f59e0b',
-  background: 'rgba(20, 15, 0, 0.85)',
-  border: 'rgba(251, 191, 36, 0.3)',
-};
+
 
 const SLOT_NAMES: Record<EquipmentSlot, string> = {
   [EquipmentSlot.HEAD]: '头部',
@@ -84,7 +75,11 @@ export default function SublimationScreen({ onBack }: SublimationScreenProps) {
     await new Promise(resolve => setTimeout(resolve, 800));
 
     const successRate = getSublimationRate(selectedEquipment.sublimationLevel);
-    const success = Math.random() < successRate;
+    // 使用 crypto.getRandomValues 生成随机数（在事件处理中安全）
+    const randomBytes = new Uint32Array(1);
+    crypto.getRandomValues(randomBytes);
+    const randomValue = randomBytes[0] / 0xFFFFFFFF;
+    const success = randomValue < successRate;
 
     const cost = calculateSublimationCost(selectedEquipment.rarity);
     const consumeSuccess = player.consumeSpirit(cost);

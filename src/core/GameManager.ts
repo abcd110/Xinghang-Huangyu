@@ -1,33 +1,33 @@
 import { Player, type PlayerData } from './Player';
 import { Inventory } from './Inventory';
-import type { InventoryItem, Location, Enemy } from '../data/types';
+import type { InventoryItem, Enemy } from '../data/types';
 import { ItemType, ItemRarity } from '../data/types';
 import type { EquipmentInstance } from './EquipmentSystem';
 import { calculateEnemyStats } from '../data/locations';
 import { getItemTemplate } from '../data/items';
 import { ENEMIES, createEnemyInstance } from '../data/enemies';
-import { getRandomEnemyForPlanet, getBossEnemyForPlanet, getEliteEnemyForPlanet, EXTENDED_ENEMIES } from '../data/enemyAdapter';
+import { getRandomEnemyForPlanet, getBossEnemyForPlanet, getEliteEnemyForPlanet } from '../data/enemyAdapter';
 import { ArmorQuality, ARMOR_QUALITY_NAMES } from '../data/nanoArmorRecipes';
-import { Quest, QuestConditionType, QuestStatus, QuestType, DEFAULT_QUESTS } from './QuestSystem';
+import { Quest, QuestConditionType, QuestStatus, QuestType, DEFAULT_QUESTS, type QuestData } from './QuestSystem';
 import { EquipmentSlot } from '../data/equipmentTypes';
-import { ShopItem, SHOP_ITEMS } from './ShopSystem';
-import { DECOMPOSE_REWARDS, TYPE_BONUS, SUBLIMATION_BONUS, MATERIAL_NAMES, getDecomposePreview as getDecomposePreviewFunc, decompose as decomposeFunc } from './DecomposeSystem';
-import { ENHANCE_CONFIG, MAX_ENHANCE_LEVEL, ENHANCE_STONE_ID, PROTECTION_ITEM_ID, MATERIAL_NAMES as ENHANCE_MATERIAL_NAMES, EnhanceResultType, type EnhanceResult, type EnhancePreview, calculateEnhanceBonus, canEnhance, getSuccessRate } from './EnhanceSystem';
+import { ShopItem, SHOP_ITEMS, type ShopItemData } from './ShopSystem';
+import { getDecomposePreview as getDecomposePreviewFunc, decompose as decomposeFunc } from './DecomposeSystem';
+import { ENHANCE_CONFIG, ENHANCE_STONE_ID, PROTECTION_ITEM_ID, MATERIAL_NAMES as ENHANCE_MATERIAL_NAMES, EnhanceResultType, type EnhanceResult, type EnhancePreview, canEnhance } from './EnhanceSystem';
 import { equipmentSystem } from './EquipmentSystem';
 import { calculateEquipmentStats, calculateEnhancedStatsPreview } from './EquipmentStatCalculator';
 import { AutoCollectSystem } from './AutoCollectSystem';
 import { AutoCollectMode, CollectReward, getCollectRobot } from '../data/autoCollectTypes';
-import { synthesize, synthesizeBatch, getSynthesizableMaterials, QUALITY_NAMES } from './MaterialSynthesisSystem';
-import { BaseFacilitySystem, FacilityType, FACILITY_DEFINITIONS } from './BaseFacilitySystem';
-import { CrewMember, CrewMemberData, RecruitType, RECRUIT_CONFIG, RARITY_CONFIG, ROLE_CONFIG, addCrewExp, getRarityByRoll, getRandomCrewDefinition, generateCrewFromDefinition, generateFallbackCrew, serializeCrewMember, deserializeCrewMember, createPlayerCrew, isPlayerCrew } from './CrewSystem';
-import { CommEvent, CommEventData, generateCommEvent, getMaxEvents, getScanCooldown, serializeCommEvent, deserializeCommEvent, isEventExpired, COMM_EVENT_CONFIG } from './CommSystem';
+import { synthesize, synthesizeBatch, getSynthesizableMaterials } from './MaterialSynthesisSystem';
+import { BaseFacilitySystem, FacilityType } from './BaseFacilitySystem';
+import { CrewMember, CrewMemberData, RecruitType, RECRUIT_CONFIG, RARITY_CONFIG, addCrewExp, getRarityByRoll, getRandomCrewDefinition, generateCrewFromDefinition, generateFallbackCrew, serializeCrewMember, deserializeCrewMember, createPlayerCrew, isPlayerCrew } from './CrewSystem';
+import { CommEvent, CommEventData, generateCommEvent, getMaxEvents, getScanCooldown, serializeCommEvent, deserializeCommEvent, isEventExpired } from './CommSystem';
 import { ResearchProject, ResearchProjectData, ResearchStatus, createResearchProject, serializeResearchProject, deserializeResearchProject, canStartResearch, getMaxConcurrentResearch, getResearchSpeedBonus, RESEARCH_PROJECTS } from './ResearchSystem';
-import { MiningTask, MiningTaskData, MiningStatus, MiningSite, MINING_SITES, MINERAL_CONFIG, MINING_EVENTS, MiningEventType, getMiningYield, getMiningDuration, getMaxMiningSlots, createMiningTask, serializeMiningTask, deserializeMiningTask, isMiningComplete, getMiningProgress, getRemainingTime, getCrewMiningBonus, checkMiningEvent, processMiningEvent, getDepthProgress, getDepthBonusDescription } from './MiningSystem';
-import { Chip, ChipData, ChipSlot, ChipRarity, ChipSet, ChipSubStat, createChip, upgradeChip, enhanceChip, rerollSubStat, rerollAllSubStats, toggleChipLock, serializeChip, deserializeChip, getUpgradeCost, getEnhanceCost, getRerollCost, getChipStats, getSetBonus, CHIP_RARITY_CONFIG, CHIP_SET_CONFIG, CHIP_MAIN_STAT_CONFIG, CHIP_SUB_STAT_CONFIG, CHIP_CRAFT_COST } from './ChipSystem';
-import { GeneNode, GeneNodeData, GeneType, GENE_TREE, createGeneNode, upgradeGeneNode, getGeneUpgradeCost, getGeneTotalStats, serializeGeneNode, deserializeGeneNode, GENE_TYPE_CONFIG, GENE_RARITY_CONFIG } from './GeneSystem';
-import { Implant, ImplantData, ImplantType, ImplantRarity, IMPLANT_TEMPLATES, IMPLANT_TYPE_CONFIG, IMPLANT_RARITY_CONFIG, createImplant, upgradeImplant, getImplantStats, getImplantUpgradeCost, serializeImplant, deserializeImplant, getRandomImplantRarity, getRandomImplantByRarity } from './CyberneticSystem';
-import { MarketListing, PlayerListing, MarketTransaction, MarketItemType, MarketRarity, MARKET_MAX_LISTINGS, createMarketListing, isListingExpired, calculateTax, calculateFinalPrice, generateSystemListings, serializeMarketListing, deserializeMarketListing, serializePlayerListing, deserializePlayerListing, serializeMarketTransaction, deserializeMarketTransaction } from './MarketSystem';
-import { Ruin, ExploreMission, RuinType, RuinDifficulty, ExploreStatus, RUIN_TYPE_CONFIG, RUIN_DIFFICULTY_CONFIG, createRuin, generateRuins, calculateExploreSuccess, generateRewards, getRemainingExploreTime, formatExploreTime, serializeRuin, deserializeRuin, serializeExploreMission, deserializeExploreMission } from './RuinSystem';
+import { MiningTask, MiningTaskData, MiningStatus, MiningSite, MINING_SITES, MINERAL_CONFIG, getMiningYield, getMaxMiningSlots, createMiningTask, serializeMiningTask, deserializeMiningTask, isMiningComplete, getMiningProgress, getCrewMiningBonus, checkMiningEvent, processMiningEvent, getDepthBonusDescription } from './MiningSystem';
+import { Chip, ChipData, ChipSlot, ChipRarity, ChipSet, createChip, upgradeChip, enhanceChip, rerollSubStat, rerollAllSubStats, toggleChipLock, serializeChip, deserializeChip, getUpgradeCost, getEnhanceCost, getRerollCost, getChipStats, getSetBonus, CHIP_RARITY_CONFIG, CHIP_CRAFT_COST } from './ChipSystem';
+import { GeneNode, GeneNodeData, GeneType, GENE_TREE, createGeneNode, upgradeGeneNode, getGeneUpgradeCost, getGeneTotalStats, serializeGeneNode, deserializeGeneNode, GENE_TYPE_CONFIG } from './GeneSystem';
+import { Implant, ImplantData, ImplantType, ImplantRarity, IMPLANT_TYPE_CONFIG, IMPLANT_RARITY_CONFIG, createImplant, upgradeImplant, getImplantStats, getImplantUpgradeCost, serializeImplant, deserializeImplant } from './CyberneticSystem';
+import { MarketListing, PlayerListing, MarketTransaction, MarketItemType, MarketRarity, MARKET_MAX_LISTINGS, createMarketListing, isListingExpired, generateSystemListings, serializeMarketListing, deserializeMarketListing, serializePlayerListing, deserializePlayerListing, serializeMarketTransaction, deserializeMarketTransaction } from './MarketSystem';
+import { Ruin, ExploreMission, ExploreStatus, RUIN_TYPE_CONFIG, generateRuins, calculateExploreSuccess, generateRewards, serializeRuin, deserializeRuin, serializeExploreMission, deserializeExploreMission } from './RuinSystem';
 
 export interface GameState {
   player: PlayerData;
@@ -38,8 +38,9 @@ export interface GameState {
   gameTime: number;
   logs: string[];
   trainCoins: number;
-  quests: any[];
-  shopItems: any[];
+  quests: QuestData[];
+  shopItems: ShopItemData[];
+  lastShopRefreshDay: number;
   lastShopRefreshDate: string; // 上次商店刷新日期 (YYYY-MM-DD格式)
   playerName: string;
   locationProgress: Array<[string, {
@@ -49,8 +50,15 @@ export interface GameState {
     lastBossDefeatDay: number;
     lastBossChallengeDate: string | null;
   }]>;
-  autoCollectSystem?: any; // 自动采集系统数据
-  baseFacilitySystem?: any; // 基地设施系统数据
+  autoCollectSystem?: {
+    state: import('../data/autoCollectTypes').AutoCollectState;
+    config: import('../data/autoCollectTypes').AutoCollectConfig;
+    lastSaveTime: number;
+    dailyCollectHours: number;
+    lastCollectDate: string;
+    defeatedBosses: string[];
+  }; // 自动采集系统数据
+  baseFacilitySystem?: Record<string, import('./BaseFacilitySystem').FacilityState>; // 基地设施系统数据
   lastStaminaRecoveryTime?: number; // 上次体力恢复时间戳
   crewMembers?: CrewMemberData[]; // 船员列表
   commEvents?: CommEventData[]; // 通讯事件列表
@@ -63,11 +71,11 @@ export interface GameState {
   geneNodes?: GeneNodeData[]; // 基因节点列表
   implants?: ImplantData[]; // 机械义体列表
   equippedImplants?: { [key: string]: string }; // 装备的义体 key为类型
-  marketListings?: any[]; // 市场挂单列表
-  playerListings?: any[]; // 玩家挂单列表
-  marketTransactions?: any[]; // 市场交易记录
-  ruins?: any[]; // 遗迹列表
-  exploreMissions?: any[]; // 探索任务列表
+  marketListings?: MarketListing[]; // 市场挂单列表
+  playerListings?: PlayerListing[]; // 玩家挂单列表
+  marketTransactions?: MarketTransaction[]; // 市场交易记录
+  ruins?: Ruin[]; // 遗迹列表
+  exploreMissions?: ExploreMission[]; // 探索任务列表
   lastSaveTime?: number; // 上次保存时间戳（用于离线进度计算）
 }
 
@@ -453,7 +461,6 @@ export class GameManager {
 
   // 更新任务进度
   updateQuestProgress(conditionType: QuestConditionType, targetId: string, amount: number = 1): void {
-    let updated = false;
     this.quests.forEach(quest => {
       if (quest.status !== QuestStatus.ACTIVE) return;
 
@@ -461,7 +468,6 @@ export class GameManager {
         if (condition.conditionType === conditionType &&
           (condition.targetId === targetId || condition.targetId === 'any')) {
           condition.updateProgress(amount);
-          updated = true;
 
           if (quest.isCompleted()) {
             quest.complete();
@@ -567,7 +573,7 @@ export class GameManager {
   }
 
   // 获取分解预览
-  getDecomposePreview(itemId: string): { success: boolean; preview?: any; message?: string } {
+  getDecomposePreview(itemId: string): { success: boolean; preview?: ReturnType<typeof getDecomposePreviewFunc> | null; message?: string } {
     // 先从普通物品中查找
     let item = this.inventory.getItem(itemId);
     let isEquipment = false;
@@ -604,7 +610,7 @@ export class GameManager {
           rarity: inventoryEquipment.rarity,
           description: inventoryEquipment.description,
           sublimationLevel: inventoryEquipment.sublimationLevel,
-        } as any;
+        } as InventoryItem;
         isEquipment = true;
         isCrafted = inventoryEquipment.isCrafted || false;
       }
@@ -644,7 +650,7 @@ export class GameManager {
   }
 
   // 分解装备
-  decomposeItem(itemId: string): { success: boolean; message: string; rewards?: any[] } {
+  decomposeItem(itemId: string): { success: boolean; message: string; rewards?: { materialId: string; name: string; quantity: number }[] } {
     // 先从普通物品中查找
     let item = this.inventory.getItem(itemId);
     let isInventoryEquipment = false;
@@ -679,7 +685,7 @@ export class GameManager {
           type: mappedType,
           rarity: inventoryEquipment.rarity,
           description: inventoryEquipment.description,
-        } as any;
+        } as InventoryItem;
         isInventoryEquipment = true;
         isCrafted = inventoryEquipment.isCrafted || false;
       }
@@ -704,7 +710,7 @@ export class GameManager {
     }
 
     // 添加分解获得的材料到背包
-    const actualRewards: any[] = [];
+    const actualRewards: { materialId: string; name: string; quantity: number }[] = [];
     if (result.reward) {
       this.inventory.addItem(result.reward.materialId, result.reward.quantity);
       actualRewards.push({
@@ -790,13 +796,11 @@ export class GameManager {
       this.applySublimationBonus(item);
 
       // 品质升级
-      let qualityUpgraded = false;
       if (willQualityUpgrade) {
         const rarityOrder = [ItemRarity.COMMON, ItemRarity.UNCOMMON, ItemRarity.RARE, ItemRarity.EPIC, ItemRarity.LEGENDARY, ItemRarity.MYTHIC];
         const currentIndex = rarityOrder.indexOf(item.rarity);
         if (currentIndex < rarityOrder.length - 1) {
           item.rarity = rarityOrder[currentIndex + 1];
-          qualityUpgraded = true;
           this.applyQualityUpgradeBonus(item);
         }
       }
@@ -1160,7 +1164,6 @@ export class GameManager {
     // 数据迁移：将旧格式的装备从 items 迁移到 equipment
     const migrationResult = this.inventory.migrateOldEquipment();
     if (migrationResult.migrated > 0) {
-      console.log(`[数据迁移] 成功迁移 ${migrationResult.migrated} 件旧格式装备`);
       this.addLog('系统', `数据迁移完成：${migrationResult.migrated} 件装备已更新格式`);
     }
     if (migrationResult.errors.length > 0) {
@@ -1284,7 +1287,7 @@ export class GameManager {
     // 加载商店 - 同步最新名称和描述，但保留库存数据
     this.shopItems.clear();
     SHOP_ITEMS.forEach(itemData => {
-      const savedItem = state.shopItems?.find((i: any) => i.itemId === itemData.itemId);
+      const savedItem = state.shopItems?.find((i: { itemId: string; stock: number }) => i.itemId === itemData.itemId);
       const item = new ShopItem({
         ...itemData,
         stock: savedItem?.stock ?? itemData.stock,
@@ -1827,7 +1830,6 @@ export class GameManager {
       rewardMessages.push(`${event.rewards.exp}经验`);
     }
 
-    const eventConfig = COMM_EVENT_CONFIG[event.type];
     this.addLog('通讯事件', `响应「${event.title}」，获得: ${rewardMessages.join('、')}`);
 
     this.commEvents.splice(eventIndex, 1);
@@ -2263,7 +2265,6 @@ export class GameManager {
       return { success: false, message: '采矿任务不存在' };
     }
 
-    const task = this.miningTasks[taskIndex];
     const site = MINING_SITES.find(s => s.id === siteId);
 
     this.miningTasks.splice(taskIndex, 1);
@@ -2823,7 +2824,6 @@ export class GameManager {
     const result = upgradeImplant(implant);
 
     if (result.success) {
-      const typeConfig = IMPLANT_TYPE_CONFIG[implant.type];
       this.addLog('机械飞升', `${implant.name}升级到Lv.${implant.level}`);
     }
 
@@ -3356,7 +3356,7 @@ export class GameManager {
     }
 
     // 检查是否是神话站台
-    const mythLocation = MYTHOLOGY_LOCATIONS.find((l: any) => l.id === locationId);
+    const mythLocation = MYTHOLOGY_LOCATIONS.find((l: MythologyLocation) => l.id === locationId);
 
     if (mythLocation) {
       // 神话站台战斗
@@ -3615,7 +3615,7 @@ export class GameManager {
   }
 
   // 神话站台战斗
-  private startMythologyBattle(mythLocation: any, isBoss: boolean, isElite: boolean): { success: boolean; message: string; enemy?: Enemy } {
+  private startMythologyBattle(mythLocation: MythologyLocation, isBoss: boolean, isElite: boolean): { success: boolean; message: string; enemy?: Enemy } {
     // 战斗消耗10体力
     const staminaCost = 10;
 
@@ -3667,7 +3667,7 @@ export class GameManager {
   // 创建神话站台敌人
   private createMythologyEnemy(name: string, tier: string, baseLevel: number): Enemy | null {
     // 根据等级计算属性
-    const stats = calculateEnemyStats(tier as any, baseLevel);
+    const stats = calculateEnemyStats(tier as EnemyTier, baseLevel);
 
     const enemy: Enemy = {
       id: `myth_enemy_${Date.now()}`,
@@ -3771,9 +3771,8 @@ export class GameManager {
 
     // 掉落制造材料 - 使用 mat_001~mat_010 带品质版本
     // 根据敌人类型决定掉落数量：普通3种，精英5种，BOSS7种
-    const enemyType = (enemy as any).creatureType || (enemy as any).enemyType || 'normal';
-    const enemyLevel = (enemy as any).level || 1;
-    const planetId = (enemy as any).planetId || 'planet_alpha';
+    const enemyType = (enemy as { creatureType?: string; enemyType?: string }).creatureType || (enemy as { creatureType?: string; enemyType?: string }).enemyType || 'normal';
+    const planetId = (enemy as { planetId?: string }).planetId || 'planet_alpha';
 
     // 联邦科技星映射（8个星球）
     const FEDERAL_TECH_STAR_ORDER = [
@@ -4448,7 +4447,7 @@ export class GameManager {
   // ==================== 神话装备系统 ====================
 
   // 装备神话装备
-  equipMythologyItem(equipmentId: string, slot: import('../data/equipmentTypes').EquipmentSlot): { success: boolean; message: string } {
+  equipMythologyItem(equipmentId: string): { success: boolean; message: string } {
     const template = getEquipmentById(equipmentId);
 
     if (!template) {

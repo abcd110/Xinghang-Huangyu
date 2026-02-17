@@ -211,13 +211,31 @@ export const FACILITY_DEFINITIONS: FacilityDefinition[] = [
     icon: '🏛️',
     description: '探索遗迹获取稀有资源',
     color: '#a855f7',
-    maxLevel: 5,
+    maxLevel: 1,
     levels: [
       { level: 1, upgradeCost: { credits: 0, materials: [] }, effects: { description: '探索等级', value: 1 } },
-      { level: 2, upgradeCost: { credits: 3000, materials: [{ itemId: 'chip_material', count: 5 }] }, effects: { description: '探索等级', value: 2 } },
-      { level: 3, upgradeCost: { credits: 6000, materials: [{ itemId: 'chip_material', count: 10 }] }, effects: { description: '探索等级', value: 3 } },
-      { level: 4, upgradeCost: { credits: 12000, materials: [{ itemId: 'gene_material', count: 10 }] }, effects: { description: '探索等级', value: 4 } },
-      { level: 5, upgradeCost: { credits: 25000, materials: [{ itemId: 'cyber_core', count: 3 }] }, effects: { description: '探索等级', value: 5 } },
+    ],
+  },
+  {
+    id: FacilityType.RELIC,
+    name: '遗迹探索',
+    icon: '🏛️',
+    description: '探索遗迹获取稀有资源',
+    color: '#a855f7',
+    maxLevel: 1,
+    levels: [
+      { level: 1, upgradeCost: { credits: 0, materials: [] }, effects: { description: '探索等级', value: 1 } },
+    ],
+  },
+  {
+    id: FacilityType.MARKET,
+    name: '星际市场',
+    icon: '🏪',
+    description: '玩家间交易',
+    color: '#ec4899',
+    maxLevel: 1,
+    levels: [
+      { level: 1, upgradeCost: { credits: 0, materials: [] }, effects: { description: '市场等级', value: 1 } },
     ],
   },
 ];

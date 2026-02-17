@@ -84,15 +84,33 @@ export default function BattleScreen({ locationId, isBoss, isElite, onBack, onBa
   // 初始化玩家队伍（6个位置，目前只有主角）
   const initPlayerTeam = useCallback((): BattleUnit[] => {
     const team: BattleUnit[] = [];
+
+    // 获取芯片加成（固定值 + 百分比）
+    const chipBonus = gameManager.getChipStatBonus();
+    const chipAttack = chipBonus['攻击'] || 0;
+    const chipAttackPercent = (chipBonus['攻击%'] || 0) / 100;
+    const finalAttack = Math.floor((player.totalAttack + chipAttack) * (1 + chipAttackPercent));
+
+    const chipDefense = chipBonus['防御'] || 0;
+    const chipDefensePercent = (chipBonus['防御%'] || 0) / 100;
+    const finalDefense = Math.floor((player.totalDefense + chipDefense) * (1 + chipDefensePercent));
+
+    const chipHp = chipBonus['生命'] || 0;
+    const chipHpPercent = (chipBonus['生命%'] || 0) / 100;
+    const finalMaxHp = Math.floor((player.totalMaxHp + chipHp) * (1 + chipHpPercent));
+
+    const chipSpeed = chipBonus['攻速'] || 0;
+    const finalAgility = player.totalAgility + chipSpeed;
+
     // 主角占据第一个位置（1号位）
     team.push({
       id: 'player_0',
       name: gameManager.playerName || '主角',
       hp: player.hp,
-      maxHp: player.totalMaxHp,
-      attack: player.totalAttack,
-      defense: player.totalDefense,
-      speed: player.totalAgility,
+      maxHp: finalMaxHp,
+      attack: finalAttack,
+      defense: finalDefense,
+      speed: finalAgility,
       icon: '我',
       isPlayer: true,
       isAlive: player.hp > 0,
@@ -112,7 +130,7 @@ export default function BattleScreen({ locationId, isBoss, isElite, onBack, onBa
       });
     }
     return team;
-  }, [gameManager.playerName, player.hp, player.totalMaxHp, player.totalAttack, player.totalDefense, player.totalAgility]);
+  }, [gameManager, player.hp, player.totalMaxHp, player.totalAttack, player.totalDefense, player.totalAgility]);
 
   // 初始化敌方队伍（6个位置）
   const initEnemyTeam = useCallback((enemyData: Enemy): BattleUnit[] => {
@@ -174,7 +192,7 @@ export default function BattleScreen({ locationId, isBoss, isElite, onBack, onBa
       const enemyInstance = result.enemy;
       setEnemy(enemyInstance);
       enemyRef.current = enemyInstance;
-      
+
       // 初始化双方队伍
       const initialPlayerTeam = initPlayerTeam();
       const initialEnemyTeam = initEnemyTeam(enemyInstance);
@@ -182,7 +200,7 @@ export default function BattleScreen({ locationId, isBoss, isElite, onBack, onBa
       setEnemyTeam(initialEnemyTeam);
       playerTeamRef.current = initialPlayerTeam;
       enemyTeamRef.current = initialEnemyTeam;
-      
+
       setBattleLog([result.message, '战斗开始！']);
       setBattleState('fighting');
       setIsInitialized(true);
@@ -243,7 +261,7 @@ export default function BattleScreen({ locationId, isBoss, isElite, onBack, onBa
     const currentPlayer = playerRef.current;
 
     if (!currentEnemy || battleState !== 'fighting') return;
-  
+
     // 使用 ref 获取最新的队伍状态
     const currentEnemyTeam = enemyTeamRef.current;
     const currentPlayerTeam = playerTeamRef.current;
@@ -279,7 +297,7 @@ export default function BattleScreen({ locationId, isBoss, isElite, onBack, onBa
       // 暴击判定（只有主角有暴击属性）
       if (attackerIndex === 0) {
         const attackerCrit = currentPlayer.totalCrit;
-        const defenderGuard = (currentEnemy as any).guardRate || 5;
+        const defenderGuard = (currentEnemy as { guardRate?: number }).guardRate || 5;
         let critChance = 0;
         if (attackerCrit > defenderGuard) {
           critChance = (attackerCrit - defenderGuard) / (defenderGuard * 1.5);
@@ -418,7 +436,7 @@ export default function BattleScreen({ locationId, isBoss, isElite, onBack, onBa
 
     const attackSpeed = player.totalAttackSpeed || 1;
     const playerInterval = Math.max(500, 1000 / attackSpeed);
-    const enemyAttackSpeed = (enemy as any)?.attackSpeed || 1;
+    const enemyAttackSpeed = (enemy as { attackSpeed?: number })?.attackSpeed || 1;
     const enemyInterval = Math.max(500, 1000 / enemyAttackSpeed);
 
     playerAttackTimer.current = window.setInterval(() => {
@@ -540,7 +558,7 @@ export default function BattleScreen({ locationId, isBoss, isElite, onBack, onBa
         />
       );
     }
-        
+
     const hpPercent = unit.maxHp > 0 ? (unit.hp / unit.maxHp) * 100 : 0;
     const hpColor = hpPercent > 50 ? '#22c55e' : hpPercent > 25 ? '#eab308' : '#ef4444';
 
@@ -613,7 +631,7 @@ export default function BattleScreen({ locationId, isBoss, isElite, onBack, onBa
       </div>
     );
   };
-      
+
   // 渲染战斗区域（6个位置）
   const renderBattleField = () => {
     // 上方敌方队伍（3x2布局）
@@ -623,12 +641,12 @@ export default function BattleScreen({ locationId, isBoss, isElite, onBack, onBa
       const unit = enemyTeam[index] || { id: `enemy_${index}`, name: '', hp: 0, maxHp: 0, attack: 0, defense: 0, speed: 0, isPlayer: false, isAlive: false };
       return renderUnitCard(unit, index + 1);
     });
-        
+
     const enemyRow2 = [0, 1, 2].map(index => {
       const unit = enemyTeam[index] || { id: `enemy_${index}`, name: '', hp: 0, maxHp: 0, attack: 0, defense: 0, speed: 0, isPlayer: false, isAlive: false };
       return renderUnitCard(unit, index + 1);
     });
-        
+
     // 下方玩家队伍（3x2布局）
     // 第一行：1、2、3号位（前排）
     // 第二行：4、5、6号位（后排）
@@ -636,12 +654,12 @@ export default function BattleScreen({ locationId, isBoss, isElite, onBack, onBa
       const unit = playerTeam[index] || { id: `player_${index}`, name: '', hp: 0, maxHp: 0, attack: 0, defense: 0, speed: 0, isPlayer: true, isAlive: false };
       return renderUnitCard(unit, index + 1);
     });
-          
+
     const playerRow2 = [3, 4, 5].map(index => {
       const unit = playerTeam[index] || { id: `player_${index}`, name: '', hp: 0, maxHp: 0, attack: 0, defense: 0, speed: 0, isPlayer: true, isAlive: false };
       return renderUnitCard(unit, index + 1);
     });
-      
+
     return (
       <div style={{
         display: 'flex',
@@ -695,7 +713,7 @@ export default function BattleScreen({ locationId, isBoss, isElite, onBack, onBa
               fontWeight: 'bold',
               textAlign: 'center',
             }}>
-              获得<br/>经验
+              获得<br />经验
             </div>
             <div style={{ color: '#4ade80', fontSize: '16px', fontWeight: 'bold' }}>
               +{gainedExp}
@@ -717,7 +735,7 @@ export default function BattleScreen({ locationId, isBoss, isElite, onBack, onBa
       </div>
     );
   };
-            
+
   return (
     <div style={{
       height: '100vh',
@@ -797,7 +815,7 @@ export default function BattleScreen({ locationId, isBoss, isElite, onBack, onBa
             ))}
           </div>
         </div>
-                
+
         {/* 普通战斗胜利 - 继续狩猎或返回 */}
         {battleState === 'victory' && !isBoss && (
           <div style={{
@@ -874,7 +892,7 @@ export default function BattleScreen({ locationId, isBoss, isElite, onBack, onBa
             </button>
           </div>
         )}
-    
+
         {battleState === 'defeat' && (
           <div style={{
             backgroundColor: '#7f1d1d',

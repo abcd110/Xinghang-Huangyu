@@ -1,6 +1,6 @@
-import type { InventoryItem } from '../data/types';
-import { ItemType, ItemRarity } from '../data/types';
 import type { EquipmentInstance } from './EquipmentSystem';
+import type { Inventory } from './Inventory';
+import type { Player } from './Player';
 
 // 强化等级配置
 export interface EnhanceLevelConfig {
@@ -168,10 +168,10 @@ function calculateEnhancedStats(
 
 // 强化系统类
 export class EnhanceSystem {
-  private inventory: any;
-  private player: any;
+  private inventory: Inventory;
+  private player: Player;
 
-  constructor(inventory: any, player: any) {
+  constructor(inventory: Inventory, player: Player) {
     this.inventory = inventory;
     this.player = player;
   }
@@ -343,20 +343,19 @@ export class EnhanceSystem {
 }
 
 // 计算物品当前强化属性（旧装备系统）
-export function calculateEnhanceStats(equipment: InventoryItem): {
+export function calculateEnhanceStats(): {
   attackBonus: number;
   defenseBonus: number;
   speedBonus: number;
   maxHpBonus: number;
 } {
-  const level = equipment.enhanceLevel || 0;
   // 新系统：基于基础属性的百分比提升
   // 这里简化处理，返回0表示使用新计算方式
   return { attackBonus: 0, defenseBonus: 0, speedBonus: 0, maxHpBonus: 0 };
 }
 
 // 计算装备强化属性加成（用于预览）
-export function calculateEnhanceBonus(equipment: { enhanceLevel?: number }): {
+export function calculateEnhanceBonus(): {
   attack: number;
   defense: number;
   agility: number;

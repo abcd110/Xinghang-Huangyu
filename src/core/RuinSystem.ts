@@ -85,8 +85,8 @@ export const RUIN_TEMPLATES: Omit<Ruin, 'status' | 'exploredAt' | 'assignedCrew'
     rewards: {
       credits: 200,
       items: [
-        { itemId: 'iron_ore', count: 5, chance: 0.8 },
-        { itemId: 'copper_ore', count: 3, chance: 0.6 },
+        { itemId: 'mineral_iron', count: 5, chance: 0.8 },
+        { itemId: 'mineral_copper', count: 3, chance: 0.6 },
         { itemId: 'recruit_ticket_normal', count: 1, chance: 0.1 },
       ],
       experience: 50,
@@ -370,18 +370,18 @@ export function formatExploreTime(ms: number): string {
   return `${minutes}分${seconds}秒`;
 }
 
-export function serializeRuin(ruin: Ruin): any {
+export function serializeRuin(ruin: Ruin): Ruin {
   return { ...ruin };
 }
 
-export function deserializeRuin(data: any): Ruin {
+export function deserializeRuin(data: Ruin): Ruin {
   return { ...data };
 }
 
-export function serializeExploreMission(mission: ExploreMission): any {
+export function serializeExploreMission(mission: ExploreMission): ExploreMission {
   return { ...mission };
 }
 
-export function deserializeExploreMission(data: any): ExploreMission {
+export function deserializeExploreMission(data: ExploreMission): ExploreMission {
   return { ...data };
 }

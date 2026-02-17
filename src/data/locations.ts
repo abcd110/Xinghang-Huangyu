@@ -1,5 +1,5 @@
 import type { EnemyTier } from './types';
-import { ArmorQuality, ARMOR_QUALITY_NAMES } from './nanoArmorRecipes';
+import { ArmorQuality } from './nanoArmorRecipes';
 
 // ============================================
 // 敌人等级系统 - 保留用于战斗计算
@@ -182,11 +182,11 @@ export function calculateEnemyStats(tier: EnemyTier, level: number = 1) {
 // ============================================
 
 // 保留空数组以保持向后兼容（如果有代码引用 LOCATIONS）
-export const REGULAR_LOCATIONS: any[] = [];
+export const REGULAR_LOCATIONS: unknown[] = [];
 export const LOCATIONS = REGULAR_LOCATIONS;
 
 // 已弃用的函数 - 返回空值以保持兼容
-export function calculateExplorationRewards(): any[] { return []; }
+export function calculateExplorationRewards(): unknown[] { return []; }
 export function getRecommendedPower(): number { return 25; }
 export function getEnemyTierInfo(): { normal: string; elite: string; boss: string } {
   return { normal: 'T1', elite: 'T1+', boss: 'T2' };

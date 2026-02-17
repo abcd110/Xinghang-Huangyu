@@ -40,7 +40,6 @@ export default function DecomposeScreen({ onBack }: DecomposeScreenProps) {
   // 替换any为具体类型DecomposePreview['preview']
   const [preview, setPreview] = useState<DecomposePreview['preview'] | null>(null);
   const [result, setResult] = useState<{ success: boolean; message: string } | null>(null);
-  const [refreshKey, setRefreshKey] = useState(0);
 
   const decomposableItems = useMemo(() => {
     const inventory = getInventory();
@@ -101,7 +100,7 @@ export default function DecomposeScreen({ onBack }: DecomposeScreenProps) {
 
     // 修复：缺失return，导致无可用分解物品
     return items;
-  }, [getInventory, refreshKey]);
+  }, [getInventory]);
 
   const handleSelectItem = (item: DecomposableItem) => {
     // 修复：拼写错误etResult → setResult

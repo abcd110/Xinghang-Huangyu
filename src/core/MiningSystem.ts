@@ -163,7 +163,7 @@ export const MINING_EVENTS: MiningEvent[] = [
     color: '#ef4444',
     chance: 0.08,
     minDepth: 20,
-    effect: (task, site) => {
+    effect: (task) => {
       const damage = Math.floor(5 + task.currentDepth / 20);
       return { message: `塌方！损失了${damage}点进度`, damage };
     },
@@ -176,7 +176,7 @@ export const MINING_EVENTS: MiningEvent[] = [
     color: '#a855f7',
     chance: 0.05,
     minDepth: 50,
-    effect: (task, site) => {
+    effect: (task) => {
       const items = [{ itemId: 'gene_material', count: Math.floor(1 + task.currentDepth / 100) }];
       return { message: '发现古代遗迹！获得了基因材料', items };
     },
@@ -189,7 +189,7 @@ export const MINING_EVENTS: MiningEvent[] = [
     color: '#f59e0b',
     chance: 0.1,
     minDepth: 30,
-    effect: (task, site) => {
+    effect: () => {
       return { message: '瓦斯气袋！需要暂停处理', damage: 10 };
     },
   },
@@ -201,7 +201,7 @@ export const MINING_EVENTS: MiningEvent[] = [
     color: '#ec4899',
     chance: 0.07,
     minDepth: 40,
-    effect: (task, site) => {
+    effect: (task) => {
       const damage = Math.floor(8 + task.currentDepth / 25);
       return { message: `遭遇地下生物！损失${damage}点进度`, damage };
     },
@@ -214,7 +214,7 @@ export const MINING_EVENTS: MiningEvent[] = [
     color: '#22c55e',
     chance: 0.03,
     minDepth: 0,
-    effect: (task, site) => {
+    effect: (task) => {
       const credits = Math.floor(100 + task.currentDepth * 2);
       return { message: `幸运发现！获得${credits}信用点`, bonus: credits };
     },
@@ -264,15 +264,15 @@ export function createMiningTask(siteId: string, facilityLevel: number, crewIds:
   };
 }
 
-export function checkMiningEvent(task: MiningTask, site: MiningSite): MiningEvent | null {
+export function checkMiningEvent(task: MiningTask): MiningEvent | null {
   const availableEvents = MINING_EVENTS.filter(e => task.currentDepth >= e.minDepth);
-  
+
   for (const event of availableEvents) {
     if (Math.random() < event.chance) {
       return event;
     }
   }
-  
+
   return null;
 }
 

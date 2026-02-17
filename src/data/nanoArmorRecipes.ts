@@ -3,7 +3,7 @@
 // 6部位：头盔、胸甲、肩甲、臂甲、腿甲、战靴
 // ============================================
 
-import { ItemRarity } from './types';
+
 
 // 装备部位
 export enum NanoArmorSlot {

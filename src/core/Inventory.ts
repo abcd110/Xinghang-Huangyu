@@ -4,6 +4,14 @@ import { createItem } from '../data/items';
 import type { EquipmentInstance } from './EquipmentSystem';
 import { EquipmentSlot } from '../data/equipmentTypes';
 
+// 物品使用效果接口
+interface ItemEffects {
+  healHp?: number;
+  healStamina?: number;
+  healHunger?: number;
+  healThirst?: number;
+}
+
 export class Inventory {
   items: InventoryItem[];
   equipment: EquipmentInstance[]; // 神话装备存储在这里
@@ -101,7 +109,7 @@ export class Inventory {
   }
 
   // 使用物品
-  useItem(itemId: string): { success: boolean; message: string; effects?: any } {
+  useItem(itemId: string): { success: boolean; message: string; effects?: ItemEffects } {
     const item = this.items.find(i => i.id === itemId);
     if (!item) {
       return { success: false, message: '物品不存在' };
@@ -112,7 +120,7 @@ export class Inventory {
       return { success: false, message: '该物品无法使用' };
     }
 
-    const effects: any = {};
+    const effects: ItemEffects = {};
 
     if (item.healHp) effects.healHp = item.healHp;
     if (item.healStamina) effects.healStamina = item.healStamina;

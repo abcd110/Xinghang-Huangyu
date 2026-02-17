@@ -2,14 +2,10 @@ export enum ImplantType {
   NEURAL = 'neural',
   SKELETAL = 'skeletal',
   MUSCULAR = 'muscular',
-  SENSORY = 'sensory',
   CARDIO = 'cardio',
-  INTEGRATED = 'integrated',
 }
 
 export enum ImplantRarity {
-  COMMON = 'common',
-  UNCOMMON = 'uncommon',
   RARE = 'rare',
   EPIC = 'epic',
   LEGENDARY = 'legendary',
@@ -23,12 +19,14 @@ export interface ImplantSlot {
 
 export interface Implant {
   id: string;
+  templateId?: string;
   type: ImplantType;
   rarity: ImplantRarity;
   name: string;
   description: string;
   level: number;
   maxLevel: number;
+  locked?: boolean;
   baseStats: {
     attack?: number;
     defense?: number;
@@ -55,48 +53,47 @@ export interface Implant {
 
 export interface ImplantData {
   id: string;
+  templateId?: string;
   type: ImplantType;
   rarity: ImplantRarity;
   name: string;
   level: number;
+  locked?: boolean;
 }
 
 export const IMPLANT_TYPE_CONFIG: Record<ImplantType, { name: string; icon: string; color: string; description: string }> = {
   [ImplantType.NEURAL]: { name: '神经接口', icon: '🧠', color: '#8b5cf6', description: '增强神经反应和感知能力' },
   [ImplantType.SKELETAL]: { name: '骨骼强化', icon: '🦴', color: '#f59e0b', description: '强化骨骼结构和承重能力' },
   [ImplantType.MUSCULAR]: { name: '肌肉增强', icon: '💪', color: '#ef4444', description: '提升肌肉力量和爆发力' },
-  [ImplantType.SENSORY]: { name: '感官强化', icon: '👁️', color: '#22c55e', description: '强化视觉、听觉等感知能力' },
   [ImplantType.CARDIO]: { name: '心血管改造', icon: '❤️', color: '#ec4899', description: '优化心血管系统和耐力' },
-  [ImplantType.INTEGRATED]: { name: '综合系统', icon: '🦾', color: '#06b6d4', description: '多功能综合改造系统' },
 };
 
 export const IMPLANT_RARITY_CONFIG: Record<ImplantRarity, { name: string; color: string; statMultiplier: number }> = {
-  [ImplantRarity.COMMON]: { name: '普通', color: '#9ca3af', statMultiplier: 1.0 },
-  [ImplantRarity.UNCOMMON]: { name: '优秀', color: '#22c55e', statMultiplier: 1.2 },
   [ImplantRarity.RARE]: { name: '稀有', color: '#3b82f6', statMultiplier: 1.5 },
   [ImplantRarity.EPIC]: { name: '史诗', color: '#a855f7', statMultiplier: 2.0 },
   [ImplantRarity.LEGENDARY]: { name: '传说', color: '#f59e0b', statMultiplier: 2.5 },
 };
 
 export const IMPLANT_TEMPLATES: Omit<Implant, 'level'>[] = [
+  // 神经接口
   {
-    id: 'implant_neural_001',
-    type: ImplantType.NEURAL,
-    rarity: ImplantRarity.COMMON,
-    name: '基础神经加速器',
-    description: '提升神经反应速度的基础植入体',
-    maxLevel: 10,
-    baseStats: { speed: 5, critRate: 2 },
-    levelScaling: { speed: 1, critRate: 0.5 },
-  },
-  {
-    id: 'implant_neural_002',
+    id: 'implant_neural_rare',
     type: ImplantType.NEURAL,
     rarity: ImplantRarity.RARE,
+    name: '神经加速器',
+    description: '提升神经反应速度的植入体',
+    maxLevel: 10,
+    baseStats: { speed: 8, critRate: 3 },
+    levelScaling: { speed: 1.5, critRate: 0.5 },
+  },
+  {
+    id: 'implant_neural_epic',
+    type: ImplantType.NEURAL,
+    rarity: ImplantRarity.EPIC,
     name: '量子神经网络',
     description: '利用量子纠缠原理的超前神经接口',
     maxLevel: 15,
-    baseStats: { speed: 10, critRate: 5, critDamage: 10 },
+    baseStats: { speed: 12, critRate: 6, critDamage: 10 },
     levelScaling: { speed: 2, critRate: 1, critDamage: 2 },
     specialEffect: {
       name: '量子闪避',
@@ -106,23 +103,40 @@ export const IMPLANT_TEMPLATES: Omit<Implant, 'level'>[] = [
     },
   },
   {
-    id: 'implant_skeletal_001',
+    id: 'implant_neural_legendary',
+    type: ImplantType.NEURAL,
+    rarity: ImplantRarity.LEGENDARY,
+    name: '虚空神经核心',
+    description: '连接虚空意识的终极神经接口',
+    maxLevel: 20,
+    baseStats: { speed: 18, critRate: 10, critDamage: 20 },
+    levelScaling: { speed: 3, critRate: 1.5, critDamage: 3 },
+    specialEffect: {
+      name: '虚空预知',
+      description: '预知敌人攻击轨迹',
+      trigger: 'passive',
+      effect: 'dodge_chance_20',
+    },
+  },
+  // 骨骼强化
+  {
+    id: 'implant_skeletal_rare',
     type: ImplantType.SKELETAL,
-    rarity: ImplantRarity.COMMON,
+    rarity: ImplantRarity.RARE,
     name: '钛合金骨架',
     description: '轻量化的钛合金骨骼替代品',
     maxLevel: 10,
-    baseStats: { defense: 10, hp: 20 },
-    levelScaling: { defense: 3, hp: 5 },
+    baseStats: { defense: 15, hp: 30 },
+    levelScaling: { defense: 3, hp: 6 },
   },
   {
-    id: 'implant_skeletal_002',
+    id: 'implant_skeletal_epic',
     type: ImplantType.SKELETAL,
     rarity: ImplantRarity.EPIC,
     name: '纳米碳纤维骨骼',
     description: '自修复纳米材料构成的超级骨骼',
-    maxLevel: 20,
-    baseStats: { defense: 30, hp: 50 },
+    maxLevel: 15,
+    baseStats: { defense: 30, hp: 60 },
     levelScaling: { defense: 5, hp: 10 },
     specialEffect: {
       name: '自我修复',
@@ -132,76 +146,84 @@ export const IMPLANT_TEMPLATES: Omit<Implant, 'level'>[] = [
     },
   },
   {
-    id: 'implant_muscular_001',
+    id: 'implant_skeletal_legendary',
+    type: ImplantType.SKELETAL,
+    rarity: ImplantRarity.LEGENDARY,
+    name: '虚空晶骨',
+    description: '虚空晶体质构成的永恒骨骼',
+    maxLevel: 20,
+    baseStats: { defense: 50, hp: 100 },
+    levelScaling: { defense: 8, hp: 15 },
+    specialEffect: {
+      name: '虚空护盾',
+      description: '受到致命伤害时触发护盾',
+      trigger: 'passive',
+      effect: 'death_shield_50',
+    },
+  },
+  // 肌肉增强
+  {
+    id: 'implant_muscular_rare',
     type: ImplantType.MUSCULAR,
-    rarity: ImplantRarity.UNCOMMON,
+    rarity: ImplantRarity.RARE,
     name: '合成肌纤维',
     description: '高强度合成肌肉纤维植入',
-    maxLevel: 12,
-    baseStats: { attack: 15, hp: 10 },
+    maxLevel: 10,
+    baseStats: { attack: 20, hp: 15 },
     levelScaling: { attack: 4, hp: 3 },
   },
   {
-    id: 'implant_muscular_002',
+    id: 'implant_muscular_epic',
+    type: ImplantType.MUSCULAR,
+    rarity: ImplantRarity.EPIC,
+    name: '动力外骨骼',
+    description: '外置动力增强系统',
+    maxLevel: 15,
+    baseStats: { attack: 35, hp: 25, critDamage: 15 },
+    levelScaling: { attack: 6, hp: 5, critDamage: 2 },
+    specialEffect: {
+      name: '过载打击',
+      description: '攻击时有概率造成额外伤害',
+      trigger: 'onAttack',
+      effect: 'extra_damage_15',
+    },
+  },
+  {
+    id: 'implant_muscular_legendary',
     type: ImplantType.MUSCULAR,
     rarity: ImplantRarity.LEGENDARY,
     name: '虚空动力核心',
     description: '汲取虚空能量的终极肌肉强化系统',
-    maxLevel: 25,
-    baseStats: { attack: 50, hp: 30, critDamage: 20 },
-    levelScaling: { attack: 8, hp: 5, critDamage: 3 },
+    maxLevel: 20,
+    baseStats: { attack: 60, hp: 40, critDamage: 25 },
+    levelScaling: { attack: 10, hp: 8, critDamage: 4 },
     specialEffect: {
       name: '虚空爆发',
       description: '攻击时有概率触发虚空能量爆发',
       trigger: 'onAttack',
-      effect: 'void_burst_20',
+      effect: 'void_burst_25',
     },
   },
+  // 心血管改造
   {
-    id: 'implant_sensory_001',
-    type: ImplantType.SENSORY,
-    rarity: ImplantRarity.COMMON,
-    name: '光学增强器',
-    description: '增强视觉感知的基础植入体',
-    maxLevel: 10,
-    baseStats: { critRate: 5, speed: 3 },
-    levelScaling: { critRate: 1, speed: 0.5 },
-  },
-  {
-    id: 'implant_sensory_002',
-    type: ImplantType.SENSORY,
-    rarity: ImplantRarity.RARE,
-    name: '全频谱感知阵列',
-    description: '覆盖全电磁频谱的感知系统',
-    maxLevel: 15,
-    baseStats: { critRate: 10, speed: 5, critDamage: 15 },
-    levelScaling: { critRate: 2, speed: 1, critDamage: 2 },
-    specialEffect: {
-      name: '弱点洞察',
-      description: '提高暴击伤害',
-      trigger: 'passive',
-      effect: 'crit_damage_25',
-    },
-  },
-  {
-    id: 'implant_cardio_001',
+    id: 'implant_cardio_rare',
     type: ImplantType.CARDIO,
-    rarity: ImplantRarity.UNCOMMON,
+    rarity: ImplantRarity.RARE,
     name: '人工心脏',
     description: '高效率的人工心脏替代品',
-    maxLevel: 12,
-    baseStats: { hp: 50, speed: 3 },
-    levelScaling: { hp: 10, speed: 0.5 },
+    maxLevel: 10,
+    baseStats: { hp: 60, speed: 4 },
+    levelScaling: { hp: 10, speed: 0.8 },
   },
   {
-    id: 'implant_cardio_002',
+    id: 'implant_cardio_epic',
     type: ImplantType.CARDIO,
     rarity: ImplantRarity.EPIC,
     name: '聚变动力心脏',
     description: '微型聚变反应堆驱动的心脏系统',
-    maxLevel: 20,
+    maxLevel: 15,
     baseStats: { hp: 100, speed: 8, defense: 15 },
-    levelScaling: { hp: 15, speed: 1, defense: 2 },
+    levelScaling: { hp: 15, speed: 1.2, defense: 2.5 },
     specialEffect: {
       name: '能量过载',
       description: '濒死时触发护盾',
@@ -210,29 +232,19 @@ export const IMPLANT_TEMPLATES: Omit<Implant, 'level'>[] = [
     },
   },
   {
-    id: 'implant_integrated_001',
-    type: ImplantType.INTEGRATED,
-    rarity: ImplantRarity.RARE,
-    name: '战术辅助系统',
-    description: '集成多种功能的战术辅助AI',
-    maxLevel: 15,
-    baseStats: { attack: 10, defense: 10, speed: 5 },
-    levelScaling: { attack: 2, defense: 2, speed: 1 },
-  },
-  {
-    id: 'implant_integrated_002',
-    type: ImplantType.INTEGRATED,
+    id: 'implant_cardio_legendary',
+    type: ImplantType.CARDIO,
     rarity: ImplantRarity.LEGENDARY,
-    name: '虚空飞升核心',
-    description: '传说中实现真正机械飞升的终极系统',
-    maxLevel: 30,
-    baseStats: { attack: 30, defense: 30, hp: 50, speed: 10, critRate: 10, critDamage: 20 },
-    levelScaling: { attack: 5, defense: 5, hp: 10, speed: 1, critRate: 1, critDamage: 2 },
+    name: '虚空之心',
+    description: '虚空能量驱动的永恒心脏',
+    maxLevel: 20,
+    baseStats: { hp: 150, speed: 12, defense: 25, attack: 20 },
+    levelScaling: { hp: 20, speed: 1.5, defense: 4, attack: 3 },
     specialEffect: {
-      name: '虚空化身',
-      description: '短时间内获得虚空之力',
-      trigger: 'onKill',
-      effect: 'void_form_5s',
+      name: '虚空再生',
+      description: '战斗中持续大幅恢复生命',
+      trigger: 'passive',
+      effect: 'hp_regen_5',
     },
   },
 ];
@@ -243,6 +255,8 @@ export function createImplant(templateId: string): Implant | null {
 
   return {
     ...template,
+    id: `${templateId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    templateId: templateId,
     level: 1,
   };
 }
@@ -274,10 +288,8 @@ export function getImplantStats(implant: Implant): Record<string, number> {
   return stats;
 }
 
-export function getImplantUpgradeCost(implant: Implant): { credits: number; materials: { itemId: string; count: number } } {
+export function getImplantUpgradeCost(implant: Implant): { credits: number; materials: { itemId: string; count: number }[] } {
   const rarityMultiplier = {
-    [ImplantRarity.COMMON]: 1,
-    [ImplantRarity.UNCOMMON]: 1.5,
     [ImplantRarity.RARE]: 2,
     [ImplantRarity.EPIC]: 3,
     [ImplantRarity.LEGENDARY]: 5,
@@ -288,30 +300,35 @@ export function getImplantUpgradeCost(implant: Implant): { credits: number; mate
 
   return {
     credits: Math.floor(baseCredits),
-    materials: {
+    materials: [{
       itemId: 'cyber_material',
       count: materialCount,
-    },
+    }],
   };
 }
 
 export function serializeImplant(implant: Implant): ImplantData {
   return {
     id: implant.id,
+    templateId: implant.templateId,
     type: implant.type,
     rarity: implant.rarity,
     name: implant.name,
     level: implant.level,
+    locked: implant.locked,
   };
 }
 
 export function deserializeImplant(data: ImplantData): Implant | null {
-  const template = IMPLANT_TEMPLATES.find(t => t.id === data.id);
+  const template = IMPLANT_TEMPLATES.find(t => t.id === data.templateId);
   if (!template) return null;
 
   return {
     ...template,
+    id: data.id,
+    templateId: data.templateId,
     level: data.level,
+    locked: data.locked,
   };
 }
 

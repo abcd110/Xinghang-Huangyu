@@ -51,7 +51,7 @@ export class GameStorage {
     try {
       const { value } = await Preferences.get({ key: SAVE_KEY });
       return value !== null;
-    } catch (error) {
+    } catch {
       return false;
     }
   }

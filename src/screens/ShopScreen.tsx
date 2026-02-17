@@ -232,7 +232,6 @@ export default function ShopScreen({ onBack }: ShopScreenProps) {
             const inventoryItem = gameManager.inventory.getItem(shopItem.itemId);
             const canAfford = gameManager.trainCoins >= shopItem.price;
             const hasStock = shopItem.stock > 0;
-            const maxAffordable = Math.floor(gameManager.trainCoins / shopItem.price);
             const canBuyAny = canAfford && hasStock;
 
             return (

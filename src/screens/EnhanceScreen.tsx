@@ -10,16 +10,7 @@ interface EnhanceScreenProps {
   onBack: () => void;
 }
 
-// 科幻风格颜色配置
-const SCIFI_COLORS = {
-  primary: '#00d4ff',
-  secondary: '#7c3aed',
-  success: '#22c55e',
-  danger: '#ef4444',
-  warning: '#f59e0b',
-  background: 'rgba(0, 20, 40, 0.85)',
-  border: 'rgba(0, 212, 255, 0.3)',
-};
+
 
 const SLOT_NAMES: Record<EquipmentSlot, string> = {
   [EquipmentSlot.HEAD]: '头部',
@@ -43,10 +34,9 @@ const ARMOR_SLOTS: EquipmentSlot[] = [
 ];
 
 export default function EnhanceScreen({ onBack }: EnhanceScreenProps) {
-  const { gameManager, getEnhancePreview, enhanceItem, getInventory } = useGameStore();
+  const { gameManager, getEnhancePreview, enhanceItem } = useGameStore();
   const player = gameManager.player;
-  const [refreshKey, setRefreshKey] = useState(0);
-  const inventory = getInventory();
+  const [, setRefreshKey] = useState(0);
 
   const [selectedSlot, setSelectedSlot] = useState<EquipmentSlot | null>(null);
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
@@ -60,7 +50,7 @@ export default function EnhanceScreen({ onBack }: EnhanceScreenProps) {
   }, []);
 
   // 获取槽位中的装备（只返回已装备的装备）
-  const getEquipmentInSlot = (slot: EquipmentSlot): InventoryItem | null => {
+  const getEquipmentInSlot = useCallback((slot: EquipmentSlot): InventoryItem | null => {
     const equippedMythology = player.getEquipmentBySlot(slot);
     if (equippedMythology) {
       let mappedType: ItemType;
@@ -86,7 +76,7 @@ export default function EnhanceScreen({ onBack }: EnhanceScreenProps) {
       } as InventoryItem;
     }
     return null;
-  };
+  }, [player]);
 
   // 当前选中的装备
   const selectedEquipment = selectedSlot ? getEquipmentInSlot(selectedSlot) : null;
@@ -95,24 +85,24 @@ export default function EnhanceScreen({ onBack }: EnhanceScreenProps) {
   useEffect(() => {
     if (selectedSlot) {
       const equipment = getEquipmentInSlot(selectedSlot);
-      setSelectedItem(equipment);
+      requestAnimationFrame(() => setSelectedItem(equipment));
     } else {
-      setSelectedItem(null);
+      requestAnimationFrame(() => setSelectedItem(null));
     }
-  }, [selectedSlot, refreshKey]);
+  }, [selectedSlot, getEquipmentInSlot]);
 
   // 当选择物品时更新预览
   const updatePreview = useCallback(() => {
     if (selectedItem) {
       const previewData = getEnhancePreview(selectedItem.id);
-      setPreview(previewData);
+      requestAnimationFrame(() => setPreview(previewData));
     } else {
-      setPreview(null);
+      requestAnimationFrame(() => setPreview(null));
     }
   }, [selectedItem, getEnhancePreview]);
 
   useEffect(() => {
-    updatePreview();
+    requestAnimationFrame(updatePreview);
   }, [updatePreview]);
 
   const handleEnhance = async () => {
@@ -347,7 +337,7 @@ export default function EnhanceScreen({ onBack }: EnhanceScreenProps) {
                   {selectedEquipment.name || '未知装备'}
                 </h3>
                 <p style={{ color: '#a1a1aa', fontSize: '12px', margin: 0 }}>
-                  {(selectedEquipment as any).rarity || '普通'} · 星球{(selectedEquipment as any).stationNumber || 0}
+                  {selectedEquipment.rarity || '普通'} · 星球{(selectedEquipment as { stationNumber?: number }).stationNumber || 0}
                 </p>
                 <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
                   <span style={{

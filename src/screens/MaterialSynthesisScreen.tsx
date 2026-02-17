@@ -42,7 +42,6 @@ const SUFFIX: Record<ArmorQuality, string> = {
 
 export default function MaterialSynthesisScreen({ onBack }: MaterialSynthesisScreenProps) {
   const { gameManager, saveGame, showToast } = useGameStore();
-  const [refreshKey, setRefreshKey] = useState(0);
   const [selected, setSelected] = useState<{ id: string; quality: ArmorQuality } | null>(null);
 
   // 可合成列表
@@ -50,7 +49,7 @@ export default function MaterialSynthesisScreen({ onBack }: MaterialSynthesisScr
     const map = new Map<string, number>();
     gameManager.inventory.items.forEach(item => map.set(item.id, item.quantity));
     return getSynthesizableMaterials(map).filter(i => i.hasCount >= 5);
-  }, [gameManager.inventory.items, refreshKey]);
+  }, [gameManager.inventory.items]);
 
   // 获取数量
   const getCount = (id: string, q: ArmorQuality) => {

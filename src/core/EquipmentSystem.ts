@@ -1,12 +1,11 @@
 import {
-  EquipmentEffect,
-  EquipmentStats,
   EffectTrigger,
   EffectType,
-  EquipmentSlot,
   MythologyEquipment
 } from '../data/equipmentTypes';
 import { calculateEquipmentStats } from './EquipmentStatCalculator';
+import type { Player } from './Player';
+import type { BattleEnemy } from './BattleSystem';
 
 export interface CalculatedStats {
   attack: number;
@@ -35,8 +34,8 @@ export interface EquipmentInstance extends MythologyEquipment {
 }
 
 export interface BattleContext {
-  attacker: any;
-  defender: any;
+  attacker: Player | BattleEnemy;
+  defender: Player | BattleEnemy;
   damage?: number;
   isCrit?: boolean;
   isDodge?: boolean;

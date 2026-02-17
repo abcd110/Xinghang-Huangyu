@@ -1,21 +1,20 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useGameStore } from '../stores/gameStore';
+import type { GameManager } from '../core/GameManager';
 import 基地背景 from '../assets/images/基地背景.jpg';
 import { FacilityType } from '../core/BaseFacilitySystem';
-import { QUALITY_NAMES } from '../core/MaterialSynthesisSystem';
-import { CommEvent, COMM_EVENT_CONFIG, getRemainingTime, formatRemainingTime, getMaxEvents, getScanCooldown, getRareEventChance } from '../core/CommSystem';
+import { CommEvent, COMM_EVENT_CONFIG, getRemainingTime, formatRemainingTime, getMaxEvents, getRareEventChance } from '../core/CommSystem';
 import { getItemTemplate } from '../data/items';
-import { ResearchStatus, ResearchCategory, RESEARCH_CATEGORY_CONFIG } from '../core/ResearchSystem';
-import { MINERAL_CONFIG, MINING_EVENTS, MiningEventType, getMiningProgress, getRemainingTime as getMiningRemainingTime, formatMiningTime, getDepthBonusDescription, getCrewMiningBonus, getMiningEfficiencyBonus, getMiningSpeedBonus, getMiningEventChanceBonus, getMiningDepthBonus, getMaxMiningSlots } from '../core/MiningSystem';
-import { Chip, ChipSlot, ChipRarity, ChipSet, CHIP_RARITY_CONFIG, CHIP_MAIN_STAT_CONFIG, CHIP_SUB_STAT_CONFIG, CHIP_SET_CONFIG, CHIP_CRAFT_COST, getEnhanceCost, getRerollCost } from '../core/ChipSystem';
+import { ResearchStatus } from '../core/ResearchSystem';
+import { MINERAL_CONFIG, getMiningProgress, getRemainingTime as getMiningRemainingTime, formatMiningTime, getDepthBonusDescription, getCrewMiningBonus, getMiningEfficiencyBonus, getMiningSpeedBonus, getMiningDepthBonus, getMaxMiningSlots } from '../core/MiningSystem';
+import { Chip, ChipSlot, ChipRarity, CHIP_RARITY_CONFIG, CHIP_MAIN_STAT_CONFIG, CHIP_SUB_STAT_CONFIG, CHIP_SET_CONFIG, CHIP_CRAFT_COST, getRerollCost, getUpgradeCost } from '../core/ChipSystem';
 import { GeneType, GENE_TYPE_CONFIG, GENE_RARITY_CONFIG } from '../core/GeneSystem';
-import { Implant, ImplantType, ImplantRarity, IMPLANT_TYPE_CONFIG, IMPLANT_RARITY_CONFIG, getImplantStats } from '../core/CyberneticSystem';
-import { MarketListing, PlayerListing, MarketItemType, MarketRarity, MARKET_ITEM_TYPE_CONFIG, MARKET_RARITY_CONFIG } from '../core/MarketSystem';
-import { Ruin, ExploreMission, RuinType, RuinDifficulty, ExploreStatus, RUIN_TYPE_CONFIG, RUIN_DIFFICULTY_CONFIG, getRemainingExploreTime, formatExploreTime, calculateExploreSuccess } from '../core/RuinSystem';
+import { Implant, ImplantType, ImplantRarity, IMPLANT_TYPE_CONFIG, IMPLANT_RARITY_CONFIG, getImplantStats, getImplantUpgradeCost } from '../core/CyberneticSystem';
+import { MARKET_ITEM_TYPE_CONFIG, MARKET_RARITY_CONFIG } from '../core/MarketSystem';
+import { Ruin, RuinType, ExploreStatus, RUIN_TYPE_CONFIG, RUIN_DIFFICULTY_CONFIG, getRemainingExploreTime, formatExploreTime, calculateExploreSuccess } from '../core/RuinSystem';
 import CrewScreen from './CrewScreen';
 
 interface BaseScreenProps {
-  onNavigate: (screen: string, params?: unknown) => void;
   onBack: () => void;
 }
 
@@ -31,29 +30,56 @@ const MATERIAL_BASE_NAMES: Record<string, string> = {
   'mat_008': '纳米韧化纤维',
   'mat_009': '陨铁缓冲衬垫',
   'mat_010': '量子紧固组件',
+  // 芯片材料
+  'mineral_iron': '铁矿石',
+  'mineral_copper': '铜矿石',
+  'mineral_titanium': '钛矿石',
+  'mineral_crystal': '水晶矿石',
+  'mineral_quantum': '量子矿石',
+  'chip_material': '芯片材料',
+  'gene_material': '基因材料',
+  'cyber_material': '义体材料',
+  'cyber_core': '赛博核心',
+};
+
+// 品质后缀到名称的映射
+const QUALITY_SUFFIX_NAMES: Record<string, string> = {
+  '_stardust': '星尘级',
+  '_alloy': '合金级',
+  '_crystal': '晶核级',
+  '_quantum': '量子级',
+  '_void': '虚空级',
 };
 
 // 获取材料完整名称
 function getMaterialFullName(itemId: string): string {
-  // 解析品质后缀
+  // 先检查是否在材料映射表中（矿石材料等）
+  if (MATERIAL_BASE_NAMES[itemId]) {
+    return MATERIAL_BASE_NAMES[itemId];
+  }
+
+  // 解析品质后缀（只针对mat_xxx格式的材料）
   const qualityOrder = ['_void', '_quantum', '_crystal', '_alloy', '_stardust'] as const;
   let baseId = itemId;
   let quality = '';
 
-  for (const suffix of qualityOrder) {
-    if (itemId.endsWith(suffix)) {
-      baseId = itemId.replace(suffix, '');
-      quality = suffix;
-      break;
+  // 只处理mat_开头的材料ID
+  if (itemId.startsWith('mat_')) {
+    for (const suffix of qualityOrder) {
+      if (itemId.endsWith(suffix)) {
+        // 使用正则表达式替换后缀，确保正确移除
+        baseId = itemId.replace(new RegExp(suffix + '$'), '');
+        quality = suffix;
+        break;
+      }
     }
   }
 
   const baseName = MATERIAL_BASE_NAMES[baseId] || baseId;
 
   if (quality) {
-    const qualityKey = quality.replace('_', '').toUpperCase() as keyof typeof QUALITY_NAMES;
-    const qualityName = QUALITY_NAMES[qualityKey as any] || '';
-    return `${baseName}(${qualityName})`;
+    const qualityName = QUALITY_SUFFIX_NAMES[quality] || '';
+    return qualityName ? `${baseName}(${qualityName})` : baseName;
   }
 
   return baseName;
@@ -66,17 +92,6 @@ function getItemName(itemId: string): string {
   }
   return getMaterialFullName(itemId);
 }
-
-// 科幻风格颜色配置
-const SCIFI_COLORS = {
-  primary: '#00d4ff',
-  secondary: '#7c3aed',
-  warning: '#f59e0b',
-  danger: '#ef4444',
-  success: '#22c55e',
-  background: 'rgba(0, 20, 40, 0.85)',
-  border: 'rgba(0, 212, 255, 0.3)',
-};
 
 // 基地功能定义
 interface BaseFacility {
@@ -92,25 +107,24 @@ interface BaseFacility {
 
 // 基地功能列表
 const FACILITIES: BaseFacility[] = [
-  { id: 'crew', name: '船员舱', icon: '👥', description: '招募与管理船员', color: '#00d4ff', level: 1, maxLevel: 5, status: 'active' },
+  { id: 'crew', name: '船员舱', icon: '👥', description: '招募与管理船员', color: '#00d4ff', status: 'active' },
   { id: 'energy', name: '能源核心', icon: '⚡', description: '升级星舰能源系统', color: '#f59e0b', level: 1, maxLevel: 10, status: 'active' },
   { id: 'warehouse', name: '星际仓库', icon: '📦', description: '扩展存储容量', color: '#10b981', level: 1, maxLevel: 10, status: 'active' },
   { id: 'medical', name: '医疗舱', icon: '🏥', description: '提升恢复效率', color: '#ef4444', level: 1, maxLevel: 5, status: 'active' },
   { id: 'comm', name: '通讯阵列', icon: '📡', description: '接收特殊事件', color: '#8b5cf6', level: 1, maxLevel: 3, status: 'active' },
-  { id: 'research', name: '科研实验室', icon: '🔬', description: '解锁新配方', color: '#c084fc', level: 1, maxLevel: 5, status: 'active' },
+  { id: 'research', name: '科研实验室', icon: '🔬', description: '解锁新配方', color: '#c084fc', status: 'active' },
   // 扩展功能
   { id: 'mining', name: '采矿平台', icon: '⛏️', description: '自动采集矿物资源', color: '#f59e0b', level: 1, maxLevel: 5, status: 'active' },
-  { id: 'chip', name: '芯片研发', icon: '💾', description: '研发战斗芯片', color: '#00d4ff', level: 1, maxLevel: 5, status: 'active' },
+  { id: 'chip', name: '芯片研发', icon: '💾', description: '研发战斗芯片', color: '#00d4ff', level: 1, maxLevel: 3, status: 'active' },
   { id: 'alliance', name: '基因工程', icon: '🧬', description: '基因改造与强化', color: '#22c55e', level: 1, maxLevel: 5, status: 'active' },
-  { id: 'arena', name: '机械飞升', icon: '🦾', description: '机械义体改造', color: '#a855f7', level: 1, maxLevel: 5, status: 'active' },
-  { id: 'market', name: '星际市场', icon: '🏪', description: '玩家间交易', color: '#ec4899', level: 1, maxLevel: 3, status: 'active' },
-  { id: 'relic', name: '遗迹探索', icon: '🏛️', description: '探索古代遗迹', color: '#f97316', level: 1, maxLevel: 5, status: 'active' },
+  { id: 'arena', name: '机械飞升', icon: '🦾', description: '机械义体改造', color: '#a855f7', level: 1, maxLevel: 3, status: 'active' },
+  { id: 'market', name: '星际市场', icon: '🏪', description: '玩家间交易', color: '#ec4899', status: 'active' },
+  { id: 'relic', name: '遗迹探索', icon: '🏛️', description: '探索古代遗迹', color: '#f97316', status: 'active' },
 ];
 
-export default function BaseScreen({ onNavigate, onBack }: BaseScreenProps) {
+export default function BaseScreen({ onBack }: BaseScreenProps) {
   const [selectedFacility, setSelectedFacility] = useState<BaseFacility | null>(null);
   const [showCrewScreen, setShowCrewScreen] = useState(false);
-  const { gameManager } = useGameStore();
 
   const handleFacilityClick = (facility: BaseFacility) => {
     if (facility.id === 'crew') {
@@ -275,65 +289,10 @@ function BaseHeader({ onBack }: { onBack: () => void }) {
 
 // 基地概览 - 科幻风格
 function BaseOverview() {
-  const { getEnergyCoreEfficiency } = useGameStore();
-
-  const activeFacilities = FACILITIES.filter(f => f.status === 'active').length;
-  const totalFacilities = FACILITIES.length;
-  const baseLevel = 1;
-  const energyEfficiency = getEnergyCoreEfficiency();
-
-  return (
-    <div style={{
-      flexShrink: 0,
-      position: 'relative',
-      zIndex: 10,
-      background: 'rgba(0, 10, 30, 0.8)',
-      backdropFilter: 'blur(8px)',
-      borderBottom: '1px solid rgba(0, 212, 255, 0.2)',
-      padding: '16px',
-    }}>
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-around',
-        alignItems: 'center',
-      }}>
-        <OverviewItem label="基地等级" value={`Lv.${baseLevel}`} color="#00d4ff" icon="🏢" />
-        <OverviewItem label="设施数量" value={`${activeFacilities}/${totalFacilities}`} color="#10b981" icon="🔧" />
-        <OverviewItem label="采集效率" value={`+${energyEfficiency}%`} color="#f59e0b" icon="⚡" />
-      </div>
-    </div>
-  );
+  return null;
 }
 
-function OverviewItem({ label, value, color, icon }: { label: string; value: string; color: string; icon: string }) {
-  return (
-    <div style={{
-      textAlign: 'center',
-      background: 'rgba(0, 0, 0, 0.4)',
-      padding: '10px 16px',
-      borderRadius: '12px',
-      border: `1px solid ${color}30`,
-      minWidth: '90px',
-    }}>
-      <div style={{ fontSize: '16px', marginBottom: '4px' }}>{icon}</div>
-      <div style={{
-        color: color,
-        fontSize: '18px',
-        fontWeight: 'bold',
-        textShadow: `0 0 10px ${color}50`,
-      }}>
-        {value}
-      </div>
-      <div style={{
-        color: '#a1a1aa',
-        fontSize: '10px',
-        marginTop: '2px',
-      }}>
-        {label}
-      </div>
-    </div>
-  );
-}
+
 
 // 设施卡片 - 科幻风格
 function FacilityCard({ facility, onClick }: { facility: BaseFacility; onClick: () => void }) {
@@ -341,15 +300,37 @@ function FacilityCard({ facility, onClick }: { facility: BaseFacility; onClick: 
   const isLocked = facility.status === 'locked';
   const isBuilding = facility.status === 'building';
 
-  const facilityTypeMap: Record<string, FacilityType> = {
-    'energy': FacilityType.ENERGY,
-    'warehouse': FacilityType.WAREHOUSE,
-    'medical': FacilityType.MEDICAL,
+  // 获取设施等级（根据设施类型使用不同的方法）
+  const getActualLevel = (): number => {
+    switch (facility.id) {
+      case 'mining':
+        return gameManager.getMiningLevel();
+      case 'chip':
+        return gameManager.getChipLevel();
+      case 'alliance':
+        return gameManager.getGeneLevel();
+      case 'arena':
+        return gameManager.getCyberneticLevel();
+      case 'crew':
+      case 'research':
+        return 1; // 这些设施没有等级
+      default: {
+        const facilityTypeMap: Record<string, FacilityType> = {
+          'energy': FacilityType.ENERGY,
+          'warehouse': FacilityType.WAREHOUSE,
+          'medical': FacilityType.MEDICAL,
+          'comm': FacilityType.COMM,
+          'market': FacilityType.MARKET,
+          'relic': FacilityType.RELIC,
+        };
+        return facilityTypeMap[facility.id]
+          ? getFacilityLevel(facilityTypeMap[facility.id])
+          : (facility.level || 1);
+      }
+    }
   };
 
-  const actualLevel = facilityTypeMap[facility.id]
-    ? getFacilityLevel(facilityTypeMap[facility.id])
-    : (facility.level || 1);
+  const actualLevel = getActualLevel();
   const maxLevel = facility.maxLevel || 10;
 
   return (
@@ -464,7 +445,7 @@ function FacilityCard({ facility, onClick }: { facility: BaseFacility; onClick: 
       </div>
 
       {/* 等级 */}
-      {!isLocked && (
+      {!isLocked && facility.level !== undefined && (
         <div style={{
           color: '#a1a1aa',
           fontSize: '10px',
@@ -495,6 +476,28 @@ function FacilityCard({ facility, onClick }: { facility: BaseFacility; onClick: 
 function FacilityDetailModal({ facility, onClose }: { facility: BaseFacility; onClose: () => void }) {
   const { gameManager } = useGameStore();
 
+  // 获取设施实际等级
+  const getActualLevel = (): number => {
+    switch (facility.id) {
+      case 'mining':
+        return gameManager.getMiningLevel();
+      case 'chip':
+        return gameManager.getChipLevel();
+      case 'alliance':
+        return gameManager.getGeneLevel();
+      case 'arena':
+        return gameManager.getCyberneticLevel();
+      case 'crew':
+      case 'research':
+        return 1;
+      default:
+        return facility.level || 1;
+    }
+  };
+
+  const actualLevel = getActualLevel();
+  const maxLevel = facility.maxLevel || 10;
+
   const renderFacilityContent = () => {
     switch (facility.id) {
       case 'energy':
@@ -517,7 +520,7 @@ function FacilityDetailModal({ facility, onClose }: { facility: BaseFacility; on
         return <CyberneticContent />;
       case 'market':
         return <MarketContent />;
-      case 'ruins':
+      case 'relic':
         return <RuinsContent />;
       default:
         return <LockedContent facility={facility} />;
@@ -571,9 +574,9 @@ function FacilityDetailModal({ facility, onClose }: { facility: BaseFacility; on
               }}>
                 {facility.name}
               </h2>
-              {facility.level && (
+              {facility.maxLevel !== undefined && (
                 <span style={{ color: '#a1a1aa', fontSize: '12px' }}>
-                  等级 {facility.level}/{facility.maxLevel}
+                  等级 {actualLevel}/{maxLevel}
                 </span>
               )}
             </div>
@@ -605,60 +608,9 @@ function FacilityDetailModal({ facility, onClose }: { facility: BaseFacility; on
 
 // ==================== 各设施内容组件 ====================
 
-// 1. 船员舱内容
-function CrewContent() {
-  const crewMembers = [
-    { id: 'crew_001', name: '艾莉娅', role: '工程师', level: 1, bonus: '采集效率+5%', icon: '👩‍🔧' },
-    { id: 'crew_002', name: '凯尔', role: '战斗员', level: 1, bonus: '战斗经验+5%', icon: '👨‍✈️' },
-  ];
-
-  return (
-    <div>
-      <p style={{ color: '#a1a1aa', fontSize: '14px', marginBottom: '16px' }}>
-        当前船员: <span style={{ color: '#00d4ff', fontWeight: 'bold' }}>{crewMembers.length}/5</span>
-      </p>
-
-      {crewMembers.map(crew => (
-        <div key={crew.id} style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px',
-          padding: '12px',
-          background: 'rgba(0, 212, 255, 0.1)',
-          borderRadius: '12px',
-          marginBottom: '8px',
-          border: '1px solid rgba(0, 212, 255, 0.2)',
-        }}>
-          <div style={{ fontSize: '28px' }}>{crew.icon}</div>
-          <div style={{ flex: 1 }}>
-            <div style={{ color: '#ffffff', fontWeight: 'bold' }}>{crew.name}</div>
-            <div style={{ color: '#00d4ff', fontSize: '12px' }}>{crew.role} Lv.{crew.level}</div>
-            <div style={{ color: '#f59e0b', fontSize: '11px' }}>{crew.bonus}</div>
-          </div>
-        </div>
-      ))}
-
-      <button style={{
-        width: '100%',
-        padding: '12px',
-        background: 'linear-gradient(135deg, rgba(0, 212, 255, 0.3), rgba(0, 212, 255, 0.1))',
-        border: '1px solid rgba(0, 212, 255, 0.5)',
-        borderRadius: '8px',
-        color: '#00d4ff',
-        fontWeight: 'bold',
-        cursor: 'pointer',
-        marginTop: '8px',
-        boxShadow: '0 0 15px rgba(0, 212, 255, 0.2)',
-      }}>
-        ➕ 招募新船员 (500信用点)
-      </button>
-    </div>
-  );
-}
-
-// 2. 能源核心内容
+// 1. 能源核心内容
 function EnergyContent() {
-  const { upgradeFacility, getFacilityLevel, getEnergyCoreEfficiency, getFacilityUpgradePreview, getFacilityDefinition, gameManager } = useGameStore();
+  const { upgradeFacility, getFacilityLevel, getEnergyCoreEfficiency, getFacilityUpgradePreview, getFacilityDefinition } = useGameStore();
   const [upgradeResult, setUpgradeResult] = useState<{ success: boolean; message: string } | null>(null);
 
   const level = getFacilityLevel(FacilityType.ENERGY);
@@ -680,8 +632,7 @@ function EnergyContent() {
       parts.push(`${cost.credits}信用点`);
     }
     cost.materials.forEach(mat => {
-      const item = gameManager.inventory.getItem(mat.itemId);
-      const materialName = item?.name || getMaterialFullName(mat.itemId);
+      const materialName = getItemName(mat.itemId);
       parts.push(`${materialName} x${mat.count}`);
     });
     return parts.join(' + ');
@@ -786,14 +737,13 @@ function EnergyContent() {
 
 // 3. 星际仓库内容
 function WarehouseContent() {
-  const { upgradeFacility, getFacilityLevel, getWarehouseCapacity, getFacilityUpgradePreview, getFacilityDefinition, gameManager } = useGameStore();
+  const { upgradeFacility, getFacilityLevel, getWarehouseCapacity, getFacilityUpgradePreview, gameManager } = useGameStore();
   const [upgradeResult, setUpgradeResult] = useState<{ success: boolean; message: string } | null>(null);
 
   const level = getFacilityLevel(FacilityType.WAREHOUSE);
   const maxCapacity = getWarehouseCapacity();
   const usedSlots = gameManager.inventory.getUsedSlots();
   const preview = getFacilityUpgradePreview(FacilityType.WAREHOUSE);
-  const def = getFacilityDefinition(FacilityType.WAREHOUSE);
 
   const handleUpgrade = () => {
     const result = upgradeFacility(FacilityType.WAREHOUSE);
@@ -809,8 +759,7 @@ function WarehouseContent() {
       parts.push(`${cost.credits}信用点`);
     }
     cost.materials.forEach(mat => {
-      const item = gameManager.inventory.getItem(mat.itemId);
-      const materialName = item?.name || getMaterialFullName(mat.itemId);
+      const materialName = getItemName(mat.itemId);
       parts.push(`${materialName} x${mat.count}`);
     });
     return parts.join(' + ');
@@ -919,13 +868,12 @@ function WarehouseContent() {
 
 // 4. 医疗舱内容
 function MedicalContent() {
-  const { upgradeFacility, getFacilityLevel, getMedicalEfficiency, getFacilityUpgradePreview, getFacilityDefinition, gameManager } = useGameStore();
+  const { upgradeFacility, getFacilityLevel, getMedicalEfficiency, getFacilityUpgradePreview } = useGameStore();
   const [upgradeResult, setUpgradeResult] = useState<{ success: boolean; message: string } | null>(null);
 
   const level = getFacilityLevel(FacilityType.MEDICAL);
   const efficiency = getMedicalEfficiency();
   const preview = getFacilityUpgradePreview(FacilityType.MEDICAL);
-  const def = getFacilityDefinition(FacilityType.MEDICAL);
 
   const handleUpgrade = () => {
     const result = upgradeFacility(FacilityType.MEDICAL);
@@ -941,8 +889,7 @@ function MedicalContent() {
       parts.push(`${cost.credits}信用点`);
     }
     cost.materials.forEach(mat => {
-      const item = gameManager.inventory.getItem(mat.itemId);
-      const materialName = item?.name || getMaterialFullName(mat.itemId);
+      const materialName = getItemName(mat.itemId);
       parts.push(`${materialName} x${mat.count}`);
     });
     return parts.join(' + ');
@@ -1057,7 +1004,7 @@ function MedicalContent() {
 // 5. 通讯阵列内容
 function CommContent() {
   const { gameManager, saveGame, scanCommSignals, respondToCommEvent, ignoreCommEvent, getCommScanCooldown } = useGameStore();
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [, setRefreshKey] = useState(0);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<CommEvent | null>(null);
 
@@ -1114,12 +1061,12 @@ function CommContent() {
   };
 
   return (
-    <div>
+    <div style={{ position: 'relative' }}>
       {/* Message Toast */}
       {message && (
         <div style={{
           position: 'absolute',
-          top: '-40px',
+          top: '-50px',
           left: '50%',
           transform: 'translateX(-50%)',
           padding: '8px 16px',
@@ -1128,8 +1075,9 @@ function CommContent() {
           color: '#fff',
           fontWeight: 'bold',
           fontSize: '12px',
-          zIndex: 100,
+          zIndex: 1000,
           whiteSpace: 'nowrap',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
         }}>
           {message.text}
         </div>
@@ -1307,28 +1255,42 @@ function CommContent() {
   );
 }
 
-// 6. 科研实验室内容
+// 6. 科研实验室内容 - 科技树样式
 function ResearchContent() {
   const { gameManager, saveGame, startResearch, cancelResearch } = useGameStore();
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [selectedProject, setSelectedProject] = useState<string | null>(null);
+  const [, forceUpdate] = useState(0);
+
+  // 每秒更新倒计时
+  useEffect(() => {
+    const timer = setInterval(() => {
+      forceUpdate(n => n + 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const projects = gameManager.getResearchProjects();
   const activeResearch = gameManager.getActiveResearch();
-  const level = gameManager.getFacilityLevel(FacilityType.RESEARCH);
-  const maxConcurrent = 1 + Math.floor(level / 2);
 
-  const categories = [
-    { id: 'all', name: '全部', icon: '📋' },
-    { id: ResearchCategory.COMBAT, name: '战斗', icon: '⚔️' },
-    { id: ResearchCategory.SURVIVAL, name: '生存', icon: '🛡️' },
-    { id: ResearchCategory.PRODUCTION, name: '生产', icon: '🏭' },
-    { id: ResearchCategory.SPECIAL, name: '特殊', icon: '✨' },
-  ];
+  // 计算剩余时间（秒）
+  const getRemainingTime = (project: typeof projects[0]): number => {
+    if (project.status !== ResearchStatus.IN_PROGRESS) return 0;
+    const remaining = project.totalProgress - project.progress;
+    return Math.max(0, Math.ceil(remaining));
+  };
 
-  const filteredProjects = selectedCategory === 'all'
-    ? projects
-    : projects.filter(p => p.category === selectedCategory);
+  // 格式化时间
+  const formatTime = (seconds: number): string => {
+    if (seconds <= 0) return '完成';
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    if (h > 0) {
+      return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    }
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  };
 
   const showMessage = (text: string, type: 'success' | 'error') => {
     setMessage({ text, type });
@@ -1339,7 +1301,7 @@ function ResearchContent() {
     const result = startResearch(projectId);
     if (result.success) {
       showMessage(result.message, 'success');
-      await saveGame();
+      setSelectedProject(null);
     } else {
       showMessage(result.message, 'error');
     }
@@ -1350,222 +1312,398 @@ function ResearchContent() {
     if (result.success) {
       showMessage(result.message, 'success');
       await saveGame();
+      setSelectedProject(null);
     } else {
       showMessage(result.message, 'error');
     }
   };
 
-  const getStatusColor = (status: ResearchStatus) => {
-    switch (status) {
-      case ResearchStatus.COMPLETED: return '#10b981';
-      case ResearchStatus.IN_PROGRESS: return '#f59e0b';
-      case ResearchStatus.AVAILABLE: return '#3b82f6';
-      default: return '#6b7280';
+  const techTrees = [
+    { name: '采矿平台', icon: '⛏️', color: '#f59e0b', prefix: 'mining_' },
+    { name: '芯片研发', icon: '💾', color: '#10b981', prefix: 'chip_' },
+    { name: '基因工程', icon: '🧬', color: '#ec4899', prefix: 'gene_' },
+    { name: '机械飞升', icon: '🦾', color: '#f97316', prefix: 'cybernetic_' },
+  ];
+
+  const getVisibleProjects = (prefix: string) => {
+    const treeProjects = projects
+      .filter(p => p.id.startsWith(prefix))
+      .sort((a, b) => {
+        const aLevel = parseInt(a.id.split('_lv')[1] || '1');
+        const bLevel = parseInt(b.id.split('_lv')[1] || '1');
+        return aLevel - bLevel;
+      });
+
+    // 只显示最新的一个（研究中或可研究）
+    for (let i = treeProjects.length - 1; i >= 0; i--) {
+      const project = treeProjects[i];
+      if (project.status === ResearchStatus.IN_PROGRESS ||
+        project.status === ResearchStatus.AVAILABLE) {
+        return [project];
+      }
     }
+
+    // 如果没有进行中的，显示已完成的最后一个
+    for (let i = treeProjects.length - 1; i >= 0; i--) {
+      const project = treeProjects[i];
+      if (project.status === ResearchStatus.COMPLETED) {
+        return [project];
+      }
+    }
+
+    return [];
   };
 
-  const getStatusText = (status: ResearchStatus) => {
-    switch (status) {
-      case ResearchStatus.COMPLETED: return '✅ 已完成';
-      case ResearchStatus.IN_PROGRESS: return '🔬 研究中';
-      case ResearchStatus.AVAILABLE: return '🔓 可研究';
-      default: return '🔒 未解锁';
-    }
-  };
+  const selectedProjectData = selectedProject ? projects.find(p => p.id === selectedProject) : null;
+  const selectedTree = selectedProjectData ? techTrees.find(t => selectedProjectData.id.startsWith(t.prefix)) : null;
 
   return (
-    <div>
+    <div style={{ position: 'relative' }}>
       {/* Message Toast */}
       {message && (
         <div style={{
-          position: 'absolute',
-          top: '-40px',
+          position: 'fixed',
+          top: '50%',
           left: '50%',
-          transform: 'translateX(-50%)',
-          padding: '8px 16px',
-          borderRadius: '8px',
-          background: message.type === 'success' ? 'rgba(34, 197, 94, 0.9)' : 'rgba(239, 68, 68, 0.9)',
+          transform: 'translate(-50%, -50%)',
+          padding: '12px 24px',
+          borderRadius: '12px',
+          background: message.type === 'success' ? 'rgba(34, 197, 94, 0.95)' : 'rgba(239, 68, 68, 0.95)',
           color: '#fff',
           fontWeight: 'bold',
-          fontSize: '12px',
-          zIndex: 100,
+          fontSize: '14px',
+          zIndex: 9999,
           whiteSpace: 'nowrap',
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.4)',
         }}>
           {message.text}
+        </div>
+      )}
+
+      {/* 研究详情弹窗 */}
+      {selectedProjectData && selectedTree && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.7)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+          }}
+          onClick={() => setSelectedProject(null)}
+        >
+          <div
+            style={{
+              background: 'linear-gradient(135deg, rgba(30, 30, 40, 0.98), rgba(20, 20, 30, 0.98))',
+              borderRadius: 16,
+              padding: 24,
+              width: 320,
+              maxWidth: '90%',
+              border: `2px solid ${selectedTree.color}`,
+              boxShadow: `0 0 30px ${selectedTree.color}40`,
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* 关闭按钮 */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+              <span
+                onClick={() => setSelectedProject(null)}
+                style={{ cursor: 'pointer', fontSize: 20, color: '#6b7280' }}
+              >
+                ✕
+              </span>
+            </div>
+
+            {/* 标题 */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+              <div style={{
+                width: 50,
+                height: 50,
+                borderRadius: 12,
+                background: `${selectedTree.color}30`,
+                border: `2px solid ${selectedTree.color}`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}>
+                <span style={{ fontSize: 24 }}>{selectedTree.icon}</span>
+              </div>
+              <div>
+                <div style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>{selectedProjectData.name}</div>
+                <span style={{
+                  fontSize: 11,
+                  padding: '2px 8px',
+                  borderRadius: 4,
+                  background: selectedProjectData.status === ResearchStatus.COMPLETED ? '#10b98130' :
+                    selectedProjectData.status === ResearchStatus.IN_PROGRESS ? '#f59e0b30' : '#3b82f630',
+                  color: selectedProjectData.status === ResearchStatus.COMPLETED ? '#10b981' :
+                    selectedProjectData.status === ResearchStatus.IN_PROGRESS ? '#f59e0b' : '#3b82f6',
+                }}>
+                  {selectedProjectData.status === ResearchStatus.COMPLETED ? '已完成' :
+                    selectedProjectData.status === ResearchStatus.IN_PROGRESS ? '研究中' : '可研究'}
+                </span>
+              </div>
+            </div>
+
+            {/* 描述 */}
+            <div style={{ color: '#a1a1aa', fontSize: 13, marginBottom: 16, lineHeight: 1.5 }}>
+              {selectedProjectData.description}
+            </div>
+
+            {/* 进度条 */}
+            {selectedProjectData.status === ResearchStatus.IN_PROGRESS && (
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <span style={{ color: '#a1a1aa', fontSize: 12 }}>研究进度</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ color: selectedTree.color, fontSize: 12, fontWeight: 'bold' }}>
+                      {Math.round((selectedProjectData.progress / selectedProjectData.totalProgress) * 100)}%
+                    </span>
+                    <span style={{ color: '#f59e0b', fontSize: 12, fontWeight: 'bold' }}>
+                      ⏱️ {formatTime(getRemainingTime(selectedProjectData))}
+                    </span>
+                  </div>
+                </div>
+                <div style={{ height: 6, background: 'rgba(255,255,255,0.1)', borderRadius: 3, overflow: 'hidden' }}>
+                  <div style={{
+                    height: '100%',
+                    width: `${Math.round((selectedProjectData.progress / selectedProjectData.totalProgress) * 100)}%`,
+                    background: selectedTree.color,
+                    borderRadius: 3,
+                  }} />
+                </div>
+              </div>
+            )}
+
+            {/* 消耗 */}
+            {selectedProjectData.status === ResearchStatus.AVAILABLE && (
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ color: '#a1a1aa', fontSize: 12, marginBottom: 8 }}>研究消耗</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  <span style={{
+                    background: 'rgba(251, 191, 36, 0.2)',
+                    padding: '4px 10px',
+                    borderRadius: 6,
+                    color: '#fbbf24',
+                    fontSize: 12,
+                  }}>
+                    💰 {selectedProjectData.cost.credits}
+                  </span>
+                  {selectedProjectData.cost.materials.map((mat, i) => (
+                    <span key={i} style={{
+                      background: 'rgba(96, 165, 250, 0.2)',
+                      padding: '4px 10px',
+                      borderRadius: 6,
+                      color: '#60a5fa',
+                      fontSize: 12,
+                    }}>
+                      {getItemName(mat.itemId)} x{mat.count}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 效果 */}
+            {selectedProjectData.status === ResearchStatus.COMPLETED && (
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ color: '#a1a1aa', fontSize: 12, marginBottom: 8 }}>研究效果</div>
+                <div style={{ background: `${selectedTree.color}15`, padding: 10, borderRadius: 8 }}>
+                  {selectedProjectData.effects.map((e, i) => (
+                    <div key={i} style={{ color: selectedTree.color, fontSize: 12 }}>✨ {e.description}</div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 按钮 */}
+            {selectedProjectData.status === ResearchStatus.AVAILABLE && (
+              <button
+                onClick={() => handleStartResearch(selectedProjectData.id)}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  background: `linear-gradient(135deg, ${selectedTree.color}, ${selectedTree.color}aa)`,
+                  border: 'none',
+                  borderRadius: 8,
+                  color: '#fff',
+                  fontWeight: 'bold',
+                  fontSize: 14,
+                  cursor: 'pointer',
+                }}
+              >
+                开始研究
+              </button>
+            )}
+
+            {selectedProjectData.status === ResearchStatus.IN_PROGRESS && (
+              <button
+                onClick={() => handleCancelResearch(selectedProjectData.id)}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  background: 'rgba(239, 68, 68, 0.2)',
+                  border: '1px solid rgba(239, 68, 68, 0.5)',
+                  borderRadius: 8,
+                  color: '#f87171',
+                  fontWeight: 'bold',
+                  fontSize: 14,
+                  cursor: 'pointer',
+                }}
+              >
+                取消研究
+              </button>
+            )}
+          </div>
         </div>
       )}
 
       {/* Stats */}
       <div style={{
         background: 'rgba(192, 132, 252, 0.1)',
-        borderRadius: '8px',
-        padding: '12px',
-        marginBottom: '12px',
+        borderRadius: 12,
+        padding: 14,
+        marginBottom: 16,
         border: '1px solid rgba(192, 132, 252, 0.2)',
       }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-          <div>
-            <span style={{ color: '#a1a1aa' }}>研究槽: </span>
-            <span style={{ color: '#c084fc', fontWeight: 'bold' }}>{activeResearch.length}/{maxConcurrent}</span>
-          </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13 }}>
           <div>
             <span style={{ color: '#a1a1aa' }}>已完成: </span>
             <span style={{ color: '#10b981', fontWeight: 'bold' }}>{gameManager.completedResearch.length}</span>
           </div>
+          {activeResearch.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ color: '#f59e0b' }}>⏱️</span>
+              <span style={{ color: '#f59e0b', fontWeight: 'bold' }}>
+                {formatTime(getRemainingTime(activeResearch[0]))}
+              </span>
+            </div>
+          )}
         </div>
+        {activeResearch.length > 0 && (
+          <div style={{ marginTop: 8, fontSize: 11, color: '#a1a1aa' }}>
+            正在研究: <span style={{ color: '#c084fc' }}>{activeResearch[0].name}</span>
+          </div>
+        )}
       </div>
 
-      {/* Category Filter */}
-      <div style={{
-        display: 'flex',
-        gap: '6px',
-        marginBottom: '12px',
-        overflowX: 'auto',
-        paddingBottom: '4px',
-      }}>
-        {categories.map(cat => (
-          <button
-            key={cat.id}
-            onClick={() => setSelectedCategory(cat.id)}
-            style={{
-              padding: '6px 12px',
-              background: selectedCategory === cat.id ? 'rgba(192, 132, 252, 0.3)' : 'rgba(255, 255, 255, 0.05)',
-              border: selectedCategory === cat.id ? '1px solid rgba(192, 132, 252, 0.5)' : '1px solid rgba(255, 255, 255, 0.1)',
-              borderRadius: '16px',
-              color: selectedCategory === cat.id ? '#c084fc' : '#a1a1aa',
-              fontSize: '12px',
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {cat.icon} {cat.name}
-          </button>
-        ))}
-      </div>
-
-      {/* Project List */}
-      <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
-        {filteredProjects.map(project => {
-          const statusColor = getStatusColor(project.status);
-          const progressPercent = Math.round((project.progress / project.totalProgress) * 100);
+      {/* 科技树 - 四种设施并列 */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 14 }}>
+        {techTrees.map(tree => {
+          const visibleProjects = getVisibleProjects(tree.prefix);
 
           return (
             <div
-              key={project.id}
+              key={tree.name}
               style={{
-                padding: '12px',
-                background: project.status === ResearchStatus.IN_PROGRESS ? 'rgba(192, 132, 252, 0.15)' : 'rgba(255, 255, 255, 0.03)',
-                borderRadius: '12px',
-                marginBottom: '8px',
-                border: `1px solid ${project.status === ResearchStatus.IN_PROGRESS ? 'rgba(192, 132, 252, 0.4)' : 'rgba(255, 255, 255, 0.08)'}`,
+                background: 'rgba(255, 255, 255, 0.04)',
+                borderRadius: 14,
+                padding: 14,
+                border: '1px solid rgba(255, 255, 255, 0.08)',
               }}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '16px' }}>{project.icon}</span>
-                  <span style={{ color: '#ffffff', fontWeight: 'bold', fontSize: '13px' }}>{project.name}</span>
-                </div>
-                <span style={{ color: statusColor, fontSize: '10px' }}>
-                  {getStatusText(project.status)}
-                </span>
+              {/* 设施标题 */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                marginBottom: 14,
+              }}>
+                <span style={{ fontSize: 20 }}>{tree.icon}</span>
+                <span style={{ color: tree.color, fontWeight: 'bold', fontSize: 14 }}>{tree.name}</span>
               </div>
 
-              <div style={{ color: '#a1a1aa', fontSize: '11px', marginBottom: '8px' }}>
-                {project.description}
+              {/* 等级图标横向排列 */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 24,
+                justifyContent: 'center',
+                padding: '10px 0',
+              }}>
+                {visibleProjects.length > 0 ? (
+                  visibleProjects.map((project, index) => {
+                    const remainingTime = getRemainingTime(project);
+                    const levelNum = parseInt(project.id.split('_lv')[1] || '2');
+
+                    const borderColor = tree.color;
+                    let bgColor = 'rgba(255, 255, 255, 0.05)';
+
+                    if (project.status === ResearchStatus.COMPLETED) {
+                      bgColor = `${tree.color}35`;
+                    } else if (project.status === ResearchStatus.IN_PROGRESS) {
+                      bgColor = `${tree.color}25`;
+                    } else if (project.status === ResearchStatus.AVAILABLE) {
+                      bgColor = 'rgba(255, 255, 255, 0.1)';
+                    }
+
+                    return (
+                      <div
+                        key={project.id}
+                        onClick={() => setSelectedProject(project.id)}
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          cursor: 'pointer',
+                          position: 'relative',
+                        }}
+                      >
+                        {/* 连接线 */}
+                        {index < visibleProjects.length - 1 && (
+                          <div style={{
+                            position: 'absolute',
+                            right: -24,
+                            top: '50%',
+                            width: 20,
+                            height: 2,
+                            background: project.status === ResearchStatus.COMPLETED ? tree.color : '#4b5563',
+                            opacity: project.status === ResearchStatus.COMPLETED ? 0.8 : 0.3,
+                          }} />
+                        )}
+
+                        {/* 图标 */}
+                        <div style={{
+                          width: 48,
+                          height: 48,
+                          borderRadius: 10,
+                          border: `2px solid ${borderColor}`,
+                          background: bgColor,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          transition: 'all 0.2s ease',
+                          boxShadow: project.status === ResearchStatus.IN_PROGRESS ? `0 0 10px ${tree.color}50` : 'none',
+                        }}>
+                          {project.status === ResearchStatus.COMPLETED ? (
+                            <span style={{ fontSize: 18, color: tree.color }}>✓</span>
+                          ) : project.status === ResearchStatus.IN_PROGRESS ? (
+                            <span style={{ fontSize: 9, color: '#f59e0b', fontWeight: 'bold' }}>{formatTime(remainingTime)}</span>
+                          ) : (
+                            <span style={{ fontSize: 11, color: '#fff', fontWeight: 'bold' }}>Lv{levelNum}</span>
+                          )}
+                        </div>
+
+                        {/* 等级标签 */}
+                        <span style={{
+                          fontSize: 9,
+                          color: project.status === ResearchStatus.COMPLETED ? tree.color : '#a1a1aa',
+                          marginTop: 4,
+                        }}>
+                          Lv.{levelNum}
+                        </span>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <span style={{ color: '#6b7280', fontSize: 11 }}>暂无研究</span>
+                )}
               </div>
-
-              {/* Progress Bar */}
-              {project.status === ResearchStatus.IN_PROGRESS && (
-                <div style={{ marginBottom: '8px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                    <span style={{ color: '#a1a1aa', fontSize: '10px' }}>研究进度</span>
-                    <span style={{ color: '#c084fc', fontSize: '10px' }}>{progressPercent}%</span>
-                  </div>
-                  <div style={{
-                    height: '4px',
-                    background: 'rgba(255, 255, 255, 0.1)',
-                    borderRadius: '2px',
-                    overflow: 'hidden',
-                  }}>
-                    <div style={{
-                      height: '100%',
-                      width: `${progressPercent}%`,
-                      background: 'linear-gradient(90deg, #c084fc, #a855f7)',
-                      borderRadius: '2px',
-                    }} />
-                  </div>
-                </div>
-              )}
-
-              {/* Effects */}
-              {project.status === ResearchStatus.COMPLETED && (
-                <div style={{
-                  background: 'rgba(16, 185, 129, 0.1)',
-                  borderRadius: '6px',
-                  padding: '6px 8px',
-                  marginBottom: '8px',
-                }}>
-                  {project.effects.map((effect, i) => (
-                    <div key={i} style={{ color: '#10b981', fontSize: '10px' }}>
-                      ✨ {effect.description}
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Cost & Action */}
-              {project.status === ResearchStatus.AVAILABLE && (
-                <>
-                  <div style={{
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                    gap: '8px',
-                    marginBottom: '8px',
-                    fontSize: '10px',
-                  }}>
-                    <span style={{ color: '#fbbf24' }}>💰 {project.cost.credits}</span>
-                    {project.cost.materials.map((mat, i) => (
-                      <span key={i} style={{ color: '#60a5fa' }}>{getItemName(mat.itemId)} x{mat.count}</span>
-                    ))}
-                  </div>
-                  <button
-                    onClick={() => handleStartResearch(project.id)}
-                    style={{
-                      width: '100%',
-                      padding: '8px',
-                      background: 'linear-gradient(135deg, #c084fc, #a855f7)',
-                      border: 'none',
-                      borderRadius: '6px',
-                      color: '#fff',
-                      fontWeight: 'bold',
-                      fontSize: '11px',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    开始研究
-                  </button>
-                </>
-              )}
-
-              {/* Cancel Button */}
-              {project.status === ResearchStatus.IN_PROGRESS && (
-                <button
-                  onClick={() => handleCancelResearch(project.id)}
-                  style={{
-                    width: '100%',
-                    padding: '8px',
-                    background: 'rgba(239, 68, 68, 0.2)',
-                    border: '1px solid rgba(239, 68, 68, 0.4)',
-                    borderRadius: '6px',
-                    color: '#f87171',
-                    fontWeight: 'bold',
-                    fontSize: '11px',
-                    cursor: 'pointer',
-                  }}
-                >
-                  取消研究
-                </button>
-              )}
             </div>
           );
         })}
@@ -1576,16 +1714,23 @@ function ResearchContent() {
 
 // 7. 采矿平台内容
 function MiningContent() {
-  const { gameManager, saveGame, startMiningWithCrew, collectMining, cancelMining, processMiningRandomEvent, calculateCrewMiningBonus } = useGameStore();
+  const { gameManager, saveGame, startMiningWithCrew, collectMining } = useGameStore();
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [selectedSite, setSelectedSite] = useState<string | null>(null);
   const [selectedCrew, setSelectedCrew] = useState<string[]>([]);
   const [showCrewSelect, setShowCrewSelect] = useState(false);
+  const [, forceUpdate] = useState(0);
+
+  // 每秒更新进度显示
+  useEffect(() => {
+    const timer = setInterval(() => {
+      forceUpdate(n => n + 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const sites = gameManager.getAvailableMiningSites();
   const tasks = gameManager.getMiningTasks();
-  const level = gameManager.getFacilityLevel(FacilityType.MINING);
-  const maxSlots = 1 + Math.floor(level / 2);
   const crewMembers = gameManager.getCrewMembers();
 
   const showMessage = (text: string, type: 'success' | 'error') => {
@@ -1617,24 +1762,6 @@ function MiningContent() {
     }
   };
 
-  const handleCancel = async (siteId: string) => {
-    const result = cancelMining(siteId);
-    if (result.success) {
-      showMessage(result.message, 'success');
-      await saveGame();
-    } else {
-      showMessage(result.message, 'error');
-    }
-  };
-
-  const handleProcessEvent = async (siteId: string) => {
-    const result = processMiningRandomEvent(siteId);
-    if (result) {
-      showMessage(`${result.event}: ${result.message}`, result.bonus ? 'success' : 'error');
-      await saveGame();
-    }
-  };
-
   const toggleCrewSelection = (crewId: string) => {
     if (selectedCrew.includes(crewId)) {
       setSelectedCrew(selectedCrew.filter(id => id !== crewId));
@@ -1649,10 +1776,6 @@ function MiningContent() {
 
   const getTaskForSite = (siteId: string) => {
     return tasks.find(t => t.siteId === siteId);
-  };
-
-  const getEventConfig = (eventType: MiningEventType) => {
-    return MINING_EVENTS.find(e => e.type === eventType);
   };
 
   return (
@@ -1703,10 +1826,6 @@ function MiningContent() {
           <div>
             <span style={{ color: '#a1a1aa' }}>速度: </span>
             <span style={{ color: '#10b981' }}>+{getMiningSpeedBonus(level)}%</span>
-          </div>
-          <div>
-            <span style={{ color: '#a1a1aa' }}>事件率: </span>
-            <span style={{ color: '#10b981' }}>+{getMiningEventChanceBonus(level)}%</span>
           </div>
           <div>
             <span style={{ color: '#a1a1aa' }}>深度加成: </span>
@@ -1809,74 +1928,39 @@ function MiningContent() {
                   </div>
                 )}
 
-                {/* Recent Events */}
-                {(task.events || []).length > 0 && (
-                  <div style={{ marginBottom: '8px' }}>
-                    <div style={{ color: '#a1a1aa', fontSize: '10px', marginBottom: '4px' }}>最近事件:</div>
-                    {(task.events || []).slice(-2).map((event, idx) => {
-                      const eventConfig = getEventConfig(event.type);
-                      return (
-                        <div key={idx} style={{
-                          color: eventConfig?.color || '#a1a1aa',
-                          fontSize: '10px',
-                          marginBottom: '2px',
-                        }}>
-                          {eventConfig?.icon} {event.result}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <button
-                    onClick={() => handleProcessEvent(task.siteId)}
-                    style={{
+                  {task.status === 'completed' ? (
+                    <button
+                      onClick={() => handleCollect(task.siteId)}
+                      style={{
+                        flex: 1,
+                        padding: '8px',
+                        background: 'linear-gradient(135deg, #22c55e, #16a34a)',
+                        border: 'none',
+                        borderRadius: '6px',
+                        color: '#fff',
+                        fontWeight: 'bold',
+                        fontSize: '11px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      ✓ 收集资源
+                    </button>
+                  ) : (
+                    <div style={{
                       flex: 1,
-                      padding: '6px',
-                      background: 'rgba(168, 85, 247, 0.2)',
-                      border: '1px solid rgba(168, 85, 247, 0.4)',
+                      padding: '8px',
+                      background: 'rgba(100, 100, 100, 0.2)',
+                      border: '1px solid rgba(100, 100, 100, 0.4)',
                       borderRadius: '6px',
-                      color: '#a855f7',
+                      color: '#888',
                       fontWeight: 'bold',
-                      fontSize: '10px',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    🎲 触发事件
-                  </button>
-                  <button
-                    onClick={() => handleCollect(task.siteId)}
-                    style={{
-                      flex: 1,
-                      padding: '6px',
-                      background: 'linear-gradient(135deg, #f59e0b, #d97706)',
-                      border: 'none',
-                      borderRadius: '6px',
-                      color: '#000',
-                      fontWeight: 'bold',
-                      fontSize: '10px',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    收集
-                  </button>
-                  <button
-                    onClick={() => handleCancel(task.siteId)}
-                    style={{
-                      flex: 1,
-                      padding: '6px',
-                      background: 'rgba(239, 68, 68, 0.2)',
-                      border: '1px solid rgba(239, 68, 68, 0.4)',
-                      borderRadius: '6px',
-                      color: '#f87171',
-                      fontWeight: 'bold',
-                      fontSize: '10px',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    取消
-                  </button>
+                      fontSize: '11px',
+                      textAlign: 'center',
+                    }}>
+                      ⛏️ 采集中...
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -2086,15 +2170,22 @@ function MiningContent() {
 
 // 8. 芯片研发内容
 function ChipContent() {
-  const { gameManager, saveGame, craftChip, upgradeChip, equipChip, unequipChip, decomposeChip, enhanceChip, rerollChipSubStat, rerollAllChipSubStats, toggleChipLock, getChipSetBonuses, getChipStatBonus } = useGameStore();
+  const { gameManager, saveGame, craftChip, upgradeChip, equipChip, decomposeChip, rerollChipSubStat, toggleChipLock, getChipSetBonuses, getChipStatBonus } = useGameStore();
   const [activeTab, setActiveTab] = useState<'slots' | 'craft'>('slots');
   const [selectedChip, setSelectedChip] = useState<Chip | null>(null);
+  const [selectedSlot, setSelectedSlot] = useState<ChipSlot | null>(null);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    show: boolean;
+    title: string;
+    content: string;
+    onConfirm: () => void;
+    onCancel: () => void;
+  } | null>(null);
 
   const chips = gameManager.getChips();
   const equippedChips = gameManager.getEquippedChips();
   const maxSlots = gameManager.getAvailableChipSlots();
-  const level = gameManager.getFacilityLevel(FacilityType.CHIP);
   const setBonuses = getChipSetBonuses();
   const totalStats = getChipStatBonus();
 
@@ -2133,18 +2224,7 @@ function ChipContent() {
     }
   };
 
-  const handleUnequip = async (slot: ChipSlot) => {
-    const result = unequipChip(slot);
-    if (result.success) {
-      showMessage(result.message, 'success');
-      await saveGame();
-    } else {
-      showMessage(result.message, 'error');
-    }
-  };
-
   const handleDecompose = async (chipId: string) => {
-    if (!confirm('确定要分解这个芯片吗？')) return;
     const result = decomposeChip(chipId);
     if (result.success) {
       showMessage(`分解成功，获得${result.rewards}`, 'success');
@@ -2155,30 +2235,8 @@ function ChipContent() {
     }
   };
 
-  const handleEnhance = async (chipId: string, subStatIndex: number) => {
-    const result = enhanceChip(chipId, subStatIndex);
-    if (result.success) {
-      showMessage(result.message, 'success');
-      await saveGame();
-    } else {
-      showMessage(result.message, 'error');
-    }
-  };
-
   const handleReroll = async (chipId: string, subStatIndex: number) => {
-    if (!confirm('确定要重随这个副属性吗？')) return;
     const result = rerollChipSubStat(chipId, subStatIndex);
-    if (result.success) {
-      showMessage(result.message, 'success');
-      await saveGame();
-    } else {
-      showMessage(result.message, 'error');
-    }
-  };
-
-  const handleRerollAll = async (chipId: string) => {
-    if (!confirm('确定要重随所有副属性吗？')) return;
-    const result = rerollAllChipSubStats(chipId);
     if (result.success) {
       showMessage(result.message, 'success');
       await saveGame();
@@ -2203,7 +2261,7 @@ function ChipContent() {
   };
 
   return (
-    <div>
+    <div style={{ position: 'relative' }}>
       {/* Message Toast */}
       {message && (
         <div style={{
@@ -2221,6 +2279,67 @@ function ChipContent() {
           whiteSpace: 'nowrap',
         }}>
           {message.text}
+        </div>
+      )}
+
+      {/* Confirm Dialog */}
+      {confirmDialog?.show && (
+        <div style={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          zIndex: 200,
+          width: '280px',
+        }}>
+          <div style={{
+            background: 'rgba(0, 20, 40, 0.98)',
+            borderRadius: '12px',
+            padding: '16px',
+            border: '1px solid #00d4ff',
+            boxShadow: '0 4px 20px rgba(0, 212, 255, 0.3)',
+          }}>
+            <h3 style={{ color: '#00d4ff', fontSize: '14px', fontWeight: 'bold', marginBottom: '10px', textAlign: 'center' }}>
+              {confirmDialog.title}
+            </h3>
+            <p style={{ color: '#a1a1aa', fontSize: '12px', marginBottom: '16px', whiteSpace: 'pre-line', textAlign: 'center' }}>
+              {confirmDialog.content}
+            </p>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button
+                onClick={confirmDialog.onCancel}
+                style={{
+                  flex: 1,
+                  padding: '8px',
+                  background: 'rgba(100, 100, 100, 0.2)',
+                  border: '1px solid rgba(100, 100, 100, 0.4)',
+                  borderRadius: '6px',
+                  color: '#a1a1aa',
+                  fontWeight: 'bold',
+                  fontSize: '11px',
+                  cursor: 'pointer',
+                }}
+              >
+                取消
+              </button>
+              <button
+                onClick={confirmDialog.onConfirm}
+                style={{
+                  flex: 1,
+                  padding: '8px',
+                  background: 'linear-gradient(135deg, #ef4444, #dc2626)',
+                  border: 'none',
+                  borderRadius: '6px',
+                  color: '#fff',
+                  fontWeight: 'bold',
+                  fontSize: '11px',
+                  cursor: 'pointer',
+                }}
+              >
+                确认
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -2354,18 +2473,20 @@ function ChipContent() {
           }}>
             {[ChipSlot.SLOT_1, ChipSlot.SLOT_2, ChipSlot.SLOT_3, ChipSlot.SLOT_4].map(slot => {
               const equipped = getEquippedChipForSlot(slot);
+              const isSelected = selectedSlot === slot;
               return (
                 <div
                   key={slot}
                   onClick={() => {
+                    setSelectedSlot(slot);
                     if (equipped) setSelectedChip(equipped);
                   }}
                   style={{
                     padding: '12px',
-                    background: 'rgba(16, 185, 129, 0.1)',
+                    background: isSelected ? 'rgba(0, 212, 255, 0.15)' : 'rgba(16, 185, 129, 0.1)',
                     borderRadius: '12px',
-                    border: equipped ? `2px solid ${CHIP_RARITY_CONFIG[equipped.rarity].color}` : '1px solid rgba(255, 255, 255, 0.1)',
-                    cursor: equipped ? 'pointer' : 'default',
+                    border: isSelected ? '2px solid #00d4ff' : (equipped ? `2px solid ${CHIP_RARITY_CONFIG[equipped.rarity].color}` : '1px solid rgba(255, 255, 255, 0.1)'),
+                    cursor: 'pointer',
                   }}
                 >
                   <div style={{
@@ -2410,10 +2531,30 @@ function ChipContent() {
 
           {/* Chip Inventory */}
           <div style={{ color: '#a1a1aa', fontSize: '12px', marginBottom: '8px' }}>
-            📦 芯片仓库 ({chips.filter(c => !Object.values(gameManager.equippedChips).includes(c.id)).length})
+            📦 芯片仓库
+            {selectedSlot ? `(${selectedSlot}号位)` : '(全部)'}
+            {' '}
+            ({chips.filter(c => !Object.values(gameManager.equippedChips).includes(c.id) && (!selectedSlot || c.slot === selectedSlot)).length})
+            {selectedSlot && (
+              <button
+                onClick={() => setSelectedSlot(null)}
+                style={{
+                  marginLeft: '8px',
+                  padding: '2px 8px',
+                  background: 'rgba(100, 100, 100, 0.3)',
+                  border: 'none',
+                  borderRadius: '4px',
+                  color: '#a1a1aa',
+                  fontSize: '10px',
+                  cursor: 'pointer',
+                }}
+              >
+                显示全部
+              </button>
+            )}
           </div>
           <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
-            {chips.filter(c => !Object.values(gameManager.equippedChips).includes(c.id)).map(chip => (
+            {chips.filter(c => !Object.values(gameManager.equippedChips).includes(c.id) && (!selectedSlot || c.slot === selectedSlot)).map(chip => (
               <div
                 key={chip.id}
                 onClick={() => setSelectedChip(chip)}
@@ -2503,10 +2644,15 @@ function ChipContent() {
 
               {/* Sub Stats */}
               <div style={{ marginBottom: '12px' }}>
-                <div style={{ color: '#a1a1aa', fontSize: '11px', marginBottom: '4px' }}>副属性:</div>
+                <div style={{ color: '#a1a1aa', fontSize: '11px', marginBottom: '4px' }}>
+                  副属性 (可重随类型和数值，范围见括号):
+                </div>
                 {selectedChip.subStats.map((sub, idx) => {
-                  const enhanceCost = getEnhanceCost(selectedChip);
                   const rerollCost = getRerollCost(selectedChip);
+                  const hasEnoughCredits = gameManager.trainCoins >= rerollCost.credits;
+                  const hasEnoughMaterials = (gameManager.inventory.getItem('mineral_quantum')?.quantity || 0) >= rerollCost.materials;
+                  const canReroll = !selectedChip.locked && hasEnoughCredits && hasEnoughMaterials;
+                  const config = CHIP_SUB_STAT_CONFIG[sub.stat];
                   return (
                     <div key={idx} style={{
                       display: 'flex',
@@ -2518,39 +2664,41 @@ function ChipContent() {
                       marginBottom: '4px',
                     }}>
                       <span style={{ color: '#fff', fontSize: '11px' }}>
-                        {CHIP_SUB_STAT_CONFIG[sub.stat].name} +{sub.value}
+                        {config.name} +{sub.value} ({config.minValue}-{config.maxValue})
                       </span>
-                      <div style={{ display: 'flex', gap: '4px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {/* 重随需求 - 纯文字 */}
+                        <span style={{ color: hasEnoughCredits ? '#a1a1aa' : '#ef4444', fontSize: '9px' }}>
+                          信用点:{rerollCost.credits}
+                        </span>
+                        <span style={{ color: hasEnoughMaterials ? '#a1a1aa' : '#ef4444', fontSize: '9px' }}>
+                          量子矿:{rerollCost.materials}
+                        </span>
                         <button
-                          onClick={() => handleEnhance(selectedChip.id, idx)}
-                          style={{
-                            padding: '2px 6px',
-                            background: 'rgba(16, 185, 129, 0.2)',
-                            border: '1px solid rgba(16, 185, 129, 0.4)',
-                            borderRadius: '4px',
-                            color: '#10b981',
-                            fontSize: '9px',
-                            cursor: 'pointer',
+                          onClick={() => {
+                            setConfirmDialog({
+                              show: true,
+                              title: '重随副属性',
+                              content: `确定要重随这个副属性吗？\n可能获得新的属性类型和数值\n消耗: ${rerollCost.credits}信用点, ${rerollCost.materials}量子矿`,
+                              onConfirm: () => {
+                                handleReroll(selectedChip.id, idx);
+                                setConfirmDialog(null);
+                              },
+                              onCancel: () => setConfirmDialog(null),
+                            });
                           }}
-                          title={`强化消耗: ${enhanceCost.credits}信用点, ${enhanceCost.materials}水晶矿`}
-                        >
-                          强化
-                        </button>
-                        <button
-                          onClick={() => handleReroll(selectedChip.id, idx)}
-                          disabled={selectedChip.locked}
+                          disabled={!canReroll}
                           style={{
-                            padding: '2px 6px',
-                            background: selectedChip.locked ? 'rgba(100, 100, 100, 0.2)' : 'rgba(168, 85, 247, 0.2)',
-                            border: selectedChip.locked ? '1px solid rgba(100, 100, 100, 0.3)' : '1px solid rgba(168, 85, 247, 0.4)',
+                            padding: '2px 8px',
+                            background: !canReroll ? 'rgba(100, 100, 100, 0.2)' : 'rgba(168, 85, 247, 0.2)',
+                            border: !canReroll ? '1px solid rgba(100, 100, 100, 0.3)' : '1px solid rgba(168, 85, 247, 0.4)',
                             borderRadius: '4px',
-                            color: selectedChip.locked ? '#666' : '#a855f7',
+                            color: !canReroll ? '#666' : '#a855f7',
                             fontSize: '9px',
-                            cursor: selectedChip.locked ? 'not-allowed' : 'pointer',
+                            cursor: !canReroll ? 'not-allowed' : 'pointer',
                           }}
-                          title={`重随消耗: ${rerollCost.credits}信用点, ${rerollCost.materials}量子矿`}
                         >
-                          重随
+                          🎲 重随
                         </button>
                       </div>
                     </div>
@@ -2558,64 +2706,91 @@ function ChipContent() {
                 })}
               </div>
 
-              {/* Enhance Info */}
-              <div style={{ color: '#a1a1aa', fontSize: '10px', marginBottom: '12px' }}>
-                强化次数: {selectedChip.enhanceCount}/{CHIP_RARITY_CONFIG[selectedChip.rarity].maxEnhance}
-              </div>
+              {/* Upgrade Info */}
+              {selectedChip.level < 15 && (
+                <div style={{
+                  background: 'rgba(0, 212, 255, 0.1)',
+                  borderRadius: '8px',
+                  padding: '10px',
+                  marginBottom: '12px',
+                  border: '1px solid rgba(0, 212, 255, 0.3)',
+                }}>
+                  <div style={{ color: '#00d4ff', fontSize: '11px', fontWeight: 'bold', marginBottom: '6px' }}>
+                    ⬆️ 升级需求 (Lv.{selectedChip.level} → Lv.{selectedChip.level + 1})
+                  </div>
+                  {(() => {
+                    const upgradeCost = getUpgradeCost(selectedChip.level);
+                    const hasEnoughCredits = gameManager.trainCoins >= upgradeCost.credits;
+                    const currentMaterials = gameManager.inventory.getItem('chip_material')?.quantity || 0;
+                    const hasEnoughMaterials = currentMaterials >= upgradeCost.materials;
+                    return (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '10px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <span style={{ color: '#a1a1aa' }}>信用点:</span>
+                          <span style={{ color: hasEnoughCredits ? '#10b981' : '#ef4444' }}>
+                            {gameManager.trainCoins.toLocaleString()} / {upgradeCost.credits.toLocaleString()}
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <span style={{ color: '#a1a1aa' }}>芯片材料:</span>
+                          <span style={{ color: hasEnoughMaterials ? '#10b981' : '#ef4444' }}>
+                            {currentMaterials} / {upgradeCost.materials}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
 
               {/* Action Buttons */}
               <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
                 <button
                   onClick={() => handleUpgrade(selectedChip.id, 1)}
+                  disabled={selectedChip.level >= 15}
                   style={{
                     flex: 1,
                     padding: '8px',
-                    background: 'linear-gradient(135deg, #10b981, #059669)',
+                    background: selectedChip.level >= 15 ? 'rgba(100, 100, 100, 0.3)' : 'linear-gradient(135deg, #00d4ff, #0099cc)',
                     border: 'none',
                     borderRadius: '6px',
-                    color: '#fff',
+                    color: selectedChip.level >= 15 ? '#666' : '#fff',
                     fontWeight: 'bold',
                     fontSize: '11px',
-                    cursor: 'pointer',
+                    cursor: selectedChip.level >= 15 ? 'not-allowed' : 'pointer',
                   }}
                 >
-                  升级
+                  {selectedChip.level >= 15 ? '已满级' : '升级'}
                 </button>
                 <button
-                  onClick={() => handleRerollAll(selectedChip.id)}
+                  onClick={() => {
+                    setConfirmDialog({
+                      show: true,
+                      title: '分解芯片',
+                      content: `确定要分解这个${CHIP_RARITY_CONFIG[selectedChip.rarity].name}芯片吗？\n将获得芯片材料作为回报。`,
+                      onConfirm: () => {
+                        handleDecompose(selectedChip.id);
+                        setConfirmDialog(null);
+                      },
+                      onCancel: () => setConfirmDialog(null),
+                    });
+                  }}
                   disabled={selectedChip.locked}
                   style={{
                     flex: 1,
                     padding: '8px',
-                    background: selectedChip.locked ? 'rgba(100, 100, 100, 0.3)' : 'rgba(168, 85, 247, 0.2)',
-                    border: selectedChip.locked ? '1px solid rgba(100, 100, 100, 0.3)' : '1px solid rgba(168, 85, 247, 0.4)',
+                    background: selectedChip.locked ? 'rgba(100, 100, 100, 0.3)' : 'rgba(239, 68, 68, 0.2)',
+                    border: selectedChip.locked ? '1px solid rgba(100, 100, 100, 0.3)' : '1px solid rgba(239, 68, 68, 0.4)',
                     borderRadius: '6px',
-                    color: selectedChip.locked ? '#666' : '#a855f7',
+                    color: selectedChip.locked ? '#666' : '#f87171',
                     fontWeight: 'bold',
                     fontSize: '11px',
                     cursor: selectedChip.locked ? 'not-allowed' : 'pointer',
                   }}
                 >
-                  重随全部
+                  分解
                 </button>
               </div>
-              <button
-                onClick={() => handleDecompose(selectedChip.id)}
-                disabled={selectedChip.locked}
-                style={{
-                  width: '100%',
-                  padding: '8px',
-                  background: selectedChip.locked ? 'rgba(100, 100, 100, 0.3)' : 'rgba(239, 68, 68, 0.2)',
-                  border: selectedChip.locked ? '1px solid rgba(100, 100, 100, 0.3)' : '1px solid rgba(239, 68, 68, 0.4)',
-                  borderRadius: '6px',
-                  color: selectedChip.locked ? '#666' : '#f87171',
-                  fontWeight: 'bold',
-                  fontSize: '11px',
-                  cursor: selectedChip.locked ? 'not-allowed' : 'pointer',
-                }}
-              >
-                分解
-              </button>
             </div>
           )}
         </div>
@@ -2623,120 +2798,10 @@ function ChipContent() {
 
       {/* Craft Tab */}
       {activeTab === 'craft' && (
-        <div>
-          <div style={{ color: '#a1a1aa', fontSize: '12px', marginBottom: '8px' }}>
-            选择槽位和品质制作芯片
-          </div>
-
-          {[ChipSlot.SLOT_1, ChipSlot.SLOT_2, ChipSlot.SLOT_3, ChipSlot.SLOT_4].map(slot => {
-            const slotName = slot === ChipSlot.SLOT_1 ? '生命' : slot === ChipSlot.SLOT_2 ? '攻击' : '随机';
-
-            return (
-              <div
-                key={slot}
-                style={{
-                  padding: '12px',
-                  background: 'rgba(255, 255, 255, 0.03)',
-                  borderRadius: '12px',
-                  marginBottom: '8px',
-                  border: '1px solid rgba(255, 255, 255, 0.08)',
-                }}
-              >
-                <div style={{
-                  color: '#fff',
-                  fontWeight: 'bold',
-                  fontSize: '13px',
-                  marginBottom: '8px',
-                }}>
-                  {slot}号位 ({slotName}主属性)
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {Object.values(ChipRarity).map(rarity => {
-                    const cost = CHIP_CRAFT_COST[rarity];
-                    const canAfford = gameManager.trainCoins >= cost.credits &&
-                      cost.materials.every(m => gameManager.inventory.hasItem(m.itemId, m.count));
-
-                    return (
-                      <div
-                        key={rarity}
-                        style={{
-                          padding: '10px',
-                          background: `linear-gradient(135deg, ${CHIP_RARITY_CONFIG[rarity].color}20, ${CHIP_RARITY_CONFIG[rarity].color}10)`,
-                          borderRadius: '8px',
-                          border: `1px solid ${CHIP_RARITY_CONFIG[rarity].color}40`,
-                        }}
-                      >
-                        <div style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          marginBottom: '8px',
-                        }}>
-                          <span style={{
-                            color: CHIP_RARITY_CONFIG[rarity].color,
-                            fontWeight: 'bold',
-                            fontSize: '12px',
-                          }}>
-                            {CHIP_RARITY_CONFIG[rarity].name}
-                          </span>
-                          <span style={{ color: '#a1a1aa', fontSize: '10px' }}>
-                            强化上限: {CHIP_RARITY_CONFIG[rarity].maxEnhance}次
-                          </span>
-                        </div>
-
-                        <div style={{
-                          display: 'flex',
-                          flexWrap: 'wrap',
-                          gap: '6px',
-                          marginBottom: '8px',
-                          fontSize: '10px',
-                        }}>
-                          <span style={{ color: '#fbbf24' }}>
-                            💰 {cost.credits}
-                          </span>
-                          {cost.materials.map((m, idx) => {
-                            const hasEnough = gameManager.inventory.hasItem(m.itemId, m.count);
-                            const currentCount = gameManager.inventory.getItem(m.itemId)?.quantity || 0;
-                            return (
-                              <span
-                                key={idx}
-                                style={{ color: hasEnough ? '#10b981' : '#ef4444' }}
-                              >
-                                {m.itemId} x{m.count} ({currentCount})
-                              </span>
-                            );
-                          })}
-                        </div>
-
-                        <button
-                          onClick={() => handleCraft(slot, rarity)}
-                          disabled={!canAfford}
-                          style={{
-                            width: '100%',
-                            padding: '6px',
-                            background: canAfford
-                              ? `linear-gradient(135deg, ${CHIP_RARITY_CONFIG[rarity].color}60, ${CHIP_RARITY_CONFIG[rarity].color}40)`
-                              : 'rgba(100, 100, 100, 0.3)',
-                            border: canAfford
-                              ? `1px solid ${CHIP_RARITY_CONFIG[rarity].color}80`
-                              : '1px solid rgba(100, 100, 100, 0.3)',
-                            borderRadius: '6px',
-                            color: canAfford ? '#fff' : '#666',
-                            fontSize: '11px',
-                            cursor: canAfford ? 'pointer' : 'not-allowed',
-                          }}
-                        >
-                          {canAfford ? '制作' : '材料不足'}
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        <ChipCraftPanel
+          gameManager={gameManager}
+          onCraft={handleCraft}
+        />
       )}
     </div>
   );
@@ -2750,7 +2815,6 @@ function GeneContent() {
 
   const nodes = gameManager.getGeneNodes();
   const totalStats = getGeneTotalStats();
-  const level = gameManager.getFacilityLevel(FacilityType.GENE);
 
   const filteredNodes = selectedType === 'all' ? nodes : nodes.filter(n => n.type === selectedType);
 
@@ -2971,25 +3035,26 @@ function GeneContent() {
 
 // 10. 机械飞升内容
 function CyberneticContent() {
-  const { gameManager, saveGame, craftImplant, upgradeImplant, equipImplant, unequipImplant, decomposeImplant, getImplantTotalStats } = useGameStore();
+  const { gameManager, saveGame, craftImplant, upgradeImplant, equipImplant, unequipImplant, decomposeImplant, getImplantTotalStats, toggleImplantLock, getCraftableImplantRarities } = useGameStore();
   const [activeTab, setActiveTab] = useState<'slots' | 'craft'>('slots');
   const [selectedImplant, setSelectedImplant] = useState<Implant | null>(null);
+  const [selectedCraftType, setSelectedCraftType] = useState<ImplantType | null>(null);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
   const implants = gameManager.getImplants();
   const equippedImplants = gameManager.getEquippedImplants();
   const availableSlots = gameManager.getAvailableImplantSlots();
-  const level = gameManager.getFacilityLevel(FacilityType.ARENA);
+  const craftableRarities = getCraftableImplantRarities();
 
   const showMessage = (text: string, type: 'success' | 'error') => {
     setMessage({ text, type });
     setTimeout(() => setMessage(null), 2000);
   };
 
-  const handleCraft = async (rarity: ImplantRarity) => {
-    const result = craftImplant(rarity);
+  const handleCraft = async (type: ImplantType, rarity: ImplantRarity) => {
+    const result = craftImplant(type, rarity);
     if (result.success) {
-      showMessage(`成功制造${IMPLANT_RARITY_CONFIG[rarity].name}义体`, 'success');
+      showMessage(`成功制造${IMPLANT_RARITY_CONFIG[rarity].name}品质的${IMPLANT_TYPE_CONFIG[type].name}`, 'success');
       await saveGame();
     } else {
       showMessage(result.message, 'error');
@@ -3027,11 +3092,20 @@ function CyberneticContent() {
   };
 
   const handleDecompose = async (implantId: string) => {
-    if (!confirm('确定要分解这个义体吗？')) return;
     const result = decomposeImplant(implantId);
     if (result.success) {
       showMessage(`分解成功，获得${result.rewards}`, 'success');
       setSelectedImplant(null);
+      await saveGame();
+    } else {
+      showMessage(result.message, 'error');
+    }
+  };
+
+  const handleToggleLock = async (implantId: string) => {
+    const result = toggleImplantLock(implantId);
+    if (result.success) {
+      showMessage(result.message, 'success');
       await saveGame();
     } else {
       showMessage(result.message, 'error');
@@ -3100,17 +3174,27 @@ function CyberneticContent() {
             当前属性加成
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-            {Object.entries(totalStats).map(([stat, value]) => (
-              <div key={stat} style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-                fontSize: '11px',
-              }}>
-                <span style={{ color: '#a855f7' }}>{stat}:</span>
-                <span style={{ color: '#fff' }}>+{value}</span>
-              </div>
-            ))}
+            {Object.entries(totalStats).map(([stat, value]) => {
+              const statNames: Record<string, string> = {
+                attack: '攻击',
+                defense: '防御',
+                hp: '生命',
+                speed: '速度',
+                critRate: '暴击率',
+                critDamage: '暴击伤害',
+              };
+              return (
+                <div key={stat} style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  fontSize: '11px',
+                }}>
+                  <span style={{ color: '#a855f7' }}>{statNames[stat] || stat}:</span>
+                  <span style={{ color: '#fff' }}>+{value}</span>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -3286,44 +3370,108 @@ function CyberneticContent() {
               borderRadius: '12px',
               border: '1px solid rgba(168, 85, 247, 0.3)',
             }}>
-              <div style={{ color: IMPLANT_RARITY_CONFIG[selectedImplant.rarity].color, fontWeight: 'bold', marginBottom: '8px' }}>
-                {selectedImplant.name} Lv.{selectedImplant.level}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <div style={{ color: IMPLANT_RARITY_CONFIG[selectedImplant.rarity].color, fontWeight: 'bold' }}>
+                  {selectedImplant.name} Lv.{selectedImplant.level}
+                </div>
+                <button
+                  onClick={() => handleToggleLock(selectedImplant.id)}
+                  disabled={gameManager.equippedImplants[selectedImplant.type] === selectedImplant.id}
+                  style={{
+                    padding: '4px 8px',
+                    background: selectedImplant.locked ? 'rgba(245, 158, 11, 0.3)' : 'rgba(100, 100, 100, 0.2)',
+                    border: selectedImplant.locked ? '1px solid rgba(245, 158, 11, 0.5)' : '1px solid rgba(100, 100, 100, 0.3)',
+                    borderRadius: '4px',
+                    color: selectedImplant.locked ? '#f59e0b' : '#a1a1aa',
+                    fontSize: '10px',
+                    cursor: gameManager.equippedImplants[selectedImplant.type] === selectedImplant.id ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {selectedImplant.locked ? '🔒 已锁定' : '🔓 未锁定'}
+                </button>
               </div>
               <div style={{ color: '#a1a1aa', fontSize: '11px', marginBottom: '8px' }}>
                 {selectedImplant.description}
               </div>
               <div style={{ color: '#a1a1aa', fontSize: '11px', marginBottom: '8px' }}>
-                属性: {Object.entries(getImplantStats(selectedImplant)).map(([k, v]) => `${k}+${v}`).join(' / ')}
+                属性: {Object.entries(getImplantStats(selectedImplant)).map(([k, v]) => {
+                  const statNames: Record<string, string> = {
+                    attack: '攻击',
+                    defense: '防御',
+                    hp: '生命',
+                    speed: '速度',
+                    critRate: '暴击率',
+                    critDamage: '暴击伤害',
+                  };
+                  return `${statNames[k] || k}+${v}`;
+                }).join(' / ')}
               </div>
+              {selectedImplant.specialEffect && (
+                <div style={{
+                  color: '#00d4ff',
+                  fontSize: '11px',
+                  marginBottom: '8px',
+                  padding: '6px 8px',
+                  background: 'rgba(0, 212, 255, 0.1)',
+                  borderRadius: '6px',
+                  border: '1px solid rgba(0, 212, 255, 0.3)',
+                }}>
+                  ✨ {selectedImplant.specialEffect.name}: {selectedImplant.specialEffect.description}
+                </div>
+              )}
+              {/* 升级费用和分解奖励 */}
+              {selectedImplant.level < selectedImplant.maxLevel && (() => {
+                const upgradeCost = getImplantUpgradeCost(selectedImplant);
+                const canAfford = gameManager.trainCoins >= upgradeCost.credits &&
+                  upgradeCost.materials.every(m => gameManager.inventory.hasItem(m.itemId, m.count));
+                return (
+                  <div style={{ color: '#a1a1aa', fontSize: '10px', marginBottom: '8px', padding: '6px', background: 'rgba(0,0,0,0.2)', borderRadius: '4px' }}>
+                    升级费用: {upgradeCost.credits}信用点 + {upgradeCost.materials.map(m => `${m.count}义体材料`).join(' + ')}
+                    {!canAfford && <span style={{ color: '#ef4444', marginLeft: '4px' }}>(材料不足)</span>}
+                  </div>
+                );
+              })()}
+              {selectedImplant.locked ? null : (() => {
+                const rarityIndex = Object.keys(ImplantRarity).indexOf(selectedImplant.rarity);
+                const creditsReward = 200 * (rarityIndex + 1) * selectedImplant.level;
+                const materialReward = 2 + rarityIndex * 2 + Math.floor(selectedImplant.level / 3);
+                return (
+                  <div style={{ color: '#a1a1aa', fontSize: '10px', marginBottom: '8px', padding: '6px', background: 'rgba(0,0,0,0.2)', borderRadius: '4px' }}>
+                    分解获得: {creditsReward}信用点 + {materialReward}义体材料
+                  </div>
+                );
+              })()}
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button
                   onClick={() => handleUpgrade(selectedImplant.id)}
+                  disabled={selectedImplant.level >= selectedImplant.maxLevel}
                   style={{
                     flex: 1,
                     padding: '8px',
-                    background: 'linear-gradient(135deg, #a855f7, #7c3aed)',
+                    background: selectedImplant.level >= selectedImplant.maxLevel ? 'rgba(100, 100, 100, 0.3)' : 'linear-gradient(135deg, #a855f7, #7c3aed)',
                     border: 'none',
                     borderRadius: '6px',
-                    color: '#fff',
+                    color: selectedImplant.level >= selectedImplant.maxLevel ? '#666' : '#fff',
                     fontWeight: 'bold',
                     fontSize: '11px',
-                    cursor: 'pointer',
+                    cursor: selectedImplant.level >= selectedImplant.maxLevel ? 'not-allowed' : 'pointer',
                   }}
                 >
-                  升级
+                  {selectedImplant.level >= selectedImplant.maxLevel ? '已满级' : '升级'}
                 </button>
                 <button
                   onClick={() => handleDecompose(selectedImplant.id)}
+                  disabled={selectedImplant.locked}
                   style={{
                     flex: 1,
                     padding: '8px',
-                    background: 'rgba(239, 68, 68, 0.2)',
-                    border: '1px solid rgba(239, 68, 68, 0.4)',
+                    background: selectedImplant.locked ? 'rgba(100, 100, 100, 0.2)' : 'rgba(239, 68, 68, 0.2)',
+                    border: selectedImplant.locked ? '1px solid rgba(100, 100, 100, 0.3)' : '1px solid rgba(239, 68, 68, 0.4)',
                     borderRadius: '6px',
-                    color: '#f87171',
+                    color: selectedImplant.locked ? '#666' : '#f87171',
                     fontWeight: 'bold',
                     fontSize: '11px',
-                    cursor: 'pointer',
+                    cursor: selectedImplant.locked ? 'not-allowed' : 'pointer',
                   }}
                 >
                   分解
@@ -3338,42 +3486,138 @@ function CyberneticContent() {
       {activeTab === 'craft' && (
         <div>
           <div style={{ color: '#a1a1aa', fontSize: '12px', marginBottom: '8px' }}>
-            选择品质制造义体
+            研发等级: Lv.{level} | 选择部位制造义体
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {Object.values(ImplantRarity).map(rarity => {
-              const rarityConfig = IMPLANT_RARITY_CONFIG[rarity];
-              const costs = {
-                [ImplantRarity.COMMON]: { credits: 500, materials: 5 },
-                [ImplantRarity.UNCOMMON]: { credits: 1000, materials: 8 },
-                [ImplantRarity.RARE]: { credits: 2000, materials: 12 },
-                [ImplantRarity.EPIC]: { credits: 5000, materials: 20 },
-                [ImplantRarity.LEGENDARY]: { credits: 10000, materials: 30 },
-              };
-              const cost = costs[rarity];
 
-              return (
-                <button
-                  key={rarity}
-                  onClick={() => handleCraft(rarity)}
-                  style={{
-                    padding: '12px',
-                    background: `linear-gradient(135deg, ${rarityConfig.color}40, ${rarityConfig.color}20)`,
-                    border: `1px solid ${rarityConfig.color}60`,
-                    borderRadius: '12px',
-                    cursor: 'pointer',
-                  }}
-                >
-                  <div style={{ color: rarityConfig.color, fontWeight: 'bold', fontSize: '14px', marginBottom: '4px' }}>
-                    {rarityConfig.name}义体
-                  </div>
-                  <div style={{ color: '#a1a1aa', fontSize: '11px' }}>
-                    💰 {cost.credits}信用点 + 🔧 {cost.materials}义体材料
-                  </div>
-                </button>
-              );
-            })}
-          </div>
+          {/* 类型选择 */}
+          {!selectedCraftType && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
+              {Object.values(ImplantType).map(type => {
+                const typeConfig = IMPLANT_TYPE_CONFIG[type];
+                return (
+                  <button
+                    key={type}
+                    onClick={() => setSelectedCraftType(type)}
+                    style={{
+                      padding: '16px',
+                      background: `linear-gradient(135deg, ${typeConfig.color}30, ${typeConfig.color}10)`,
+                      border: `1px solid ${typeConfig.color}50`,
+                      borderRadius: '12px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '8px',
+                    }}
+                  >
+                    <span style={{ fontSize: '28px' }}>{typeConfig.icon}</span>
+                    <span style={{ color: typeConfig.color, fontWeight: 'bold', fontSize: '14px' }}>
+                      {typeConfig.name}
+                    </span>
+                    <span style={{ color: '#a1a1aa', fontSize: '10px', textAlign: 'center' }}>
+                      {typeConfig.description}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {/* 品质选择 */}
+          {selectedCraftType && (
+            <div>
+              <button
+                onClick={() => setSelectedCraftType(null)}
+                style={{
+                  marginBottom: '12px',
+                  padding: '8px 16px',
+                  background: 'rgba(100, 100, 100, 0.2)',
+                  border: '1px solid rgba(100, 100, 100, 0.3)',
+                  borderRadius: '8px',
+                  color: '#a1a1aa',
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                }}
+              >
+                ← 返回选择部位
+              </button>
+
+              <div style={{
+                textAlign: 'center',
+                marginBottom: '12px',
+                padding: '12px',
+                background: `${IMPLANT_TYPE_CONFIG[selectedCraftType].color}20`,
+                borderRadius: '8px',
+                border: `1px solid ${IMPLANT_TYPE_CONFIG[selectedCraftType].color}40`,
+              }}>
+                <span style={{ fontSize: '24px' }}>{IMPLANT_TYPE_CONFIG[selectedCraftType].icon}</span>
+                <div style={{ color: IMPLANT_TYPE_CONFIG[selectedCraftType].color, fontWeight: 'bold', fontSize: '16px' }}>
+                  {IMPLANT_TYPE_CONFIG[selectedCraftType].name}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {Object.values(ImplantRarity).map(rarity => {
+                  const rarityConfig = IMPLANT_RARITY_CONFIG[rarity];
+                  const costs = {
+                    [ImplantRarity.RARE]: { credits: 2000, materials: 12 },
+                    [ImplantRarity.EPIC]: { credits: 5000, materials: 20 },
+                    [ImplantRarity.LEGENDARY]: { credits: 10000, materials: 30 },
+                  };
+                  const cost = costs[rarity];
+                  const isCraftable = craftableRarities.includes(rarity);
+                  const canAfford = gameManager.trainCoins >= cost.credits &&
+                    gameManager.inventory.hasItem('cyber_material', cost.materials);
+                  const requiredLevel = rarity === ImplantRarity.EPIC ? 2 : rarity === ImplantRarity.LEGENDARY ? 3 : 1;
+
+                  return (
+                    <div
+                      key={rarity}
+                      style={{
+                        padding: '12px',
+                        background: `linear-gradient(135deg, ${rarityConfig.color}${isCraftable ? '30' : '10'}, ${rarityConfig.color}${isCraftable ? '15' : '05'})`,
+                        border: `1px solid ${rarityConfig.color}${isCraftable ? '50' : '20'}`,
+                        borderRadius: '12px',
+                        opacity: isCraftable ? 1 : 0.5,
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                        <span style={{ color: rarityConfig.color, fontWeight: 'bold', fontSize: '14px' }}>
+                          {rarityConfig.name}
+                        </span>
+                        {!isCraftable && (
+                          <span style={{ color: '#ef4444', fontSize: '10px', background: 'rgba(239, 68, 68, 0.2)', padding: '2px 6px', borderRadius: '4px' }}>
+                            需要Lv.{requiredLevel}
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ color: '#a1a1aa', fontSize: '11px', marginBottom: '8px' }}>
+                        信用点:{cost.credits} | 义体材料:{cost.materials}
+                      </div>
+                      <button
+                        onClick={() => handleCraft(selectedCraftType, rarity)}
+                        disabled={!isCraftable || !canAfford}
+                        style={{
+                          width: '100%',
+                          padding: '8px',
+                          background: !isCraftable ? 'rgba(100, 100, 100, 0.3)' :
+                            canAfford ? `linear-gradient(135deg, ${rarityConfig.color}, ${rarityConfig.color}80)` : 'rgba(100, 100, 100, 0.3)',
+                          border: 'none',
+                          borderRadius: '8px',
+                          color: !isCraftable || !canAfford ? '#666' : '#fff',
+                          fontWeight: 'bold',
+                          fontSize: '12px',
+                          cursor: !isCraftable || !canAfford ? 'not-allowed' : 'pointer',
+                        }}
+                      >
+                        {!isCraftable ? `需要研发等级Lv.${requiredLevel}` : canAfford ? '制造' : '材料不足'}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -3806,7 +4050,6 @@ function RuinsContent() {
 
   const ruins = getRuins();
   const missions = getExploreMissions();
-  const level = gameManager.getFacilityLevel(FacilityType.RUINS);
   const crewMembers = gameManager.getCrewMembers();
 
   const showMessage = (text: string, type: 'success' | 'error') => {
@@ -3900,10 +4143,6 @@ function RuinsContent() {
         border: '1px solid rgba(245, 158, 11, 0.2)',
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '8px' }}>
-          <div>
-            <span style={{ color: '#a1a1aa' }}>探索等级: </span>
-            <span style={{ color: '#f59e0b', fontWeight: 'bold' }}>Lv.{level}</span>
-          </div>
           <div>
             <span style={{ color: '#a1a1aa' }}>进行中: </span>
             <span style={{ color: '#f59e0b', fontWeight: 'bold' }}>{missions.filter(m => m.status === 'ongoing').length}</span>
@@ -4023,7 +4262,7 @@ function RuinsContent() {
                 探索时长: {formatExploreTime(selectedRuin.duration)}
               </div>
               <div style={{ color: '#a1a1aa', fontSize: '11px', marginBottom: '12px' }}>
-                奖励: {selectedRuin.rewards.credits}信用点 + {selectedRuin.rewards.items.map(i => i.itemId).join(', ')}
+                奖励: {selectedRuin.rewards.credits}信用点 + {selectedRuin.rewards.items.map(i => `${getItemName(i.itemId)} x${i.count}`).join(', ')}
               </div>
 
               {/* Crew Selection */}
@@ -4205,6 +4444,307 @@ function LockedContent({ facility }: { facility: BaseFacility }) {
         border: '1px solid rgba(107, 114, 128, 0.3)',
       }}>
         🔒 该功能将在后续版本开放
+      </div>
+    </div>
+  );
+}
+
+// 芯片制作面板 - 4个图标点击后弹窗
+function ChipCraftPanel({ gameManager, onCraft }: { gameManager: GameManager; onCraft: (slot: ChipSlot, rarity: ChipRarity) => void }) {
+  const [selectedSlot, setSelectedSlot] = useState<ChipSlot | null>(null);
+
+  const slots = [
+    { slot: ChipSlot.SLOT_1, name: '1号位', mainStat: '生命', icon: '❤️', color: '#ef4444' },
+    { slot: ChipSlot.SLOT_2, name: '2号位', mainStat: '攻击', icon: '⚔️', color: '#f59e0b' },
+    { slot: ChipSlot.SLOT_3, name: '3号位', mainStat: '随机', icon: '🎲', color: '#3b82f6' },
+    { slot: ChipSlot.SLOT_4, name: '4号位', mainStat: '随机', icon: '🎲', color: '#22c55e' },
+  ];
+
+  return (
+    <div>
+      <div style={{ color: '#a1a1aa', fontSize: '12px', marginBottom: '12px' }}>
+        点击图标选择槽位制作芯片
+      </div>
+
+      {/* 4个槽位图标 */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(2, 1fr)',
+        gap: '12px',
+        marginBottom: '16px',
+      }}>
+        {slots.map(({ slot, name, mainStat, icon, color }) => (
+          <button
+            key={slot}
+            onClick={() => setSelectedSlot(slot)}
+            style={{
+              padding: '20px',
+              background: 'rgba(255, 255, 255, 0.05)',
+              border: `2px solid ${color}40`,
+              borderRadius: '12px',
+              cursor: 'pointer',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '8px',
+              transition: 'all 0.2s ease',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = `${color}20`;
+              e.currentTarget.style.borderColor = `${color}80`;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+              e.currentTarget.style.borderColor = `${color}40`;
+            }}
+          >
+            <span style={{ fontSize: '32px' }}>{icon}</span>
+            <span style={{ color: '#fff', fontWeight: 'bold', fontSize: '14px' }}>{name}</span>
+            <span style={{ color, fontSize: '11px' }}>{mainStat}主属性</span>
+          </button>
+        ))}
+      </div>
+
+      {/* 制作弹窗 */}
+      {selectedSlot && (
+        <ChipCraftModal
+          slot={selectedSlot}
+          gameManager={gameManager}
+          onCraft={onCraft}
+          onClose={() => setSelectedSlot(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+// 芯片制作弹窗
+function ChipCraftModal({ slot, gameManager, onCraft, onClose }: {
+  slot: ChipSlot;
+  gameManager: GameManager;
+  onCraft: (slot: ChipSlot, rarity: ChipRarity) => void;
+  onClose: () => void;
+}) {
+  const slotNames: Record<ChipSlot, string> = {
+    [ChipSlot.SLOT_1]: '生命',
+    [ChipSlot.SLOT_2]: '攻击',
+    [ChipSlot.SLOT_3]: '随机',
+    [ChipSlot.SLOT_4]: '随机',
+  };
+
+  const slotIcons: Record<ChipSlot, string> = {
+    [ChipSlot.SLOT_1]: '❤️',
+    [ChipSlot.SLOT_2]: '⚔️',
+    [ChipSlot.SLOT_3]: '🎲',
+    [ChipSlot.SLOT_4]: '🎲',
+  };
+
+  const chipLevel = gameManager.getChipLevel();
+  const craftableRarities = gameManager.getCraftableRarities();
+
+  const handleCraft = (rarity: ChipRarity) => {
+    onCraft(slot, rarity);
+    onClose();
+  };
+
+  return (
+    <div style={{
+      position: 'fixed',
+      inset: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.85)',
+      backdropFilter: 'blur(8px)',
+      zIndex: 100,
+      display: 'flex',
+      flexDirection: 'column',
+    }}>
+      {/* 头部 */}
+      <div style={{
+        background: 'linear-gradient(180deg, #00d4ff30, #00d4ff10)',
+        padding: '16px 20px',
+        borderBottom: '1px solid #00d4ff50',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '12px',
+      }}>
+        <button
+          onClick={onClose}
+          style={{
+            background: 'rgba(255, 255, 255, 0.1)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            borderRadius: '8px',
+            color: '#a1a1aa',
+            fontSize: '14px',
+            cursor: 'pointer',
+            padding: '8px 16px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+          }}
+        >
+          ← 返回
+        </button>
+        <div style={{ flex: 1 }}>
+          <h2 style={{
+            color: '#00d4ff',
+            fontSize: '18px',
+            fontWeight: 'bold',
+            margin: 0,
+          }}>
+            {slotIcons[slot]} 制作{slot}号位芯片
+          </h2>
+          <div style={{ color: '#a1a1aa', fontSize: '12px', marginTop: '2px' }}>
+            主属性: {slotNames[slot]} | 研发等级: Lv.{chipLevel}
+          </div>
+        </div>
+      </div>
+
+      {/* 品质选择 */}
+      <div style={{
+        flex: 1,
+        overflowY: 'auto',
+        padding: '16px 20px',
+      }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {Object.values(ChipRarity).map(rarity => {
+            const cost = CHIP_CRAFT_COST[rarity];
+            const isCraftable = craftableRarities.includes(rarity);
+            const canAfford = isCraftable && gameManager.trainCoins >= cost.credits &&
+              cost.materials.every((m: { itemId: string; count: number }) => gameManager.inventory.hasItem(m.itemId, m.count));
+            const requiredLevel = rarity === ChipRarity.EPIC ? 2 : rarity === ChipRarity.LEGENDARY ? 3 : 1;
+
+            return (
+              <div
+                key={rarity}
+                style={{
+                  padding: '16px',
+                  background: `linear-gradient(135deg, ${CHIP_RARITY_CONFIG[rarity].color}15, ${CHIP_RARITY_CONFIG[rarity].color}05)`,
+                  borderRadius: '12px',
+                  border: `1px solid ${CHIP_RARITY_CONFIG[rarity].color}50`,
+                  opacity: isCraftable ? 1 : 0.5,
+                }}
+              >
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: '12px',
+                }}>
+                  <span style={{
+                    color: CHIP_RARITY_CONFIG[rarity].color,
+                    fontWeight: 'bold',
+                    fontSize: '16px',
+                  }}>
+                    {CHIP_RARITY_CONFIG[rarity].name}
+                  </span>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    {!isCraftable && (
+                      <span style={{
+                        color: '#ef4444',
+                        fontSize: '11px',
+                        background: 'rgba(239, 68, 68, 0.2)',
+                        padding: '4px 8px',
+                        borderRadius: '4px',
+                      }}>
+                        需要Lv.{requiredLevel}
+                      </span>
+                    )}
+                    <span style={{
+                      color: '#a1a1aa',
+                      fontSize: '11px',
+                      background: 'rgba(255,255,255,0.1)',
+                      padding: '4px 8px',
+                      borderRadius: '4px',
+                    }}>
+                      强化上限: {CHIP_RARITY_CONFIG[rarity].maxEnhance}次
+                    </span>
+                  </div>
+                </div>
+
+                {/* 材料需求 */}
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px',
+                  marginBottom: '16px',
+                  fontSize: '12px',
+                }}>
+                  {/* 信用点 */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '8px 12px',
+                    background: 'rgba(0,0,0,0.3)',
+                    borderRadius: '8px',
+                  }}>
+                    <span style={{ fontSize: '16px' }}>💰</span>
+                    <span style={{
+                      color: gameManager.trainCoins >= cost.credits ? '#fbbf24' : '#ef4444',
+                      fontWeight: 'bold',
+                    }}>
+                      {cost.credits.toLocaleString()}
+                    </span>
+                    <span style={{ color: '#6b7280', marginLeft: 'auto' }}>
+                      拥有: {gameManager.trainCoins.toLocaleString()}
+                    </span>
+                  </div>
+
+                  {/* 材料列表 */}
+                  {cost.materials.map((m: { itemId: string; count: number }, idx: number) => {
+                    const hasEnough = gameManager.inventory.hasItem(m.itemId, m.count);
+                    const currentCount = gameManager.inventory.getItem(m.itemId)?.quantity || 0;
+                    const itemName = getItemName(m.itemId);
+                    return (
+                      <div key={idx} style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '8px 12px',
+                        background: 'rgba(0,0,0,0.3)',
+                        borderRadius: '8px',
+                      }}>
+                        <span style={{ fontSize: '16px' }}>📦</span>
+                        <span style={{
+                          color: hasEnough ? '#10b981' : '#ef4444',
+                          fontWeight: hasEnough ? 'normal' : 'bold',
+                        }}>
+                          {itemName}
+                        </span>
+                        <span style={{
+                          color: hasEnough ? '#10b981' : '#ef4444',
+                          marginLeft: 'auto',
+                        }}>
+                          {currentCount} / {m.count}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <button
+                  onClick={() => handleCraft(rarity)}
+                  disabled={!canAfford}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    background: canAfford
+                      ? `linear-gradient(135deg, ${CHIP_RARITY_CONFIG[rarity].color}, ${CHIP_RARITY_CONFIG[rarity].color}80)`
+                      : 'rgba(100, 100, 100, 0.2)',
+                    border: 'none',
+                    borderRadius: '10px',
+                    color: canAfford ? '#fff' : '#666',
+                    fontWeight: 'bold',
+                    fontSize: '14px',
+                    cursor: canAfford ? 'pointer' : 'not-allowed',
+                    boxShadow: canAfford ? `0 4px 15px ${CHIP_RARITY_CONFIG[rarity].color}50` : 'none',
+                  }}
+                >
+                  {!isCraftable ? `需要研发等级Lv.${requiredLevel}` : canAfford ? `制作${CHIP_RARITY_CONFIG[rarity].name}芯片` : '材料不足'}
+                </button>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

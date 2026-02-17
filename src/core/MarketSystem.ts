@@ -186,26 +186,26 @@ export function generateSystemListings(): MarketListing[] {
   }));
 }
 
-export function serializeMarketListing(listing: MarketListing): any {
+export function serializeMarketListing(listing: MarketListing): MarketListing {
   return { ...listing };
 }
 
-export function deserializeMarketListing(data: any): MarketListing {
+export function deserializeMarketListing(data: MarketListing): MarketListing {
   return { ...data };
 }
 
-export function serializePlayerListing(listing: PlayerListing): any {
+export function serializePlayerListing(listing: PlayerListing): PlayerListing {
   return { ...listing };
 }
 
-export function deserializePlayerListing(data: any): PlayerListing {
+export function deserializePlayerListing(data: PlayerListing): PlayerListing {
   return { ...data };
 }
 
-export function serializeMarketTransaction(transaction: MarketTransaction): any {
+export function serializeMarketTransaction(transaction: MarketTransaction): MarketTransaction {
   return { ...transaction };
 }
 
-export function deserializeMarketTransaction(data: any): MarketTransaction {
+export function deserializeMarketTransaction(data: MarketTransaction): MarketTransaction {
   return { ...data };
 }

@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { useGameStore } from '../stores/gameStore';
-import { EquipmentSlot, EffectTrigger } from '../data/equipmentTypes';
+import { EquipmentSlot } from '../data/equipmentTypes';
 import { EquipmentInstance } from '../core/EquipmentSystem';
-import { ItemType } from '../data/types';
 import type { InventoryItem } from '../data/types';
 import { calculateEquipmentStats } from '../core/EquipmentStatCalculator';
 
@@ -42,12 +41,7 @@ const ARMOR_SLOTS: EquipmentSlot[] = [
   EquipmentSlot.FEET,
 ];
 
-// 旧装备类型映射到新装备槽位
-const ITEM_TYPE_TO_SLOT: Record<string, EquipmentSlot> = {
-  [ItemType.WEAPON]: EquipmentSlot.WEAPON,
-  [ItemType.ARMOR]: EquipmentSlot.BODY,
-  [ItemType.ACCESSORY]: EquipmentSlot.ACCESSORY,
-};
+
 
 const RARITY_COLORS = {
   common: '#9ca3af',
@@ -59,12 +53,59 @@ const RARITY_COLORS = {
 };
 
 export default function PlayerScreen({ onBack }: PlayerScreenProps) {
-  const { gameManager, saveGame } = useGameStore();
+  const { gameManager, saveGame, getChipStatBonus, getChipSetBonuses } = useGameStore();
   const player = gameManager.player;
   const [selectedItem, setSelectedItem] = useState<EquipmentInstance | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<EquipmentSlot | null>(null);
   const [showBackpack, setShowBackpack] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [, setRefreshKey] = useState(0);
+
+  // 获取芯片加成
+  const chipStatBonus = getChipStatBonus();
+  const chipSetBonuses = getChipSetBonuses();
+
+  // 获取义体加成
+  const implantStats = gameManager.getImplantTotalStats();
+  const implantEffects = gameManager.getEquippedImplantEffects();
+
+  // 计算芯片加成后的属性值（固定值 + 百分比）
+  const chipAttack = (chipStatBonus['攻击'] || 0);
+  const chipAttackPercent = (chipStatBonus['攻击%'] || 0) / 100;
+  const implantAttack = implantStats['attack'] || 0;
+  const finalAttack = Math.floor((player.totalAttack + chipAttack + implantAttack) * (1 + chipAttackPercent));
+
+  const chipDefense = (chipStatBonus['防御'] || 0);
+  const chipDefensePercent = (chipStatBonus['防御%'] || 0) / 100;
+  const implantDefense = implantStats['defense'] || 0;
+  const finalDefense = Math.floor((player.totalDefense + chipDefense + implantDefense) * (1 + chipDefensePercent));
+
+  const chipHp = (chipStatBonus['生命'] || 0);
+  const chipHpPercent = (chipStatBonus['生命%'] || 0) / 100;
+  const implantHp = implantStats['hp'] || 0;
+  const finalMaxHp = Math.floor((player.totalMaxHp + chipHp + implantHp) * (1 + chipHpPercent));
+
+  const chipSpeed = (chipStatBonus['攻速'] || 0);
+  const implantSpeed = implantStats['speed'] || 0;
+  const finalAttackSpeed = player.totalAttackSpeed + chipSpeed + implantSpeed;
+
+  const chipCritRate = (chipStatBonus['会心'] || 0);
+  const implantCritRate = implantStats['critRate'] || 0;
+  const finalCrit = player.totalCrit + chipCritRate + implantCritRate;
+
+  const chipCritDamage = (chipStatBonus['暴伤'] || 0);
+  const implantCritDamage = implantStats['critDamage'] || 0;
+  const finalCritDamage = player.totalCritDamage + chipCritDamage + implantCritDamage;
+
+  // 计算包含芯片加成的战力
+  const totalPower = Math.floor(
+    finalAttack * 0.4 +
+    finalDefense * 0.3 +
+    finalMaxHp * 0.15 +
+    finalAttackSpeed * 0.1 * 100 +
+    (player.totalHit + player.totalDodge + finalCrit * 2) * 0.05 +
+    player.totalPenetration * 0.1 * 100 +
+    player.totalTrueDamage * 0.1 * 100
+  );
 
   // 获取已装备的物品
   const equippedItems = player.equippedItems;
@@ -85,7 +126,6 @@ export default function PlayerScreen({ onBack }: PlayerScreenProps) {
 
   // 处理装备槽位点击
   const handleSlotClick = (slot: EquipmentSlot, item: EquipmentInstance | undefined) => {
-    console.log('handleSlotClick, slot:', slot, 'item:', item, 'item.stats:', item?.stats);
     if (item) {
       // 已装备，显示详情
       setSelectedItem(item);
@@ -99,30 +139,23 @@ export default function PlayerScreen({ onBack }: PlayerScreenProps) {
 
   // 从背包装备
   const handleEquipFromBackpack = async (equipment: EquipmentInstance) => {
-    console.log('handleEquipFromBackpack START, equipment.stats.speed:', equipment.stats.speed, 'instanceId:', equipment.instanceId);
     if (selectedSlot) {
       // 从背包移除
       gameManager.inventory.removeEquipment(equipment.instanceId);
-      console.log('After removeEquipment, equipment.stats.speed:', equipment.stats.speed);
 
       // 卸下该槽位已有装备（如果有）
       const existing = player.getEquipmentBySlot(selectedSlot);
-      console.log('existing equipment:', existing?.name, 'existing.stats.speed:', existing?.stats.speed);
 
       if (existing) {
         player.unequipMythologyItem(selectedSlot);
-        console.log('After unequip, existing.stats.speed:', existing.stats.speed);
         // 将卸下的装备放回背包
         existing.equipped = false;
         gameManager.inventory.addEquipment(existing);
-        console.log('After addEquipment(existing), existing.stats.speed:', existing.stats.speed);
       }
 
       // 装备新物品
-      console.log('Before equipMythologyItem, equipment.stats.speed:', equipment.stats.speed);
       equipment.equipped = true;
       player.equipMythologyItem(equipment);
-      console.log('After equipMythologyItem, equipment.stats.speed:', equipment.stats.speed);
 
       // 保存游戏
       await saveGame();
@@ -131,7 +164,6 @@ export default function PlayerScreen({ onBack }: PlayerScreenProps) {
       setShowBackpack(false);
       setSelectedSlot(null);
     }
-    console.log('handleEquipFromBackpack END');
   };
 
   // 卸下装备
@@ -211,7 +243,7 @@ export default function PlayerScreen({ onBack }: PlayerScreenProps) {
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{ color: '#a1a1aa', fontSize: '12px' }}>战力</span>
               <span style={{ color: '#00d4ff', fontSize: '16px', fontWeight: 'bold' }}>
-                {player.power.toLocaleString()}
+                {totalPower.toLocaleString()}
               </span>
             </div>
           </div>
@@ -229,7 +261,6 @@ export default function PlayerScreen({ onBack }: PlayerScreenProps) {
             {ARMOR_SLOTS.map(slot => {
               // 优先从新装备系统（神话装备）获取
               const mythEquippedItem = player.getEquipmentBySlot(slot);
-              console.log('Rendering slot:', slot, 'mythEquippedItem:', mythEquippedItem?.name, 'mythEquippedItem.stats.speed:', mythEquippedItem?.stats.speed);
               // 从旧装备系统获取
               const oldEquippedItems = gameManager.inventory.getEquippedItems();
               let unifiedItem: UnifiedEquipment | null = null;
@@ -325,8 +356,8 @@ export default function PlayerScreen({ onBack }: PlayerScreenProps) {
             paddingBottom: '10px',
             borderBottom: '1px solid #374151'
           }}>
-            <StatItem label="攻击" value={Math.floor(player.totalAttack)} color="#f87171" flex={1} />
-            <StatItem label="生命" value={player.totalMaxHp} color="#ef4444" flex={1} />
+            <StatItem label="攻击" value={finalAttack} color="#f87171" flex={1} />
+            <StatItem label="生命" value={finalMaxHp} color="#ef4444" flex={1} />
           </div>
 
           {/* 第二行：防御、穿透 各占一半 */}
@@ -337,7 +368,7 @@ export default function PlayerScreen({ onBack }: PlayerScreenProps) {
             paddingBottom: '10px',
             borderBottom: '1px solid #374151'
           }}>
-            <StatItem label="防御" value={`${Math.floor(player.totalDefense)}/${player.damageReduction.toFixed(1)}%`} color="#60a5fa" flex={1} />
+            <StatItem label="防御" value={`${finalDefense}/${player.damageReduction.toFixed(1)}%`} color="#60a5fa" flex={1} />
             <StatItem label="穿透" value={`${Math.floor(player.totalPenetration)}/${Math.floor(player.totalPenetrationPercent)}%`} color="#fb923c" flex={1} />
           </div>
 
@@ -351,7 +382,7 @@ export default function PlayerScreen({ onBack }: PlayerScreenProps) {
           }}>
             <StatItem label="命中" value={Math.floor(player.totalHit)} color="#00d4ff" flex={1} />
             <StatItem label="闪避" value={Math.floor(player.totalDodge)} color="#4ade80" flex={1} />
-            <StatItem label="攻速" value={player.totalAttackSpeed.toFixed(1)} color="#c084fc" flex={1} />
+            <StatItem label="攻速" value={finalAttackSpeed.toFixed(1)} color="#c084fc" flex={1} />
             <StatItem label="真伤" value={`${Math.floor(player.totalTrueDamage)}%`} color="#ec4899" flex={1} />
           </div>
 
@@ -360,9 +391,9 @@ export default function PlayerScreen({ onBack }: PlayerScreenProps) {
             display: 'flex',
             gap: '6px'
           }}>
-            <StatItem label="会心" value={`${Math.floor(player.totalCrit)}`} color="#ef4444" flex={1} />
+            <StatItem label="会心" value={Math.floor(finalCrit)} color="#ef4444" flex={1} />
             <StatItem label="护心" value={Math.floor(player.totalGuard)} color="#22d3ee" flex={1} />
-            <StatItem label="暴伤" value={`${Math.floor(player.totalCritDamage)}%`} color="#f472b6" flex={1} />
+            <StatItem label="暴伤" value={`${Math.floor(finalCritDamage)}%`} color="#f472b6" flex={1} />
             <StatItem label="幸运" value={Math.floor(player.totalLuck)} color="#00d4ff" flex={1} />
           </div>
         </div>
@@ -389,6 +420,78 @@ export default function PlayerScreen({ onBack }: PlayerScreenProps) {
               <EquipmentBonusItem label="暴击" value={player.equipmentStats.crit} color="#ef4444" />
               <EquipmentBonusItem label="穿透" value={player.equipmentStats.penetration} color="#fb923c" />
             </div>
+          </div>
+        )}
+
+        {/* 芯片加成详情 */}
+        {Object.keys(chipStatBonus).length > 0 && (
+          <div style={{
+            backgroundColor: '#1a1f3a',
+            borderRadius: '12px',
+            padding: '16px',
+            border: '1px solid #00d4ff',
+            marginBottom: '16px'
+          }}>
+            <h3 style={{ color: '#00d4ff', fontSize: '14px', fontWeight: 'bold', margin: '0 0 12px 0' }}>
+              💾 芯片加成
+            </h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
+              {Object.entries(chipStatBonus).map(([stat, value]) => (
+                <EquipmentBonusItem
+                  key={stat}
+                  label={stat}
+                  value={typeof value === 'number' ? parseFloat(value.toFixed(1)) : value}
+                  color="#00d4ff"
+                />
+              ))}
+            </div>
+            {/* 芯片套装效果 */}
+            {chipSetBonuses.length > 0 && (
+              <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #374151' }}>
+                <h4 style={{ color: '#a855f7', fontSize: '12px', margin: '0 0 8px 0' }}>套装效果:</h4>
+                {chipSetBonuses.map((bonus, idx) => (
+                  <div key={idx} style={{ color: '#a1a1aa', fontSize: '11px', marginBottom: '4px' }}>
+                    {bonus.setName}: {bonus.bonus}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 义体加成详情 */}
+        {Object.keys(implantStats).length > 0 && (
+          <div style={{
+            backgroundColor: '#1a1f3a',
+            borderRadius: '12px',
+            padding: '16px',
+            border: '1px solid #a855f7',
+            marginBottom: '16px'
+          }}>
+            <h3 style={{ color: '#a855f7', fontSize: '14px', fontWeight: 'bold', margin: '0 0 12px 0' }}>
+              🦾 义体加成
+            </h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
+              {Object.entries(implantStats).map(([stat, value]) => (
+                <EquipmentBonusItem
+                  key={stat}
+                  label={stat === 'attack' ? '攻击' : stat === 'defense' ? '防御' : stat === 'hp' ? '生命' : stat === 'speed' ? '速度' : stat === 'critRate' ? '暴击率' : stat === 'critDamage' ? '暴击伤害' : stat}
+                  value={typeof value === 'number' ? parseFloat(value.toFixed(1)) : value}
+                  color="#a855f7"
+                />
+              ))}
+            </div>
+            {/* 义体特殊效果 */}
+            {implantEffects.length > 0 && (
+              <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #374151' }}>
+                <h4 style={{ color: '#00d4ff', fontSize: '12px', margin: '0 0 8px 0' }}>特殊效果:</h4>
+                {implantEffects.map(({ implant, effect }, idx) => (
+                  <div key={idx} style={{ color: '#a1a1aa', fontSize: '11px', marginBottom: '4px' }}>
+                    <span style={{ color: '#a855f7' }}>{implant.name}</span>: {effect.name} - {effect.description}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </main>
@@ -648,7 +751,7 @@ export default function PlayerScreen({ onBack }: PlayerScreenProps) {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {/* 神话装备 */}
                   {mythEquipments.map(equipment => {
-                    const { quality: eqQuality, name: eqName } = extractEquipmentName(equipment.name);
+                    const { quality: eqQuality } = extractEquipmentName(equipment.name);
                     const eqQualityConfig = eqQuality ? QUALITY_CONFIG[eqQuality] : null;
                     const eqColor = eqQualityConfig ? eqQualityConfig.color : RARITY_COLORS[equipment.rarity as keyof typeof RARITY_COLORS];
                     return (
@@ -688,7 +791,7 @@ export default function PlayerScreen({ onBack }: PlayerScreenProps) {
 
                   {/* 制造装备 */}
                   {craftedItems.map(item => {
-                    const { quality: itemQuality, name: itemName } = extractEquipmentName(item.name);
+                    const { quality: itemQuality } = extractEquipmentName(item.name);
                     const itemQualityConfig = itemQuality ? QUALITY_CONFIG[itemQuality] : null;
                     const itemColor = itemQualityConfig ? itemQualityConfig.color : RARITY_COLORS[item.rarity as keyof typeof RARITY_COLORS];
                     return (
@@ -992,30 +1095,6 @@ function EquipmentBonusItem({ label, value, color }: { label: string; value: num
     }}>
       <span style={{ color: '#a1a1aa', fontSize: '12px' }}>{label}</span>
       <span style={{ color, fontSize: '13px', fontWeight: 'bold' }}>+{value}</span>
-    </div>
-  );
-}
-
-// 属性条组件
-function StatBar({ label, current, max, color }: { label: string; current: number; max: number; color: string }) {
-  const percentage = Math.max(0, Math.min(100, (current / max) * 100));
-
-  return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px' }}>
-        <span style={{ color: '#a1a1aa' }}>{label}</span>
-        <span style={{ color: 'white' }}>{Math.floor(current)}/{max}</span>
-      </div>
-      <div style={{ backgroundColor: '#1f2937', borderRadius: '9999px', height: '8px', overflow: 'hidden' }}>
-        <div
-          style={{
-            height: '100%',
-            backgroundColor: color,
-            transition: 'width 0.3s',
-            width: `${percentage}%`
-          }}
-        />
-      </div>
     </div>
   );
 }

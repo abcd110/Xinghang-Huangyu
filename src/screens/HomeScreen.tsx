@@ -79,14 +79,15 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
   const autoCollectState = getAutoCollectState();
   const isCollecting = autoCollectState.isCollecting;
 
+  // 使用 requestAnimationFrame 避免在 effect 中直接 setState
   useEffect(() => {
-    setMounted(true);
+    requestAnimationFrame(() => setMounted(true));
   }, []);
 
   // 更新采集时长显示
   useEffect(() => {
     if (!isCollecting) {
-      setCollectDuration('00:00');
+      requestAnimationFrame(() => setCollectDuration('00:00'));
       return;
     }
 
@@ -1209,7 +1210,6 @@ function AutoCollectModal({
   isCollecting,
   currentMode,
   availableLocations,
-  playerLevel,
   defeatedBossCount,
   remainingDailyHours,
   energyEfficiency,
@@ -1228,7 +1228,6 @@ function AutoCollectModal({
   const [selectedLocation, setSelectedLocation] = useState(availableLocations[0]?.id || 'robot_lv1');
   const [selectedMode, setSelectedMode] = useState<AutoCollectMode>(currentMode || AutoCollectMode.BALANCED);
 
-  const selectedLoc = availableLocations.find(loc => loc.id === selectedLocation);
   const robot = getCollectRobot(selectedLocation);
 
   const handleModeChange = (mode: AutoCollectMode) => {

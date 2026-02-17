@@ -117,7 +117,7 @@ export default function ExplorationSelectScreen({ onBack, onNavigate }: Explorat
   const [hoveredPlanet, setHoveredPlanet] = useState<string | null>(null);
 
   useEffect(() => {
-    setMounted(true);
+    requestAnimationFrame(() => setMounted(true));
   }, []);
 
   return (
@@ -284,7 +284,7 @@ export default function ExplorationSelectScreen({ onBack, onNavigate }: Explorat
               onMouseLeave={() => setHoveredPlanet(null)}
               style={{
                 position: 'relative',
-                background: hoveredPlanet === planet.id 
+                background: hoveredPlanet === planet.id
                   ? `linear-gradient(135deg, rgba(0,0,0,0.6) 0%, ${planet.theme.glow}20 50%, rgba(0,0,0,0.6) 100%)`
                   : 'rgba(0, 0, 0, 0.5)',
                 border: 'none',
@@ -297,7 +297,7 @@ export default function ExplorationSelectScreen({ onBack, onNavigate }: Explorat
                 transform: mounted ? 'translateY(0) scale(1)' : 'translateY(30px) scale(0.95)',
                 transition: 'all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)',
                 transitionDelay: `${index * 100}ms`,
-                boxShadow: hoveredPlanet === planet.id 
+                boxShadow: hoveredPlanet === planet.id
                   ? `0 0 40px ${planet.theme.glow}, inset 0 0 60px ${planet.theme.glow}30`
                   : `0 0 20px ${planet.theme.glow}40, inset 0 0 40px rgba(0,0,0,0.5)`
               }}
@@ -416,7 +416,7 @@ export default function ExplorationSelectScreen({ onBack, onNavigate }: Explorat
                     borderRadius: '50%',
                     overflow: 'hidden',
                     border: `3px solid ${planet.theme.primary}`,
-                    boxShadow: hoveredPlanet === planet.id 
+                    boxShadow: hoveredPlanet === planet.id
                       ? `0 0 40px ${planet.theme.glow}, inset 0 0 30px ${planet.theme.glow}`
                       : `0 0 20px ${planet.theme.glow}, inset 0 0 15px ${planet.theme.glow}`,
                     animation: 'float 4s ease-in-out infinite',
@@ -469,7 +469,7 @@ export default function ExplorationSelectScreen({ onBack, onNavigate }: Explorat
                     fontWeight: 'bold',
                     margin: 0,
                     letterSpacing: '1px',
-                    textShadow: hoveredPlanet === planet.id 
+                    textShadow: hoveredPlanet === planet.id
                       ? `0 0 20px ${planet.theme.glow}, 0 0 40px ${planet.theme.glow}`
                       : `0 0 10px ${planet.theme.glow}`,
                     transition: 'all 0.3s ease'
@@ -522,10 +522,10 @@ export default function ExplorationSelectScreen({ onBack, onNavigate }: Explorat
                   alignItems: 'center',
                   justifyContent: 'center',
                   borderRadius: '50%',
-                  background: hoveredPlanet === planet.id 
+                  background: hoveredPlanet === planet.id
                     ? `linear-gradient(135deg, ${planet.theme.primary}, ${planet.theme.secondary})`
                     : `linear-gradient(135deg, ${planet.theme.secondary}, ${planet.theme.primary})`,
-                  boxShadow: hoveredPlanet === planet.id 
+                  boxShadow: hoveredPlanet === planet.id
                     ? `0 0 25px ${planet.theme.glow}`
                     : `0 0 15px ${planet.theme.glow}`,
                   transition: 'all 0.3s ease'
