@@ -6,7 +6,7 @@ import InventoryScreen from './screens/InventoryScreen';
 import NanoArmorCraftingScreen from './screens/NanoArmorCraftingScreen';
 import QuestScreen from './screens/QuestScreen';
 import ShopScreen from './screens/ShopScreen';
-import BaseScreen from './screens/BaseScreen';
+import { BaseScreen } from './screens/baseScreen';
 
 import DecomposeScreen from './screens/DecomposeScreen';
 import MaterialSynthesisScreen from './screens/MaterialSynthesisScreen';
@@ -179,8 +179,6 @@ function App() {
 
     // 如果点击主页，清除所有探索状态（返回列车）
     if (screen === 'home') {
-      setMythologyLocationId(null);
-      setMythologyBattlePending(false);
       setBattleParams(null);
       setPlanetTypeFilter(null);
     }
