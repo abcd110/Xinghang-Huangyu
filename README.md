@@ -224,22 +224,22 @@ npx cap open ios
 ## 游戏截图
 
 ### 游戏图标
-![游戏图标](../游戏截图/游戏图标.png)
+![游戏图标](public/screenshots/游戏图标.png)
 
 ### 舰桥主页
-![舰桥](../游戏截图/舰桥.jpg)
+![舰桥](public/screenshots/舰桥.jpg)
 
 ### 基地界面
-![基地](../游戏截图/基地.jpg)
+![基地](public/screenshots/基地.jpg)
 
 ### 战斗系统
-![战斗](../游戏截图/战斗.jpg)
+![战斗](public/screenshots/战斗.jpg)
 
 ### 芯片系统
-![芯片](../游戏截图/芯片.jpg)
+![芯片](public/screenshots/芯片.jpg)
 
 ### 基因工程
-![基因工程](../游戏截图/基因工程.jpg)
+![基因工程](public/screenshots/基因工程.jpg)
 
 ## 版权说明
 
