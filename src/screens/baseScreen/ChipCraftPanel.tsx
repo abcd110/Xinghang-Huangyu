@@ -105,16 +105,24 @@ function ChipCraftModal({ slot, gameManager, onCraft, onClose }: {
       backdropFilter: 'blur(8px)',
       zIndex: 100,
       display: 'flex',
-      flexDirection: 'column',
+      justifyContent: 'center',
     }}>
       <div style={{
-        background: 'linear-gradient(180deg, #00d4ff30, #00d4ff10)',
-        padding: '16px 20px',
-        borderBottom: '1px solid #00d4ff50',
+        width: '100%',
+        maxWidth: '430px',
+        height: '100%',
         display: 'flex',
-        alignItems: 'center',
-        gap: '12px',
+        flexDirection: 'column',
+        background: 'rgba(0, 20, 40, 0.95)',
       }}>
+        <div style={{
+          background: 'linear-gradient(180deg, #00d4ff30, #00d4ff10)',
+          padding: '16px 20px',
+          borderBottom: '1px solid #00d4ff50',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+        }}>
         <button
           onClick={onClose}
           style={{
@@ -203,7 +211,7 @@ function ChipCraftModal({ slot, gameManager, onCraft, onClose }: {
                       padding: '4px 8px',
                       borderRadius: '4px',
                     }}>
-                      强化上限: {CHIP_RARITY_CONFIG[rarity].maxEnhance}次
+                      等级上限: Lv.{CHIP_RARITY_CONFIG[rarity].maxLevel}
                     </span>
                   </div>
                 </div>
@@ -285,6 +293,7 @@ function ChipCraftModal({ slot, gameManager, onCraft, onClose }: {
             );
           })}
         </div>
+      </div>
       </div>
     </div>
   );

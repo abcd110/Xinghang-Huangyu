@@ -61,7 +61,6 @@ export function ResearchContent() {
   const techTrees = [
     { name: '采矿平台', icon: '⛏️', color: colors.mining, prefix: 'mining_' },
     { name: '芯片研发', icon: '💾', color: colors.chip, prefix: 'chip_' },
-    { name: '基因工程', icon: '🧬', color: colors.gene, prefix: 'gene_' },
     { name: '机械飞升', icon: '🦾', color: colors.cybernetic, prefix: 'cybernetic_' },
   ];
 

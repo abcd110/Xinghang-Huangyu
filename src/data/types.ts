@@ -297,6 +297,31 @@ export interface Enemy {
   icon?: string;
 }
 
+// 战斗敌人接口（用于遗迹系统等）
+export interface BattleEnemy {
+  id: string;
+  name: string;
+  hp: number;
+  maxHp: number;
+  attack: number;
+  defense: number;
+  speed: number;
+  hit: number;
+  dodge: number;
+  crit: number;
+  critDamage: number;
+  penetration?: number;
+  trueDamage?: number;
+  guard: number;
+  level: number;
+  isElite?: boolean;
+  isBoss?: boolean;
+  rewards?: {
+    exp: number;
+    items?: string[];
+  };
+}
+
 export interface Quest {
   id: string;
   title: string;

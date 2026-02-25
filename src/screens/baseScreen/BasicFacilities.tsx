@@ -208,17 +208,9 @@ export function MedicalContent() {
       }}>
         <div style={{ ...styles.label, marginBottom: '8px' }}>当前效果:</div>
         <div style={{ ...styles.value, lineHeight: '1.8' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <span>❤️ 休整恢复生命:</span>
             <span style={{ color: colors.medical }}>{efficiency.hpRecoveryBase} → {efficiency.hpRecoveryActual} 点</span>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-            <span>⚡ 休整恢复体力:</span>
-            <span style={{ color: colors.energy }}>{efficiency.staminaRecoveryBase} → {efficiency.staminaRecoveryActual} 点</span>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span>🔄 体力自然恢复:</span>
-            <span style={{ color: colors.success }}>{efficiency.staminaRegenBase} → {efficiency.staminaRegenActual} 点/分钟</span>
           </div>
         </div>
       </div>

@@ -27,6 +27,5 @@ export { ShopSystem, ShopItem } from './ShopSystem';
 export { CraftingSystem, CraftingRecipe, CraftingMaterial } from './CraftingSystem';
 export { EnhanceSystem, EnhanceResult, EnhanceResultType } from './EnhanceSystem';
 export { DecomposeSystem, DecomposeReward } from './DecomposeSystem';
-export { BattleSystem, BattleResult, BattleLog } from './BattleSystem';
 export { EquipmentSystem, EquipmentInstance, CalculatedStats } from './EquipmentSystem';
 export { EquipmentStatCalculator } from './EquipmentStatCalculator';

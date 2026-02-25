@@ -34,6 +34,8 @@ export interface Implant {
     speed?: number;
     critRate?: number;
     critDamage?: number;
+    hit?: number;
+    dodge?: number;
   };
   levelScaling: {
     attack?: number;
@@ -42,6 +44,8 @@ export interface Implant {
     speed?: number;
     critRate?: number;
     critDamage?: number;
+    hit?: number;
+    dodge?: number;
   };
   specialEffect?: {
     name: string;
@@ -69,13 +73,13 @@ export const IMPLANT_TYPE_CONFIG: Record<ImplantType, { name: string; icon: stri
 };
 
 export const IMPLANT_RARITY_CONFIG: Record<ImplantRarity, { name: string; color: string; statMultiplier: number }> = {
-  [ImplantRarity.RARE]: { name: '稀有', color: '#3b82f6', statMultiplier: 1.5 },
-  [ImplantRarity.EPIC]: { name: '史诗', color: '#a855f7', statMultiplier: 2.0 },
-  [ImplantRarity.LEGENDARY]: { name: '传说', color: '#f59e0b', statMultiplier: 2.5 },
+  [ImplantRarity.RARE]: { name: '稀有', color: '#3b82f6', statMultiplier: 1 },
+  [ImplantRarity.EPIC]: { name: '史诗', color: '#a855f7', statMultiplier: 1 },
+  [ImplantRarity.LEGENDARY]: { name: '传说', color: '#f59e0b', statMultiplier: 1 },
 };
 
 export const IMPLANT_TEMPLATES: Omit<Implant, 'level'>[] = [
-  // 神经接口
+  // 神经接口 - 唯一提供攻速的部位
   {
     id: 'implant_neural_rare',
     type: ImplantType.NEURAL,
@@ -83,8 +87,8 @@ export const IMPLANT_TEMPLATES: Omit<Implant, 'level'>[] = [
     name: '神经加速器',
     description: '提升神经反应速度的植入体',
     maxLevel: 10,
-    baseStats: { speed: 8, critRate: 3 },
-    levelScaling: { speed: 1.5, critRate: 0.5 },
+    baseStats: { speed: 0.5, critRate: 3, hit: 2 },
+    levelScaling: { speed: 0.05, critRate: 0.5, hit: 0.3 },
   },
   {
     id: 'implant_neural_epic',
@@ -93,8 +97,8 @@ export const IMPLANT_TEMPLATES: Omit<Implant, 'level'>[] = [
     name: '量子神经网络',
     description: '利用量子纠缠原理的超前神经接口',
     maxLevel: 15,
-    baseStats: { speed: 12, critRate: 6, critDamage: 10 },
-    levelScaling: { speed: 2, critRate: 1, critDamage: 2 },
+    baseStats: { speed: 1, critRate: 5, critDamage: 10, hit: 3 },
+    levelScaling: { speed: 0.08, critRate: 0.8, critDamage: 1.5, hit: 0.4 },
     specialEffect: {
       name: '量子闪避',
       description: '有概率完全闪避攻击',
@@ -109,8 +113,8 @@ export const IMPLANT_TEMPLATES: Omit<Implant, 'level'>[] = [
     name: '虚空神经核心',
     description: '连接虚空意识的终极神经接口',
     maxLevel: 20,
-    baseStats: { speed: 18, critRate: 10, critDamage: 20 },
-    levelScaling: { speed: 3, critRate: 1.5, critDamage: 3 },
+    baseStats: { speed: 1.5, critRate: 8, critDamage: 15, hit: 5 },
+    levelScaling: { speed: 0.1, critRate: 1, critDamage: 2, hit: 0.5 },
     specialEffect: {
       name: '虚空预知',
       description: '预知敌人攻击轨迹',
@@ -118,7 +122,7 @@ export const IMPLANT_TEMPLATES: Omit<Implant, 'level'>[] = [
       effect: 'dodge_chance_20',
     },
   },
-  // 骨骼强化
+  // 骨骼强化 - 防御+生命+闪避
   {
     id: 'implant_skeletal_rare',
     type: ImplantType.SKELETAL,
@@ -126,8 +130,8 @@ export const IMPLANT_TEMPLATES: Omit<Implant, 'level'>[] = [
     name: '钛合金骨架',
     description: '轻量化的钛合金骨骼替代品',
     maxLevel: 10,
-    baseStats: { defense: 15, hp: 30 },
-    levelScaling: { defense: 3, hp: 6 },
+    baseStats: { defense: 12, hp: 25, dodge: 1 },
+    levelScaling: { defense: 2, hp: 5, dodge: 0.15 },
   },
   {
     id: 'implant_skeletal_epic',
@@ -136,8 +140,8 @@ export const IMPLANT_TEMPLATES: Omit<Implant, 'level'>[] = [
     name: '纳米碳纤维骨骼',
     description: '自修复纳米材料构成的超级骨骼',
     maxLevel: 15,
-    baseStats: { defense: 30, hp: 60 },
-    levelScaling: { defense: 5, hp: 10 },
+    baseStats: { defense: 25, hp: 50, dodge: 2 },
+    levelScaling: { defense: 4, hp: 8, dodge: 0.2 },
     specialEffect: {
       name: '自我修复',
       description: '战斗中持续恢复生命',
@@ -152,8 +156,8 @@ export const IMPLANT_TEMPLATES: Omit<Implant, 'level'>[] = [
     name: '虚空晶骨',
     description: '虚空晶体质构成的永恒骨骼',
     maxLevel: 20,
-    baseStats: { defense: 50, hp: 100 },
-    levelScaling: { defense: 8, hp: 15 },
+    baseStats: { defense: 40, hp: 80, dodge: 3 },
+    levelScaling: { defense: 6, hp: 12, dodge: 0.3 },
     specialEffect: {
       name: '虚空护盾',
       description: '受到致命伤害时触发护盾',
@@ -161,7 +165,7 @@ export const IMPLANT_TEMPLATES: Omit<Implant, 'level'>[] = [
       effect: 'death_shield_50',
     },
   },
-  // 肌肉增强
+  // 肌肉增强 - 攻击+生命+暴击伤害
   {
     id: 'implant_muscular_rare',
     type: ImplantType.MUSCULAR,
@@ -169,8 +173,8 @@ export const IMPLANT_TEMPLATES: Omit<Implant, 'level'>[] = [
     name: '合成肌纤维',
     description: '高强度合成肌肉纤维植入',
     maxLevel: 10,
-    baseStats: { attack: 20, hp: 15 },
-    levelScaling: { attack: 4, hp: 3 },
+    baseStats: { attack: 15, hp: 12, critDamage: 8 },
+    levelScaling: { attack: 3, hp: 2, critDamage: 1 },
   },
   {
     id: 'implant_muscular_epic',
@@ -179,8 +183,8 @@ export const IMPLANT_TEMPLATES: Omit<Implant, 'level'>[] = [
     name: '动力外骨骼',
     description: '外置动力增强系统',
     maxLevel: 15,
-    baseStats: { attack: 35, hp: 25, critDamage: 15 },
-    levelScaling: { attack: 6, hp: 5, critDamage: 2 },
+    baseStats: { attack: 28, hp: 20, critDamage: 12 },
+    levelScaling: { attack: 5, hp: 4, critDamage: 1.5 },
     specialEffect: {
       name: '过载打击',
       description: '攻击时有概率造成额外伤害',
@@ -195,8 +199,8 @@ export const IMPLANT_TEMPLATES: Omit<Implant, 'level'>[] = [
     name: '虚空动力核心',
     description: '汲取虚空能量的终极肌肉强化系统',
     maxLevel: 20,
-    baseStats: { attack: 60, hp: 40, critDamage: 25 },
-    levelScaling: { attack: 10, hp: 8, critDamage: 4 },
+    baseStats: { attack: 45, hp: 30, critDamage: 20 },
+    levelScaling: { attack: 7, hp: 5, critDamage: 2.5 },
     specialEffect: {
       name: '虚空爆发',
       description: '攻击时有概率触发虚空能量爆发',
@@ -204,7 +208,7 @@ export const IMPLANT_TEMPLATES: Omit<Implant, 'level'>[] = [
       effect: 'void_burst_25',
     },
   },
-  // 心血管改造
+  // 心血管改造 - 生命+防御+攻击
   {
     id: 'implant_cardio_rare',
     type: ImplantType.CARDIO,
@@ -212,8 +216,8 @@ export const IMPLANT_TEMPLATES: Omit<Implant, 'level'>[] = [
     name: '人工心脏',
     description: '高效率的人工心脏替代品',
     maxLevel: 10,
-    baseStats: { hp: 60, speed: 4 },
-    levelScaling: { hp: 10, speed: 0.8 },
+    baseStats: { hp: 50, defense: 5 },
+    levelScaling: { hp: 8, defense: 1 },
   },
   {
     id: 'implant_cardio_epic',
@@ -222,8 +226,8 @@ export const IMPLANT_TEMPLATES: Omit<Implant, 'level'>[] = [
     name: '聚变动力心脏',
     description: '微型聚变反应堆驱动的心脏系统',
     maxLevel: 15,
-    baseStats: { hp: 100, speed: 8, defense: 15 },
-    levelScaling: { hp: 15, speed: 1.2, defense: 2.5 },
+    baseStats: { hp: 80, defense: 12, attack: 8 },
+    levelScaling: { hp: 12, defense: 2, attack: 1.5 },
     specialEffect: {
       name: '能量过载',
       description: '濒死时触发护盾',
@@ -238,8 +242,8 @@ export const IMPLANT_TEMPLATES: Omit<Implant, 'level'>[] = [
     name: '虚空之心',
     description: '虚空能量驱动的永恒心脏',
     maxLevel: 20,
-    baseStats: { hp: 150, speed: 12, defense: 25, attack: 20 },
-    levelScaling: { hp: 20, speed: 1.5, defense: 4, attack: 3 },
+    baseStats: { hp: 120, defense: 20, attack: 15 },
+    levelScaling: { hp: 15, defense: 3, attack: 2 },
     specialEffect: {
       name: '虚空再生',
       description: '战斗中持续大幅恢复生命',
@@ -274,7 +278,7 @@ export function getImplantStats(implant: Implant): Record<string, number> {
   const rarityConfig = IMPLANT_RARITY_CONFIG[implant.rarity];
   const stats: Record<string, number> = {};
 
-  const statKeys = ['attack', 'defense', 'hp', 'speed', 'critRate', 'critDamage'] as const;
+  const statKeys = ['attack', 'defense', 'hp', 'speed', 'critRate', 'critDamage', 'hit', 'dodge'] as const;
 
   statKeys.forEach(key => {
     const baseValue = implant.baseStats[key] || 0;

@@ -475,7 +475,7 @@ export default function PlayerScreen({ onBack }: PlayerScreenProps) {
               {Object.entries(implantStats).map(([stat, value]) => (
                 <EquipmentBonusItem
                   key={stat}
-                  label={stat === 'attack' ? '攻击' : stat === 'defense' ? '防御' : stat === 'hp' ? '生命' : stat === 'speed' ? '速度' : stat === 'critRate' ? '暴击率' : stat === 'critDamage' ? '暴击伤害' : stat}
+                  label={stat === 'attack' ? '攻击' : stat === 'defense' ? '防御' : stat === 'hp' ? '生命' : stat === 'speed' ? '攻速' : stat === 'critRate' ? '会心' : stat === 'critDamage' ? '暴击伤害' : stat === 'hit' ? '命中' : stat === 'dodge' ? '闪避' : stat}
                   value={typeof value === 'number' ? parseFloat(value.toFixed(1)) : value}
                   color="#a855f7"
                 />
@@ -494,6 +494,69 @@ export default function PlayerScreen({ onBack }: PlayerScreenProps) {
             )}
           </div>
         )}
+
+        {/* 基因加成详情 */}
+        {(() => {
+          const geneStats = player.geneStats;
+          const lifeSteal = player.lifeStealPercent;
+          const hasGeneStats = Object.keys(geneStats).length > 0 || lifeSteal > 0;
+          if (!hasGeneStats) return null;
+          
+          const statNames: Record<string, string> = {
+            maxHpPercent: '最大HP',
+            attackPercent: '攻击力',
+            defensePercent: '防御力',
+            critRate: '会心',
+            critDamage: '暴击伤害',
+            dodgeRate: '闪避',
+            speedPercent: '攻速',
+            hpRegenPercent: 'HP恢复',
+            attack: '攻击',
+            defense: '防御',
+            hp: '生命',
+            speed: '攻速',
+            crit: '会心',
+            hit: '命中',
+            dodge: '闪避',
+          };
+          
+          return (
+            <div style={{
+              backgroundColor: '#1a1f3a',
+              borderRadius: '12px',
+              padding: '16px',
+              border: '1px solid #22c55e',
+              marginBottom: '16px'
+            }}>
+              <h3 style={{ color: '#22c55e', fontSize: '14px', fontWeight: 'bold', margin: '0 0 12px 0' }}>
+                🧬 基因加成
+              </h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
+                {Object.entries(geneStats).map(([stat, value]) => {
+                  if (!value || value === 0) return null;
+                  const statName = statNames[stat] || stat;
+                  const isPercent = stat.includes('Percent') || stat.includes('Rate') || stat === 'critDamage';
+                  return (
+                    <EquipmentBonusItem
+                      key={stat}
+                      label={statName}
+                      value={isPercent ? `${parseFloat(value.toFixed(1))}%` : parseFloat(value.toFixed(1))}
+                      color="#22c55e"
+                    />
+                  );
+                })}
+                {lifeSteal > 0 && (
+                  <EquipmentBonusItem
+                    key="lifeSteal"
+                    label="生命偷取"
+                    value={`${lifeSteal.toFixed(1)}%`}
+                    color="#ef4444"
+                  />
+                )}
+              </div>
+            </div>
+          );
+        })()}
       </main>
 
       {/* 装备详情弹窗 */}

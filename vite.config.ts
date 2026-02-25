@@ -5,16 +5,29 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   server: {
-    host: '0.0.0.0',  // 允许外部访问
+    host: '0.0.0.0',
     port: 5173,
-    cors: true,       // 启用CORS
+    cors: true,
   },
   build: {
-    // 跳过类型检查
     minify: true,
   },
   esbuild: {
-    // 忽略 TypeScript 错误
     logOverride: { 'this-is-undefined-in-esm': 'silent' }
-  }
+  },
+  test: {
+    globals: true,
+    environment: 'node',
+    include: ['src/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html'],
+      exclude: [
+        'node_modules/',
+        'src/**/*.test.{ts,tsx}',
+        'src/**/*.spec.{ts,tsx}',
+        'src/**/*.d.ts',
+      ],
+    },
+  },
 })

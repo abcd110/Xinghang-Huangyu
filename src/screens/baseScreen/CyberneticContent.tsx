@@ -9,6 +9,8 @@ export function CyberneticContent() {
   const [activeTab, setActiveTab] = useState<'slots' | 'craft'>('slots');
   const [selectedImplant, setSelectedImplant] = useState<Implant | null>(null);
   const [selectedCraftType, setSelectedCraftType] = useState<ImplantType | null>(null);
+  const [filterType, setFilterType] = useState<ImplantType | null>(null);
+  const [showDecomposeConfirm, setShowDecomposeConfirm] = useState(false);
   const [message, setMessage] = useState<MessageState | null>(null);
 
   const implants = gameManager.getImplants();
@@ -49,8 +51,17 @@ export function CyberneticContent() {
 
   const handleDecompose = async (implantId: string) => {
     const result = decomposeImplant(implantId);
-    if (result.success) { showMessage(`分解成功，获得${result.rewards}`, 'success'); setSelectedImplant(null); await saveGame(); }
+    if (result.success) { showMessage(`分解成功，获得${result.rewards}`, 'success'); setSelectedImplant(null); setShowDecomposeConfirm(false); await saveGame(); }
     else { showMessage(result.message, 'error'); }
+  };
+
+  const handleDecomposeClick = () => {
+    if (selectedImplant?.locked) return;
+    if (gameManager.equippedImplants[selectedImplant!.type] === selectedImplant!.id) {
+      showMessage('已装备的义体无法分解，请先卸下', 'error');
+      return;
+    }
+    setShowDecomposeConfirm(true);
   };
 
   const handleToggleLock = async (implantId: string) => {
@@ -64,7 +75,7 @@ export function CyberneticContent() {
     return implants.find(i => i.id === implantId);
   };
 
-  const statNames: Record<string, string> = { attack: '攻击', defense: '防御', hp: '生命', speed: '速度', critRate: '暴击率', critDamage: '暴击伤害' };
+  const statNames: Record<string, string> = { attack: '攻击', defense: '防御', hp: '生命', speed: '攻速', critRate: '会心', critDamage: '暴击伤害', hit: '命中', dodge: '闪避' };
 
   return (
     <div style={{ position: 'relative' }}>
@@ -105,7 +116,7 @@ export function CyberneticContent() {
               const typeConfig = IMPLANT_TYPE_CONFIG[type];
 
               return (
-                <div key={type} onClick={() => { if (equipped) setSelectedImplant(equipped); }} style={{ ...styles.cardBox(equipped ? IMPLANT_RARITY_CONFIG[equipped.rarity].color : 'rgba(255,255,255,0.1)', false), padding: '12px', background: isUnlocked ? `${colors.cybernetic}15` : 'rgba(100, 100, 100, 0.1)', opacity: isUnlocked ? 1 : 0.5, cursor: equipped ? 'pointer' : 'default' }}>
+                <div key={type} onClick={() => { if (equipped) setSelectedImplant(equipped); setFilterType(type); }} style={{ ...styles.cardBox(equipped ? IMPLANT_RARITY_CONFIG[equipped.rarity].color : 'rgba(255,255,255,0.1)', false), padding: '12px', background: isUnlocked ? `${colors.cybernetic}15` : 'rgba(100, 100, 100, 0.1)', opacity: isUnlocked ? 1 : 0.5, cursor: 'pointer' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <span style={{ fontSize: '16px' }}>{typeConfig.icon}</span>
@@ -119,7 +130,7 @@ export function CyberneticContent() {
                         <div style={{ color: IMPLANT_RARITY_CONFIG[equipped.rarity].color, fontSize: '12px' }}>{equipped.name}</div>
                         <div style={{ ...styles.label, fontSize: '10px' }}>{typeConfig.description}</div>
                       </div>
-                      <button onClick={(e) => { e.stopPropagation(); handleUnequip(type); }} style={{ ...styles.dangerButton(), padding: '4px 8px', fontSize: '10px' }}>卸下</button>
+                      <button onClick={(e) => { e.stopPropagation(); handleUnequip(type); }} style={{ padding: '4px 8px', fontSize: '10px', minWidth: 'auto', width: 'auto', background: `linear-gradient(135deg, ${colors.error}, #b91c1c)`, border: 'none', borderRadius: '4px', color: '#fff', cursor: 'pointer' }}>卸下</button>
                     </div>
                   ) : <div style={{ color: isUnlocked ? '#666' : '#444', fontSize: '12px' }}>{isUnlocked ? '空槽位' : `🔒 需要 Lv.${Object.values(ImplantType).indexOf(type) + 1} 解锁`}</div>}
                 </div>
@@ -128,8 +139,18 @@ export function CyberneticContent() {
           </div>
 
           <div style={{ ...styles.label, fontSize: '12px', marginBottom: '8px' }}>📦 义体仓库 ({implants.filter(i => !Object.values(gameManager.equippedImplants).includes(i.id)).length})</div>
+          <div style={{ display: 'flex', gap: '4px', marginBottom: '8px', flexWrap: 'wrap' }}>
+            <button onClick={() => setFilterType(null)} style={{ padding: '4px 8px', fontSize: '10px', background: filterType === null ? `${colors.cybernetic}40` : 'rgba(100, 100, 100, 0.2)', border: filterType === null ? `1px solid ${colors.cybernetic}` : '1px solid rgba(100, 100, 100, 0.3)', borderRadius: '4px', color: filterType === null ? colors.cybernetic : '#a1a1aa', cursor: 'pointer' }}>全部</button>
+            {Object.values(ImplantType).map(type => {
+              const typeConfig = IMPLANT_TYPE_CONFIG[type];
+              const count = implants.filter(i => !Object.values(gameManager.equippedImplants).includes(i.id) && i.type === type).length;
+              return (
+                <button key={type} onClick={() => setFilterType(type)} style={{ padding: '4px 8px', fontSize: '10px', background: filterType === type ? `${typeConfig.color}40` : 'rgba(100, 100, 100, 0.2)', border: filterType === type ? `1px solid ${typeConfig.color}` : '1px solid rgba(100, 100, 100, 0.3)', borderRadius: '4px', color: filterType === type ? typeConfig.color : '#a1a1aa', cursor: 'pointer' }}>{typeConfig.icon} {count}</button>
+              );
+            })}
+          </div>
           <div style={{ maxHeight: '150px', overflowY: 'auto' }}>
-            {implants.filter(i => !Object.values(gameManager.equippedImplants).includes(i.id)).map(implant => {
+            {implants.filter(i => !Object.values(gameManager.equippedImplants).includes(i.id) && (filterType === null || i.type === filterType)).map(implant => {
               const typeConfig = IMPLANT_TYPE_CONFIG[implant.type];
               return (
                 <div key={implant.id} onClick={() => setSelectedImplant(implant)} style={{ ...styles.cardBox(IMPLANT_RARITY_CONFIG[implant.rarity].color, selectedImplant?.id === implant.id), padding: '10px' }}>
@@ -161,15 +182,23 @@ export function CyberneticContent() {
                 return <div style={{ ...styles.label, fontSize: '10px', marginBottom: '8px', padding: '6px', background: 'rgba(0,0,0,0.2)', borderRadius: '4px' }}>升级费用: {upgradeCost.credits}信用点 + {upgradeCost.materials.map(m => `${m.count}义体材料`).join(' + ')}{!canAfford && <span style={{ color: colors.error, marginLeft: '4px' }}>(材料不足)</span>}</div>;
               })()}
               {selectedImplant.locked ? null : (() => {
-                const rarityIndex = Object.keys(ImplantRarity).indexOf(selectedImplant.rarity);
-                const creditsReward = 200 * (rarityIndex + 1) * selectedImplant.level;
-                const materialReward = 2 + rarityIndex * 2 + Math.floor(selectedImplant.level / 3);
-                return <div style={{ ...styles.label, fontSize: '10px', marginBottom: '8px', padding: '6px', background: 'rgba(0,0,0,0.2)', borderRadius: '4px' }}>分解获得: {creditsReward}信用点 + {materialReward}义体材料</div>;
+                const rarityIndex = Object.values(ImplantRarity).indexOf(selectedImplant.rarity);
+                const materialReward = (rarityIndex + 1) * 2;
+                return <div style={{ ...styles.label, fontSize: '10px', marginBottom: '8px', padding: '6px', background: 'rgba(0,0,0,0.2)', borderRadius: '4px' }}>分解获得: {materialReward}义体材料</div>;
               })()}
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button onClick={() => handleUpgrade(selectedImplant.id)} disabled={selectedImplant.level >= selectedImplant.maxLevel} style={{ ...styles.primaryButton(colors.cybernetic, selectedImplant.level >= selectedImplant.maxLevel), flex: 1, padding: '8px', fontSize: '11px' }}>{selectedImplant.level >= selectedImplant.maxLevel ? '已满级' : '升级'}</button>
-                <button onClick={() => handleDecompose(selectedImplant.id)} disabled={selectedImplant.locked} style={{ ...styles.dangerButton(selectedImplant.locked), flex: 1, padding: '8px', fontSize: '11px' }}>分解</button>
+                <button onClick={handleDecomposeClick} disabled={selectedImplant.locked || gameManager.equippedImplants[selectedImplant.type] === selectedImplant.id} style={{ ...styles.dangerButton(selectedImplant.locked || gameManager.equippedImplants[selectedImplant.type] === selectedImplant.id), flex: 1, padding: '8px', fontSize: '11px' }}>{gameManager.equippedImplants[selectedImplant.type] === selectedImplant.id ? '已装备' : '分解'}</button>
               </div>
+              {showDecomposeConfirm && (
+                <div style={{ marginTop: '8px', padding: '10px', background: `${colors.error}15`, borderRadius: '8px', border: `1px solid ${colors.error}40` }}>
+                  <div style={{ color: colors.error, fontSize: '11px', marginBottom: '8px', textAlign: 'center' }}>⚠️ 确定分解 {selectedImplant.name}？</div>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button onClick={() => setShowDecomposeConfirm(false)} style={{ flex: 1, padding: '6px', fontSize: '10px', background: 'rgba(100, 100, 100, 0.3)', border: '1px solid rgba(100, 100, 100, 0.5)', borderRadius: '4px', color: '#a1a1aa', cursor: 'pointer' }}>取消</button>
+                    <button onClick={() => handleDecompose(selectedImplant.id)} style={{ flex: 1, padding: '6px', fontSize: '10px', background: `linear-gradient(135deg, ${colors.error}, #b91c1c)`, border: 'none', borderRadius: '4px', color: '#fff', cursor: 'pointer' }}>确认分解</button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

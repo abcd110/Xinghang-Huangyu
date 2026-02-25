@@ -1177,50 +1177,6 @@ export default function TestScreen({ onBack }: TestScreenProps) {
                 </button>
               </div>
 
-              {/* 基因工程 */}
-              <div style={{
-                backgroundColor: '#1f2937',
-                borderRadius: '10px',
-                padding: '16px',
-                borderLeft: '4px solid #22c55e',
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                  <div>
-                    <span style={{ fontSize: '20px', marginRight: '8px' }}>🧬</span>
-                    <span style={{ color: '#22c55e', fontWeight: 'bold', fontSize: '15px' }}>基因工程</span>
-                  </div>
-                  <span style={{ color: '#a1a1aa', fontSize: '12px' }}>
-                    Lv.{gameManager.getGeneLevel()}/5
-                  </span>
-                </div>
-                <button
-                  onClick={() => {
-                    const currentLevel = gameManager.getGeneLevel();
-                    if (currentLevel >= 5) {
-                      showMessage('基因工程已满级');
-                      return;
-                    }
-                    gameManager.completedResearch.push(`gene_lv${currentLevel + 1}`);
-                    forceRefresh();
-                    showMessage(`基因工程升级到 Lv.${currentLevel + 1}`);
-                  }}
-                  disabled={gameManager.getGeneLevel() >= 5}
-                  style={{
-                    width: '100%',
-                    padding: '12px',
-                    backgroundColor: gameManager.getGeneLevel() >= 5 ? '#374151' : '#22c55e',
-                    color: gameManager.getGeneLevel() >= 5 ? '#6b7280' : 'white',
-                    border: 'none',
-                    borderRadius: '8px',
-                    fontSize: '13px',
-                    fontWeight: 'bold',
-                    cursor: gameManager.getGeneLevel() >= 5 ? 'not-allowed' : 'pointer',
-                  }}
-                >
-                  {gameManager.getGeneLevel() >= 5 ? '已满级' : '升级 +1'}
-                </button>
-              </div>
-
               {/* 机械飞升 */}
               <div style={{
                 backgroundColor: '#1f2937',

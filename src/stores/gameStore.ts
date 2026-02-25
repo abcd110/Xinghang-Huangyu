@@ -26,7 +26,6 @@ interface GameStore {
   saveGame: () => Promise<boolean>;
 
   // 游戏操作
-  rest: () => { success: boolean; message: string; logs: string[] };
   explore: (locationId: string, exploreType?: 'search' | 'hunt' | 'chest') => {
     success: boolean;
     message: string;
@@ -75,6 +74,14 @@ interface GameStore {
   startBattle: (locationId: string, isBoss?: boolean, isElite?: boolean) => { success: boolean; message: string; enemy?: import('../data/enemies').ExpandedEnemy };
   endBattleVictory: (enemy: import('../data/enemies').ExpandedEnemy) => { exp: number; loot: { itemId: string; quantity: number; name: string }[]; logs: string[] };
   attemptEscape: (enemy: import('../data/enemies').ExpandedEnemy) => { success: boolean; message: string; logs: string[] };
+
+  // 无尽战斗系统
+  startEndlessWaveBattle: () => { success: boolean; message: string; enemy?: any };
+  startEndlessBossBattle: () => { success: boolean; message: string; enemy?: any };
+  handleWaveVictory: () => { credits: number; materials: { itemId: string; count: number }[] };
+  handleBossVictory: () => { credits: number; materials: { itemId: string; count: number }[] };
+  getEndlessStageLevel: () => number;
+  getEndlessWaveNumber: () => number;
 
   // 自动采集系统
   startAutoCollect: (locationId: string, mode: AutoCollectMode) => { success: boolean; message: string };
@@ -165,9 +172,19 @@ interface GameStore {
   getChipStatBonus: () => Record<string, number>;
 
   // 基因系统
-  getGeneNodes: () => import('../core/GeneSystem').GeneNode[];
+  getGeneNodes: () => import('../core/GeneSystemLegacy').GeneNode[];
   upgradeGeneNode: (nodeId: string) => { success: boolean; message: string; newValue?: number };
-  getGeneTotalStats: () => Record<import('../core/GeneSystem').GeneType, number>;
+  getGeneTotalStats: () => Record<import('../core/GeneSystemLegacy').GeneType, number>;
+  // 新版基因系统V2
+  getGeneSystemState: () => import('../core/GeneSystemV2').GeneSystemState;
+  getActiveChromosome: () => import('../core/GeneSystemV2').Chromosome | null;
+  switchChromosome: (chromosomeId: string) => boolean;
+  replaceNucleotideBase: (chromosomeId: string, position: number, newBase: import('../core/GeneSystemV2').BasePair) => { success: boolean; message: string };
+  getLifeStealPercent: (context?: import('../core/GeneSystemV2').BattleContext) => number;
+  getGeneStatsBonus: (context?: import('../core/GeneSystemV2').BattleContext) => Record<string, number>;
+  getActiveGeneFragments: (context?: import('../core/GeneSystemV2').BattleContext) => import('../core/GeneSystemV2').GeneFragment[];
+  getGeneFragments: () => import('../core/GeneSystemV2').GeneFragment[];
+  getChromosomeIntegrity: (chromosomeId?: string) => number;
 
   // 机械飞升系统
   getImplants: () => import('../core/CyberneticSystem').Implant[];
@@ -194,10 +211,10 @@ interface GameStore {
 
   // 遗迹探索系统
   getRuins: () => import('../core/RuinSystem').Ruin[];
-  getExploreMissions: () => import('../core/RuinSystem').ExploreMission[];
-  startExplore: (ruinId: string, crewIds: string[]) => { success: boolean; message: string; mission?: import('../core/RuinSystem').ExploreMission };
-  completeExplore: (missionId: string) => { success: boolean; message: string; rewards?: { credits: number; items: { itemId: string; count: number }[]; experience: number } };
-  cancelExplore: (missionId: string) => { success: boolean; message: string };
+  getRuinRemainingAttempts: (ruinType: string) => number;
+  getRuinPreview: (ruinId: string) => { success: boolean; message: string; preview?: { ruin: import('../core/RuinSystem').Ruin; successRate: number; remainingAttempts: number; isFirstClear: boolean } };
+  challengeRuin: (ruinId: string) => { success: boolean; message: string; rewards?: { credits: number; items: { itemId: string; count: number }[]; experience: number }; isFirstClear?: boolean; isSuccess?: boolean };
+  updateRuinBattleResult: (ruinId: string, victory: boolean, isFirstClear: boolean) => void;
 
   // 获取器
   getPlayer: () => GameManager['player'];
@@ -297,9 +314,6 @@ export const useGameStore = create<GameStore>((set, get) => {
       return await GameStorage.saveGame(state);
     },
 
-    // 休息
-    rest: () => executeGameAction(() => get().gameManager.rest()),
-
     // 探索
     explore: (locationId: string, exploreType: 'search' | 'hunt' | 'chest' = 'search') =>
       executeGameAction(() => get().gameManager.explore(locationId, exploreType)),
@@ -385,8 +399,6 @@ export const useGameStore = create<GameStore>((set, get) => {
     endBattleVictory: (enemy: import('../data/enemies').ExpandedEnemy) => {
       const { gameManager } = get();
       const result = gameManager.endBattleVictory(enemy);
-      // 战斗胜利后恢复生命值至满（包含装备加成）
-      gameManager.player.hp = gameManager.player.totalMaxHp;
       get().saveGame();
       set({ logs: gameManager.logs });
       return result;
@@ -394,6 +406,25 @@ export const useGameStore = create<GameStore>((set, get) => {
 
     attemptEscape: (enemy: import('../data/enemies').ExpandedEnemy) =>
       executeGameAction(() => get().gameManager.attemptEscape(enemy)),
+
+    startEndlessWaveBattle: () => executeGameAction(() => get().gameManager.startEndlessWaveBattle()),
+    startEndlessBossBattle: () => executeGameAction(() => get().gameManager.startEndlessBossBattle()),
+    handleWaveVictory: () => {
+      const { gameManager } = get();
+      const result = gameManager.handleWaveVictory();
+      get().saveGame();
+      set({ logs: gameManager.logs });
+      return result;
+    },
+    handleBossVictory: () => {
+      const { gameManager } = get();
+      const result = gameManager.handleBossVictory();
+      get().saveGame();
+      set({ logs: gameManager.logs });
+      return result;
+    },
+    getEndlessStageLevel: () => get().gameManager.endlessStageLevel,
+    getEndlessWaveNumber: () => get().gameManager.endlessWaveNumber,
 
     // 自动采集系统
     startAutoCollect: (locationId: string, mode: AutoCollectMode) =>
@@ -480,6 +511,16 @@ export const useGameStore = create<GameStore>((set, get) => {
     getGeneNodes: () => get().gameManager.getGeneNodes(),
     upgradeGeneNode: (nodeId) => executeGameAction(() => get().gameManager.upgradeGeneNode(nodeId)),
     getGeneTotalStats: () => get().gameManager.getGeneTotalStats(),
+    // 新版基因系统V2
+    getGeneSystemState: () => get().gameManager.getGeneSystemState(),
+    getActiveChromosome: () => get().gameManager.getActiveChromosome(),
+    switchChromosome: (chromosomeId) => get().gameManager.switchChromosome(chromosomeId),
+    replaceNucleotideBase: (chromosomeId, position, newBase) => executeGameAction(() => get().gameManager.replaceNucleotideBase(chromosomeId, position, newBase)),
+    getLifeStealPercent: (context) => get().gameManager.getLifeStealPercent(context),
+    getGeneStatsBonus: (context) => get().gameManager.getGeneStatsBonus(context),
+    getActiveGeneFragments: (context) => get().gameManager.getActiveGeneFragments(context),
+    getGeneFragments: () => get().gameManager.getGeneFragments(),
+    getChromosomeIntegrity: (chromosomeId) => get().gameManager.getChromosomeIntegrity(chromosomeId),
 
     // 机械飞升系统
     getImplants: () => get().gameManager.getImplants(),
@@ -506,10 +547,14 @@ export const useGameStore = create<GameStore>((set, get) => {
 
     // 遗迹探索系统
     getRuins: () => get().gameManager.getRuins(),
-    getExploreMissions: () => get().gameManager.getExploreMissions(),
-    startExplore: (ruinId, crewIds) => executeGameAction(() => get().gameManager.startExplore(ruinId, crewIds)),
-    completeExplore: (missionId) => executeGameAction(() => get().gameManager.completeExplore(missionId)),
-    cancelExplore: (missionId) => executeGameAction(() => get().gameManager.cancelExplore(missionId)),
+    getRuinRemainingAttempts: (ruinType) => get().gameManager.getRuinRemainingAttempts(ruinType),
+    getRuinPreview: (ruinId) => get().gameManager.getRuinPreview(ruinId),
+    challengeRuin: (ruinId) => executeGameAction(() => get().gameManager.challengeRuin(ruinId)),
+    updateRuinBattleResult: (ruinId, victory, isFirstClear) => {
+      get().gameManager.updateRuinBattleResult(ruinId, victory, isFirstClear);
+      // 触发UI刷新
+      set({ gameManager: get().gameManager });
+    },
 
     // 获取器
     getPlayer: () => get().gameManager.player,

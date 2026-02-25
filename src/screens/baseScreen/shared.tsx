@@ -10,18 +10,19 @@ export function MessageToast({ message }: { message: MessageState | null }) {
 
   return (
     <div style={{
-      position: 'absolute',
-      top: '-40px',
+      position: 'fixed',
+      top: '20px',
       left: '50%',
       transform: 'translateX(-50%)',
-      padding: '8px 16px',
+      padding: '10px 20px',
       borderRadius: '8px',
-      background: message.type === 'success' ? 'rgba(34, 197, 94, 0.9)' : 'rgba(239, 68, 68, 0.9)',
+      background: message.type === 'success' ? 'rgba(34, 197, 94, 0.95)' : 'rgba(239, 68, 68, 0.95)',
       color: '#fff',
       fontWeight: 'bold',
-      fontSize: '12px',
-      zIndex: 100,
+      fontSize: '13px',
+      zIndex: 9999,
       whiteSpace: 'nowrap',
+      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
     }}>
       {message.text}
     </div>

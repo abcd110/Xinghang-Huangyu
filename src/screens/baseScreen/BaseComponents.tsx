@@ -88,7 +88,7 @@ export function FacilityCard({ facility, onClick }: { facility: BaseFacility; on
       case 'chip':
         return gameManager.getChipLevel();
       case 'alliance':
-        return gameManager.getGeneLevel();
+        return 1;
       case 'arena':
         return gameManager.getCyberneticLevel();
       case 'crew':

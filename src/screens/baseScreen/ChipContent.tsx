@@ -4,15 +4,14 @@ import type { GameManager } from '../../core/GameManager';
 import { Chip, ChipSlot, ChipRarity, CHIP_RARITY_CONFIG, CHIP_MAIN_STAT_CONFIG, CHIP_SUB_STAT_CONFIG, CHIP_SET_CONFIG, getRerollCost, getUpgradeCost } from '../../core/ChipSystem';
 import { getItemName } from './utils';
 import { ChipCraftPanel } from './ChipCraftPanel';
-import { MessageToast, ConfirmDialog, type MessageState } from './shared';
+import { ConfirmDialog, type MessageState } from './shared';
 import { styles, colors } from './styles';
 
 export function ChipContent() {
-  const { gameManager, saveGame, craftChip, upgradeChip, equipChip, decomposeChip, rerollChipSubStat, toggleChipLock, getChipSetBonuses, getChipStatBonus } = useGameStore();
+  const { gameManager, saveGame, craftChip, upgradeChip, equipChip, decomposeChip, rerollChipSubStat, toggleChipLock, getChipSetBonuses, getChipStatBonus, showToast } = useGameStore();
   const [activeTab, setActiveTab] = useState<'slots' | 'craft'>('slots');
   const [selectedChip, setSelectedChip] = useState<Chip | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<ChipSlot | null>(null);
-  const [message, setMessage] = useState<MessageState | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{ show: boolean; title: string; content: string; onConfirm: () => void; onCancel: () => void } | null>(null);
 
   const chips = gameManager.getChips();
@@ -22,8 +21,7 @@ export function ChipContent() {
   const totalStats = getChipStatBonus();
 
   const showMessage = (text: string, type: 'success' | 'error') => {
-    setMessage({ text, type });
-    setTimeout(() => setMessage(null), 2000);
+    showToast(text, type);
   };
 
   const handleCraft = async (slot: ChipSlot, rarity: ChipRarity) => {
@@ -69,7 +67,6 @@ export function ChipContent() {
 
   return (
     <div style={{ position: 'relative' }}>
-      <MessageToast message={message} />
       {confirmDialog && <ConfirmDialog {...confirmDialog} />}
 
       <div style={styles.statsBox(colors.chip)}>
@@ -188,7 +185,7 @@ export function ChipContent() {
                 })}
               </div>
 
-              {selectedChip.level < 15 && (
+              {selectedChip.level < CHIP_RARITY_CONFIG[selectedChip.rarity].maxLevel && (
                 <div style={styles.infoBox(colors.info)}>
                   <div style={{ color: colors.info, fontSize: '11px', fontWeight: 'bold', marginBottom: '6px' }}>⬆️ 升级需求 (Lv.{selectedChip.level} → Lv.{selectedChip.level + 1})</div>
                   {(() => {
@@ -207,7 +204,7 @@ export function ChipContent() {
               )}
 
               <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
-                <button onClick={() => handleUpgrade(selectedChip.id, 1)} disabled={selectedChip.level >= 15} style={{ ...styles.primaryButton(colors.info, selectedChip.level >= 15), flex: 1, padding: '8px', fontSize: '11px' }}>{selectedChip.level >= 15 ? '已满级' : '升级'}</button>
+                <button onClick={() => handleUpgrade(selectedChip.id, 1)} disabled={selectedChip.level >= CHIP_RARITY_CONFIG[selectedChip.rarity].maxLevel} style={{ ...styles.primaryButton(colors.info, selectedChip.level >= CHIP_RARITY_CONFIG[selectedChip.rarity].maxLevel), flex: 1, padding: '8px', fontSize: '11px' }}>{selectedChip.level >= CHIP_RARITY_CONFIG[selectedChip.rarity].maxLevel ? '已满级' : '升级'}</button>
                 <button onClick={() => setConfirmDialog({ show: true, title: '分解芯片', content: `确定要分解这个${CHIP_RARITY_CONFIG[selectedChip.rarity].name}芯片吗？\n将获得芯片材料作为回报。`, onConfirm: () => { handleDecompose(selectedChip.id); setConfirmDialog(null); }, onCancel: () => setConfirmDialog(null) })} disabled={selectedChip.locked} style={{ ...styles.dangerButton(selectedChip.locked), flex: 1, padding: '8px', fontSize: '11px' }}>分解</button>
               </div>
             </div>

@@ -1,14 +1,12 @@
 import { useGameStore } from '../stores/gameStore';
 import { useState, useEffect } from 'react';
 import { AutoCollectMode, MODE_INFO, getCollectRobot, CollectRobot } from '../data/autoCollectTypes';
-import 休整Img from '../assets/images/休整.png';
 import 强化Img from '../assets/images/强化.png';
 import 升华Img from '../assets/images/升华.png';
 import 锻造所Img from '../assets/images/锻造所.png';
 import 材料合成Img from '../assets/images/材料合成.png';
 import 星骸解构Img from '../assets/images/星骸解构.png';
 import 战甲档案Img from '../assets/images/战甲档案.png';
-import 商店Img from '../assets/images/商店.png';
 import 舰桥背景Img from '../assets/images/舰桥背景.jpg';
 
 interface HomeScreenProps {
@@ -55,7 +53,6 @@ const animationStyles = `
 export default function HomeScreen({ onNavigate }: HomeScreenProps) {
   const {
     gameManager,
-    rest,
     logs,
     startAutoCollect,
     stopAutoCollect,
@@ -66,6 +63,12 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
     showToast,
   } = useGameStore();
   const player = gameManager.player;
+
+  // 计算芯片加成后的生命值
+  const chipStatBonus = gameManager.getChipStatBonus();
+  const chipHp = chipStatBonus['生命'] || 0;
+  const chipHpPercent = (chipStatBonus['生命%'] || 0) / 100;
+  const finalMaxHp = Math.floor((player.totalMaxHp + chipHp) * (1 + chipHpPercent));
   const [showAllLogs, setShowAllLogs] = useState(false);
   const [showCollectModal, setShowCollectModal] = useState(false);
   const [collectDuration, setCollectDuration] = useState('00:00');
@@ -174,16 +177,6 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
 
   // 获取最近事件
   const recentLogs = showAllLogs ? (logs || []) : (logs || []).slice(0, 6);
-
-  const handleRest = () => {
-    const result = rest();
-    if (!result.success) {
-      alert(result.message);
-    }
-  };
-
-  // 检查是否可以休整
-  const canRest = player.hunger >= 10 && player.thirst >= 10;
 
   // 处理🚀点击
   const handleRocketClick = () => {
@@ -365,7 +358,7 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
           </div>
         </header>
 
-        {/* 状态栏 - 新布局 */}
+        {/* 状态栏 */}
         <div style={{
           flexShrink: 0,
           padding: '12px 16px',
@@ -374,22 +367,15 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
         }}>
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(5, 1fr)',
+            gridTemplateColumns: 'repeat(2, 1fr)',
             gap: '8px'
           }}>
             <StatusCard
               label="生命"
               value={player.hp}
-              max={player.totalMaxHp}
+              max={finalMaxHp}
               color="#ef4444"
               icon="❤️"
-            />
-            <StatusCard
-              label="体力"
-              value={player.stamina}
-              max={player.maxStamina}
-              color="#00d4ff"
-              icon="⚡"
             />
             <StatusCard
               label="神能"
@@ -397,20 +383,6 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
               max={player.maxSpirit}
               color="#8b5cf6"
               icon="🧠"
-            />
-            <StatusCard
-              label="能量"
-              value={player.hunger}
-              max={100}
-              color="#fb923c"
-              icon="🔋"
-            />
-            <StatusCard
-              label="冷却"
-              value={player.thirst}
-              max={100}
-              color="#60a5fa"
-              icon="❄️"
             />
           </div>
         </div>
@@ -425,7 +397,6 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
           onStop={handleStopCollect}
           onClaim={handleClaimRewards}
           onOpenSettings={() => setShowCollectModal(true)}
-          defeatedBossCount={gameManager.autoCollectSystem.defeatedBosses.size}
         />
 
         {/* 核心操作区 */}
@@ -436,17 +407,7 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
           zIndex: 10
         }}>
           {/* 第一行 */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
-            <ActionButton
-              iconImage={休整Img}
-              label={canRest ? "休整" : "能量不足"}
-              color="#00d4ff"
-              glowColor="rgba(0, 212, 255, 0.6)"
-              onClick={handleRest}
-              disabled={!canRest}
-              mounted={mounted}
-              delay={0}
-            />
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
             <ActionButton
               iconImage={强化Img}
               label="强化"
@@ -476,7 +437,7 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
             />
           </div>
           {/* 第二行 */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginTop: '12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginTop: '12px' }}>
             <ActionButton
               iconImage={材料合成Img}
               label="材料合成"
@@ -503,15 +464,6 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
               onClick={() => onNavigate('player')}
               mounted={mounted}
               delay={300}
-            />
-            <ActionButton
-              iconImage={商店Img}
-              label="星际商店"
-              color="#22d3ee"
-              glowColor="rgba(34, 211, 238, 0.6)"
-              onClick={() => onNavigate('shop')}
-              mounted={mounted}
-              delay={350}
             />
           </div>
         </div>
@@ -593,7 +545,6 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
             currentMode={autoCollectState.mode}
             availableLocations={getAvailableCollectLocations()}
             playerLevel={player.level}
-            defeatedBossCount={gameManager.autoCollectSystem.defeatedBosses.size}
             remainingDailyHours={gameManager.autoCollectSystem.getRemainingDailyHours()}
             energyEfficiency={gameManager.getEnergyCoreEfficiency()}
           />
@@ -689,7 +640,6 @@ function AutoCollectPanel({
   onStop,
   onClaim,
   onOpenSettings,
-  defeatedBossCount,
 }: {
   isCollecting: boolean;
   duration: string;
@@ -699,7 +649,6 @@ function AutoCollectPanel({
   onStop: () => void;
   onClaim: () => void;
   onOpenSettings: () => void;
-  defeatedBossCount: number;
 }) {
   const robot = getCollectRobot(robotId);
   const modeInfo = MODE_INFO[mode];
@@ -740,13 +689,6 @@ function AutoCollectPanel({
         stoneRate *= 1.2;
         break;
     }
-
-    // 应用星球首领加成
-    const bossMultiplier = 1 + defeatedBossCount * 0.2;
-    goldRate *= bossMultiplier;
-    expRate *= bossMultiplier;
-    materialRate *= bossMultiplier;
-    stoneRate *= bossMultiplier;
 
     return {
       gold: Math.floor(goldRate * hours),
@@ -1210,7 +1152,6 @@ function AutoCollectModal({
   isCollecting,
   currentMode,
   availableLocations,
-  defeatedBossCount,
   remainingDailyHours,
   energyEfficiency,
 }: {
@@ -1221,7 +1162,6 @@ function AutoCollectModal({
   currentMode: AutoCollectMode;
   availableLocations: import('../data/autoCollectTypes').CollectLocation[];
   playerLevel: number;
-  defeatedBossCount: number;
   remainingDailyHours: number;
   energyEfficiency: number;
 }) {
@@ -1238,7 +1178,7 @@ function AutoCollectModal({
   };
 
   // 计算每小时收益
-  const calculateHourlyRewards = (robot: CollectRobot | null, mode: AutoCollectMode, bossCount: number, energyBonus: number) => {
+  const calculateHourlyRewards = (robot: CollectRobot | null, mode: AutoCollectMode, energyBonus: number) => {
     if (!robot) return null;
 
     const base = robot.baseRewards;
@@ -1269,26 +1209,21 @@ function AutoCollectModal({
         break;
     }
 
-    // 星球首领加成
-    const bossMultiplier = 1 + bossCount * 0.2;
-    const bossBonus = bossCount > 0 ? `+${Math.round((bossMultiplier - 1) * 100)}%` : null;
-
     // 能源核心加成
     const energyMultiplier = 1 + energyBonus / 100;
     const energyBonusText = energyBonus > 0 ? `+${energyBonus}%` : null;
 
     return {
-      gold: Math.round(goldRate * bossMultiplier * energyMultiplier),
-      exp: Math.round(expRate * bossMultiplier * energyMultiplier),
-      materials: Math.round(materialRate * bossMultiplier * energyMultiplier),
-      stones: Math.round(stoneRate * bossMultiplier * energyMultiplier),
+      gold: Math.round(goldRate * energyMultiplier),
+      exp: Math.round(expRate * energyMultiplier),
+      materials: Math.round(materialRate * energyMultiplier),
+      stones: Math.round(stoneRate * energyMultiplier),
       modeBonus,
-      bossBonus,
       energyBonus: energyBonusText
     };
   };
 
-  const hourlyRewards = calculateHourlyRewards(robot, selectedMode, defeatedBossCount, energyEfficiency);
+  const hourlyRewards = calculateHourlyRewards(robot, selectedMode, energyEfficiency);
 
   return (
     <div style={{
@@ -1493,15 +1428,9 @@ function AutoCollectModal({
                   <span style={{ color: '#fbbf24', fontSize: '11px' }}>{hourlyRewards.modeBonus}</span>
                 </div>
                 {hourlyRewards.energyBonus && (
-                  <div style={{ marginBottom: '6px' }}>
+                  <div>
                     <span style={{ color: '#22c55e', fontSize: '11px' }}>⚡ 能源核心加成: </span>
                     <span style={{ color: '#4ade80', fontSize: '11px' }}>{hourlyRewards.energyBonus}</span>
-                  </div>
-                )}
-                {hourlyRewards.bossBonus && (
-                  <div>
-                    <span style={{ color: '#c084fc', fontSize: '11px' }}>🏆 星球首领加成: </span>
-                    <span style={{ color: '#d8b4fe', fontSize: '11px' }}>{hourlyRewards.bossBonus} (已击败{defeatedBossCount}个首领)</span>
                   </div>
                 )}
               </div>

@@ -117,10 +117,9 @@ export class AutoCollectSystem {
     this.defeatedBosses.add(planetId);
   }
 
-  // 获取收益加成倍率（每个击败的boss增加20%）
+  // 获取收益加成倍率
   getRewardMultiplier(): number {
-    const bonus = this.defeatedBosses.size * 0.2;
-    return 1 + bonus;
+    return 1;
   }
 
   // 开始自动采集

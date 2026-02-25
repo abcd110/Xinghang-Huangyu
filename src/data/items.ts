@@ -1752,6 +1752,22 @@ export const ITEMS: Record<string, Item> = {
     id: 'chip_material', name: '芯片材料', type: ItemType.MATERIAL, rarity: ItemRarity.UNCOMMON,
     description: '用于研发战斗芯片的基础材料。', sublimationLevel: 0,
   },
+
+  // ============================================
+  // 基地材料
+  // ============================================
+  'base_core': {
+    id: 'base_core', name: '基地核心', type: ItemType.MATERIAL, rarity: ItemRarity.EPIC,
+    description: '用于升级能源核心、星际仓库、医疗舱的关键材料。', sublimationLevel: 0,
+  },
+
+  // ============================================
+  // 科研材料
+  // ============================================
+  'research_star': {
+    id: 'research_star', name: '科研之星', type: ItemType.MATERIAL, rarity: ItemRarity.EPIC,
+    description: '用于科研实验室升级采矿平台、芯片研发、基因工程、机械飞升的珍贵材料。', sublimationLevel: 0,
+  },
 };
 
 // 获取物品模板

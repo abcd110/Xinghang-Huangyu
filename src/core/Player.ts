@@ -8,14 +8,6 @@ export interface PlayerData {
   exp: number;
   hp: number;
   maxHp: number;
-  stamina: number;
-  maxStamina: number;
-  spirit: number;
-  maxSpirit: number;
-  hunger: number;
-  maxHunger: number;
-  thirst: number;
-  maxThirst: number;
   attack: number;
   defense: number;
   attackSpeed: number;
@@ -23,7 +15,8 @@ export interface PlayerData {
   armor: InventoryItem | null;
   accessory: InventoryItem | null;
   equipment: EquipmentInstance[];
-  lastSpiritRecoveryTime?: number; // 上次精神值回复时间戳（毫秒）
+  stageLevel: number;
+  waveNumber: number;
 }
 
 export class Player {
@@ -35,16 +28,11 @@ export class Player {
   // 基础属性
   hp: number;
   maxHp: number;
-  stamina: number;
-  maxStamina: number;
   spirit: number;
   maxSpirit: number;
 
-  // 生存属性
-  hunger: number;
-  maxHunger: number;
-  thirst: number;
-  maxThirst: number;
+  stageLevel: number = 1;
+  waveNumber: number = 1;
 
   // 战斗属性（基础值）
   baseAttack: number;
@@ -64,29 +52,25 @@ export class Player {
   // 装备系统（6槽位）
   equipment: Map<EquipmentSlot, EquipmentInstance>;
 
+  // 基因属性加成（由GameManager注入）
+  geneStats: Record<string, number> = {};
+  lifeStealPercent: number = 0;
+
   constructor(data?: Partial<PlayerData>) {
     this.name = data?.name || '幸存者';
     this.level = data?.level || 1;
     this.exp = data?.exp || 0;
     this.expToNext = this.calculateExpToNext();
 
-    // 使用新公式计算基础属性
     const attrs = this.levelAttributes;
 
     this.maxHp = data?.maxHp || attrs.maxHp;
     this.hp = data?.hp || this.maxHp;
+    this.maxSpirit = 100;
+    this.spirit = this.maxSpirit;
 
-    this.maxStamina = data?.maxStamina || attrs.maxStamina;
-    this.stamina = data?.stamina || this.maxStamina;
-
-    this.maxSpirit = data?.maxSpirit || attrs.maxSpirit;
-    this.spirit = data?.spirit || this.maxSpirit;
-
-    this.maxHunger = data?.maxHunger || 100;
-    this.hunger = data?.hunger || this.maxHunger;
-
-    this.maxThirst = data?.maxThirst || 100;
-    this.thirst = data?.thirst || this.maxThirst;
+    this.stageLevel = data?.stageLevel || 1;
+    this.waveNumber = data?.waveNumber || 1;
 
     this.baseAttack = data?.attack || attrs.baseAttack;
     this.baseDefense = data?.defense || attrs.baseDefense;
@@ -94,15 +78,14 @@ export class Player {
     this.baseAttackSpeed = data?.attackSpeed || 1.0;
     this.baseHit = attrs.baseHit;
     this.baseDodge = attrs.baseDodge;
-    this.baseCrit = attrs.baseCrit; // 会心
+    this.baseCrit = attrs.baseCrit;
     this.baseCritDamage = 50;
-    this.basePenetration = 0; // 穿透固定值
-    this.basePenetrationPercent = 0; // 穿透百分比
+    this.basePenetration = 0;
+    this.basePenetrationPercent = 0;
     this.baseTrueDamage = 0;
-    this.baseGuard = attrs.baseGuard; // 护心
-    this.baseLuck = attrs.baseLuck; // 幸运
+    this.baseGuard = attrs.baseGuard;
+    this.baseLuck = attrs.baseLuck;
 
-    // 初始化装备槽位
     this.equipment = new Map();
     if (data?.equipment) {
       data.equipment.forEach(item => {
@@ -135,24 +118,21 @@ export class Player {
     return baseValue * Math.pow(1.1, level - 1);
   }
 
-  // 获取当前等级的属性值
   get levelAttributes() {
     return {
       maxHp: Math.floor(this.calculateAttribute(100, this.level)),
-      maxStamina: 100 + (this.level - 1) * 10, // 每级固定+10
-      maxSpirit: 100 + (this.level - 1) * 10, // 每级固定+10
       baseAttack: Math.floor(this.calculateAttribute(10, this.level)),
       baseDefense: Math.floor(this.calculateAttribute(5, this.level)),
-      baseAgility: Math.floor(10 * (1 + this.level * 0.1)), // 敏捷：10*(1+等级*0.1)
+      baseAgility: Math.floor(10 * (1 + this.level * 0.1)),
       baseHit: Math.floor(this.calculateAttribute(50, this.level)),
-      baseDodge: 5, // 固定5%，不随等级提升
-      baseCrit: 5, // 会心，固定5，不随等级提升
-      baseCritDamage: 50, // 固定值
-      basePenetration: 0, // 穿透固定值
-      basePenetrationPercent: 0, // 穿透百分比
-      baseTrueDamage: 0, // 固定值
-      baseGuard: 5, // 护心，固定5，不随等级提升
-      baseLuck: 0, // 幸运，初始0，不随等级提升
+      baseDodge: 5,
+      baseCrit: 5,
+      baseCritDamage: 50,
+      basePenetration: 0,
+      basePenetrationPercent: 0,
+      baseTrueDamage: 0,
+      baseGuard: 5,
+      baseLuck: 0,
     };
   }
 
@@ -166,78 +146,97 @@ export class Player {
     return equipmentSystem.calculateEquipmentStats(this.equippedItems);
   }
 
-  // 获取总攻击力（基础+装备+强化）
+  // 获取总攻击力（基础+装备+强化+基因）
   get totalAttack(): number {
     const equipmentAttack = this.equipmentStats.attack;
-    return this.baseAttack + equipmentAttack;
+    const genePercent = this.geneStats['attackPercent'] || 0;
+    return Math.floor((this.baseAttack + equipmentAttack) * (1 + genePercent / 100));
   }
 
   // 获取总防御力
   get totalDefense(): number {
     const equipmentDefense = this.equipmentStats.defense;
-    return this.baseDefense + equipmentDefense;
+    const genePercent = this.geneStats['defensePercent'] || 0;
+    return Math.floor((this.baseDefense + equipmentDefense) * (1 + genePercent / 100));
   }
 
   // 获取总敏捷
   get totalAgility(): number {
-    return this.baseAgility + this.equipmentStats.agility;
+    const geneAgility = this.geneStats['speedPercent'] || 0;
+    return this.baseAgility + this.equipmentStats.agility + geneAgility;
   }
 
   // 获取总攻速
   get totalAttackSpeed(): number {
     const equipmentSpeed = this.equipmentStats.speed;
-    return this.baseAttackSpeed + equipmentSpeed;
+    const geneSpeed = this.geneStats['speedPercent'] || 0;
+    return this.baseAttackSpeed + equipmentSpeed + (geneSpeed / 100);
   }
 
   // 获取总命中值
   get totalHit(): number {
-    return this.baseHit + this.equipmentStats.hit;
+    return this.baseHit + this.equipmentStats.hit + (this.geneStats['hit'] || 0);
   }
 
   // 获取总闪避值
   get totalDodge(): number {
-    return this.baseDodge + this.equipmentStats.dodge;
+    const geneDodge = this.geneStats['dodgeRate'] || 0;
+    return this.baseDodge + this.equipmentStats.dodge + geneDodge;
   }
 
   // 获取总暴击率
   get totalCrit(): number {
-    return this.baseCrit + this.equipmentStats.crit;
+    const geneCrit = this.geneStats['critRate'] || 0;
+    return this.baseCrit + this.equipmentStats.crit + geneCrit;
   }
 
   // 获取总暴击伤害
   get totalCritDamage(): number {
-    return this.baseCritDamage + this.equipmentStats.critDamage;
+    const geneCritDamage = this.geneStats['critDamage'] || 0;
+    return this.baseCritDamage + this.equipmentStats.critDamage + geneCritDamage;
   }
 
   // 获取总穿透固定值
   get totalPenetration(): number {
-    return this.basePenetration + this.equipmentStats.penetration;
+    return this.basePenetration + this.equipmentStats.penetration + (this.geneStats['penetration'] || 0);
   }
 
   // 获取总穿透百分比
   get totalPenetrationPercent(): number {
-    return this.basePenetrationPercent + this.equipmentStats.penetrationPercent;
+    return this.basePenetrationPercent + this.equipmentStats.penetrationPercent + (this.geneStats['penetrationPercent'] || 0);
   }
 
   // 获取总真实伤害倍率
   get totalTrueDamage(): number {
-    return this.baseTrueDamage + this.equipmentStats.trueDamage;
+    return this.baseTrueDamage + this.equipmentStats.trueDamage + (this.geneStats['trueDamage'] || 0);
   }
 
   // 获取总护心
   get totalGuard(): number {
-    return this.baseGuard + this.equipmentStats.guard;
+    return this.baseGuard + this.equipmentStats.guard + (this.geneStats['guard'] || 0);
   }
 
   // 获取总幸运
   get totalLuck(): number {
-    return this.baseLuck + this.equipmentStats.luck;
+    return this.baseLuck + this.equipmentStats.luck + (this.geneStats['luck'] || 0);
   }
 
   // 获取总生命值
   get totalMaxHp(): number {
     const equipmentHp = this.equipmentStats.hp;
-    return this.maxHp + equipmentHp;
+    const genePercent = this.geneStats['maxHpPercent'] || 0;
+    return Math.floor((this.maxHp + equipmentHp) * (1 + genePercent / 100));
+  }
+
+  // 获取生命偷取率（基因专属属性）
+  get totalLifeSteal(): number {
+    return this.lifeStealPercent;
+  }
+
+  // 更新基因属性
+  updateGeneStats(stats: Record<string, number>, lifeSteal: number): void {
+    this.geneStats = stats;
+    this.lifeStealPercent = lifeSteal;
   }
 
   // 计算减伤比 = 防御力 / (防御力 + 600) * 100%
@@ -281,26 +280,15 @@ export class Player {
     this.hp = Math.min(this.totalMaxHp, this.hp + amount);
   }
 
-  // 恢复体力
-  recoverStamina(amount: number): void {
-    this.stamina = Math.min(this.maxStamina, this.stamina + amount);
-  }
-
-  // 消耗体力
-  consumeStamina(amount: number): boolean {
-    if (this.stamina < amount) return false;
-    this.stamina -= amount;
-    return true;
-  }
-
-  // 消耗精神值
+  // 消耗神能
   consumeSpirit(amount: number): boolean {
-    if (this.spirit < amount) return false;
+    if (this.spirit < amount) {
+      return false;
+    }
     this.spirit -= amount;
     return true;
   }
 
-  // 增加经验
   addExp(amount: number): string[] {
     const logs: string[] = [];
     this.exp += amount;
@@ -314,19 +302,13 @@ export class Player {
     return logs;
   }
 
-  // 升级
   private levelUp(): void {
     this.level++;
     this.expToNext = this.calculateExpToNext();
 
-    // 使用新公式计算属性
     const attrs = this.levelAttributes;
     this.maxHp = attrs.maxHp;
     this.hp = this.maxHp;
-    this.maxStamina = attrs.maxStamina;
-    this.stamina = this.maxStamina;
-    this.maxSpirit = attrs.maxSpirit;
-    this.spirit = this.maxSpirit;
     this.baseAttack = attrs.baseAttack;
     this.baseDefense = attrs.baseDefense;
     this.baseHit = attrs.baseHit;
@@ -485,65 +467,10 @@ export class Player {
     }];
   }
 
-  // 消耗饥饿值
-  consumeHunger(amount: number): void {
-    this.hunger = Math.max(0, this.hunger - amount);
-  }
-
-  // 消耗口渴值
-  consumeThirst(amount: number): void {
-    this.thirst = Math.max(0, this.thirst - amount);
-  }
-
-  // 恢复饥饿值
-  recoverHunger(amount: number): void {
-    this.hunger = Math.min(this.maxHunger, this.hunger + amount);
-  }
-
-  // 恢复口渴值
-  recoverThirst(amount: number): void {
-    this.thirst = Math.min(this.maxThirst, this.thirst + amount);
-  }
-
-  // 根据现实时间回复精神值（每小时回复10%）
-  recoverSpiritByRealTime(lastRecoveryTime: number | undefined): { recovered: number; newTime: number } {
-    const now = Date.now();
-    const oneHour = 60 * 60 * 1000; // 1小时的毫秒数
-
-    // 如果没有上次回复时间，设置为当前时间
-    if (!lastRecoveryTime) {
-      return { recovered: 0, newTime: now };
-    }
-
-    // 计算经过了多少小时
-    const elapsedMs = now - lastRecoveryTime;
-    const elapsedHours = Math.floor(elapsedMs / oneHour);
-
-    if (elapsedHours <= 0) {
-      return { recovered: 0, newTime: lastRecoveryTime };
-    }
-
-    // 每小时回复10%最大精神值
-    const recoveryPercent = 0.10;
-    const recoveryPerHour = Math.floor(this.maxSpirit * recoveryPercent);
-    const totalRecovery = recoveryPerHour * elapsedHours;
-
-    const oldSpirit = this.spirit;
-    this.spirit = Math.min(this.maxSpirit, this.spirit + totalRecovery);
-    const actualRecovered = this.spirit - oldSpirit;
-
-    // 更新上次回复时间（只计算完整的小时）
-    const newRecoveryTime = lastRecoveryTime + (elapsedHours * oneHour);
-
-    return { recovered: actualRecovered, newTime: newRecoveryTime };
-  }
-
-  // 检查是否死亡
   get isDead(): boolean {
     return this.hp <= 0;
   }
 
-  // 序列化
   serialize(): PlayerData {
     return {
       name: this.name,
@@ -551,14 +478,6 @@ export class Player {
       exp: this.exp,
       hp: this.hp,
       maxHp: this.maxHp,
-      stamina: this.stamina,
-      maxStamina: this.maxStamina,
-      spirit: this.spirit,
-      maxSpirit: this.maxSpirit,
-      hunger: this.hunger,
-      maxHunger: this.maxHunger,
-      thirst: this.thirst,
-      maxThirst: this.maxThirst,
       attack: this.baseAttack,
       defense: this.baseDefense,
       attackSpeed: this.baseAttackSpeed,
@@ -566,6 +485,8 @@ export class Player {
       armor: null,
       accessory: null,
       equipment: this.equippedItems,
+      stageLevel: this.stageLevel,
+      waveNumber: this.waveNumber,
     };
   }
 }

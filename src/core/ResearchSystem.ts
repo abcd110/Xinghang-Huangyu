@@ -74,7 +74,7 @@ export const RESEARCH_PROJECTS: Omit<ResearchProject, 'status' | 'progress'>[] =
     category: ResearchCategory.PRODUCTION,
     icon: '⛏️',
     totalProgress: 150,
-    cost: { credits: 2500, materials: [{ itemId: 'mat_005_stardust', count: 5 }] },
+    cost: { credits: 2500, materials: [{ itemId: 'research_star', count: 1 }] },
     duration: 60,
     prerequisites: [],
     unlocks: ['mining_lv3'],
@@ -87,7 +87,7 @@ export const RESEARCH_PROJECTS: Omit<ResearchProject, 'status' | 'progress'>[] =
     category: ResearchCategory.PRODUCTION,
     icon: '⛏️',
     totalProgress: 200,
-    cost: { credits: 5000, materials: [{ itemId: 'mat_005_alloy', count: 8 }] },
+    cost: { credits: 5000, materials: [{ itemId: 'research_star', count: 1 }] },
     duration: 90,
     prerequisites: ['mining_lv2'],
     unlocks: ['mining_lv4'],
@@ -100,7 +100,7 @@ export const RESEARCH_PROJECTS: Omit<ResearchProject, 'status' | 'progress'>[] =
     category: ResearchCategory.PRODUCTION,
     icon: '⛏️',
     totalProgress: 300,
-    cost: { credits: 10000, materials: [{ itemId: 'mat_005_crystal', count: 10 }] },
+    cost: { credits: 10000, materials: [{ itemId: 'research_star', count: 1 }] },
     duration: 120,
     prerequisites: ['mining_lv3'],
     unlocks: ['mining_lv5'],
@@ -113,7 +113,7 @@ export const RESEARCH_PROJECTS: Omit<ResearchProject, 'status' | 'progress'>[] =
     category: ResearchCategory.PRODUCTION,
     icon: '⛏️',
     totalProgress: 500,
-    cost: { credits: 20000, materials: [{ itemId: 'mat_005_quantum', count: 12 }] },
+    cost: { credits: 20000, materials: [{ itemId: 'research_star', count: 1 }] },
     duration: 180,
     prerequisites: ['mining_lv4'],
     unlocks: [],
@@ -126,7 +126,7 @@ export const RESEARCH_PROJECTS: Omit<ResearchProject, 'status' | 'progress'>[] =
     category: ResearchCategory.SPECIAL,
     icon: '💾',
     totalProgress: 180,
-    cost: { credits: 3000, materials: [{ itemId: 'mineral_copper', count: 10 }] },
+    cost: { credits: 3000, materials: [{ itemId: 'research_star', count: 1 }] },
     duration: 75,
     prerequisites: [],
     unlocks: ['chip_lv3'],
@@ -139,7 +139,7 @@ export const RESEARCH_PROJECTS: Omit<ResearchProject, 'status' | 'progress'>[] =
     category: ResearchCategory.SPECIAL,
     icon: '💾',
     totalProgress: 250,
-    cost: { credits: 6000, materials: [{ itemId: 'mineral_titanium', count: 8 }] },
+    cost: { credits: 6000, materials: [{ itemId: 'research_star', count: 1 }] },
     duration: 100,
     prerequisites: ['chip_lv2'],
     unlocks: ['chip_lv4'],
@@ -152,7 +152,7 @@ export const RESEARCH_PROJECTS: Omit<ResearchProject, 'status' | 'progress'>[] =
     category: ResearchCategory.SPECIAL,
     icon: '💾',
     totalProgress: 400,
-    cost: { credits: 12000, materials: [{ itemId: 'mineral_crystal', count: 6 }] },
+    cost: { credits: 12000, materials: [{ itemId: 'research_star', count: 1 }] },
     duration: 150,
     prerequisites: ['chip_lv3'],
     unlocks: ['chip_lv5'],
@@ -165,63 +165,11 @@ export const RESEARCH_PROJECTS: Omit<ResearchProject, 'status' | 'progress'>[] =
     category: ResearchCategory.SPECIAL,
     icon: '💾',
     totalProgress: 600,
-    cost: { credits: 25000, materials: [{ itemId: 'mineral_quantum', count: 4 }] },
+    cost: { credits: 25000, materials: [{ itemId: 'research_star', count: 1 }] },
     duration: 200,
     prerequisites: ['chip_lv4'],
     unlocks: [],
     effects: [{ type: 'chip_upgrade', value: 5, description: '芯片研发升级到Lv.5' }],
-  },
-  {
-    id: 'gene_lv2',
-    name: '基因工程 Lv.2',
-    description: '解锁更多基因类型',
-    category: ResearchCategory.SPECIAL,
-    icon: '🧬',
-    totalProgress: 200,
-    cost: { credits: 4000, materials: [{ itemId: 'gene_material', count: 5 }] },
-    duration: 80,
-    prerequisites: [],
-    unlocks: ['gene_lv3'],
-    effects: [{ type: 'gene_upgrade', value: 2, description: '基因工程升级到Lv.2' }],
-  },
-  {
-    id: 'gene_lv3',
-    name: '基因工程 Lv.3',
-    description: '解锁更多基因类型',
-    category: ResearchCategory.SPECIAL,
-    icon: '🧬',
-    totalProgress: 350,
-    cost: { credits: 8000, materials: [{ itemId: 'gene_material', count: 10 }] },
-    duration: 120,
-    prerequisites: ['gene_lv2'],
-    unlocks: ['gene_lv4'],
-    effects: [{ type: 'gene_upgrade', value: 3, description: '基因工程升级到Lv.3' }],
-  },
-  {
-    id: 'gene_lv4',
-    name: '基因工程 Lv.4',
-    description: '解锁更多基因类型',
-    category: ResearchCategory.SPECIAL,
-    icon: '🧬',
-    totalProgress: 500,
-    cost: { credits: 15000, materials: [{ itemId: 'gene_material', count: 15 }] },
-    duration: 180,
-    prerequisites: ['gene_lv3'],
-    unlocks: ['gene_lv5'],
-    effects: [{ type: 'gene_upgrade', value: 4, description: '基因工程升级到Lv.4' }],
-  },
-  {
-    id: 'gene_lv5',
-    name: '基因工程 Lv.5',
-    description: '解锁所有基因类型',
-    category: ResearchCategory.SPECIAL,
-    icon: '🧬',
-    totalProgress: 800,
-    cost: { credits: 30000, materials: [{ itemId: 'gene_material', count: 20 }] },
-    duration: 240,
-    prerequisites: ['gene_lv4'],
-    unlocks: [],
-    effects: [{ type: 'gene_upgrade', value: 5, description: '基因工程升级到Lv.5' }],
   },
   {
     id: 'cybernetic_lv2',
@@ -230,7 +178,7 @@ export const RESEARCH_PROJECTS: Omit<ResearchProject, 'status' | 'progress'>[] =
     category: ResearchCategory.SPECIAL,
     icon: '🦾',
     totalProgress: 220,
-    cost: { credits: 5000, materials: [{ itemId: 'cyber_material', count: 10 }] },
+    cost: { credits: 5000, materials: [{ itemId: 'research_star', count: 1 }] },
     duration: 90,
     prerequisites: [],
     unlocks: ['cybernetic_lv3'],
@@ -243,7 +191,7 @@ export const RESEARCH_PROJECTS: Omit<ResearchProject, 'status' | 'progress'>[] =
     category: ResearchCategory.SPECIAL,
     icon: '🦾',
     totalProgress: 400,
-    cost: { credits: 10000, materials: [{ itemId: 'cyber_material', count: 20 }] },
+    cost: { credits: 10000, materials: [{ itemId: 'research_star', count: 1 }] },
     duration: 150,
     prerequisites: ['cybernetic_lv2'],
     unlocks: ['cybernetic_lv4'],
@@ -256,7 +204,7 @@ export const RESEARCH_PROJECTS: Omit<ResearchProject, 'status' | 'progress'>[] =
     category: ResearchCategory.SPECIAL,
     icon: '🦾',
     totalProgress: 600,
-    cost: { credits: 20000, materials: [{ itemId: 'cyber_core', count: 3 }] },
+    cost: { credits: 20000, materials: [{ itemId: 'research_star', count: 1 }] },
     duration: 200,
     prerequisites: ['cybernetic_lv3'],
     unlocks: ['cybernetic_lv5'],
@@ -269,7 +217,7 @@ export const RESEARCH_PROJECTS: Omit<ResearchProject, 'status' | 'progress'>[] =
     category: ResearchCategory.SPECIAL,
     icon: '🦾',
     totalProgress: 1000,
-    cost: { credits: 40000, materials: [{ itemId: 'cyber_core', count: 5 }] },
+    cost: { credits: 40000, materials: [{ itemId: 'research_star', count: 1 }] },
     duration: 300,
     prerequisites: ['cybernetic_lv4'],
     unlocks: [],
@@ -333,10 +281,15 @@ export function canStartResearch(
   return { canStart: true };
 }
 
-export function getMaxConcurrentResearch(facilityLevel: number): number {
-  return Math.min(3, 1 + Math.floor(facilityLevel / 2));
+export function getResearchById(id: string): Omit<ResearchProject, 'status' | 'progress'> | undefined {
+  return RESEARCH_PROJECTS.find(p => p.id === id);
 }
 
-export function getResearchSpeedBonus(facilityLevel: number): number {
-  return facilityLevel * 5;
+export function getMaxConcurrentResearch(labLevel: number): number {
+  return Math.min(5, 1 + Math.floor(labLevel / 2));
+}
+
+export function getResearchSpeedBonus(labLevel: number): number {
+  const speedPerLevel = [0, 0, 5, 10, 15, 20];
+  return speedPerLevel[labLevel] || 0;
 }

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useGameStore } from '../stores/gameStore';
 
 interface StartScreenProps {
-  onStartGame: () => void;
+  onStartGame: (hasExistingSave: boolean) => void;
 }
 
 export default function StartScreen({ onStartGame }: StartScreenProps) {
@@ -42,13 +42,13 @@ export default function StartScreen({ onStartGame }: StartScreenProps) {
 
   const handleNewGame = () => {
     newGame();
-    onStartGame();
+    onStartGame(false);
   };
 
   const handleContinue = async () => {
     const success = await loadGame();
     if (success) {
-      onStartGame();
+      onStartGame(true);
     }
   };
 

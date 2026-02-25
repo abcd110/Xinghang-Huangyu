@@ -1,7 +1,6 @@
 import { useGameStore } from '../../stores/gameStore';
 import type { BaseFacility } from './types';
 import { EnergyContent, WarehouseContent, MedicalContent } from './BasicFacilities';
-import { CommContent } from './CommContent';
 import { ResearchContent } from './ResearchContent';
 import { MiningContent } from './MiningContent';
 import { ChipContent } from './ChipContent';
@@ -9,8 +8,15 @@ import { GeneContent } from './GeneContent';
 import { CyberneticContent } from './CyberneticContent';
 import { MarketContent } from './MarketContent';
 import { RuinsContent, LockedContent } from './RuinsContent';
+import type { Ruin } from '../../core/RuinSystem';
 
-export function FacilityDetailModal({ facility, onClose }: { facility: BaseFacility; onClose: () => void }) {
+interface FacilityDetailModalProps {
+  facility: BaseFacility;
+  onClose: () => void;
+  onStartRuinBattle?: (ruin: Ruin) => void;
+}
+
+export function FacilityDetailModal({ facility, onClose, onStartRuinBattle }: FacilityDetailModalProps) {
   const { gameManager } = useGameStore();
 
   const getActualLevel = (): number => {
@@ -20,7 +26,7 @@ export function FacilityDetailModal({ facility, onClose }: { facility: BaseFacil
       case 'chip':
         return gameManager.getChipLevel();
       case 'alliance':
-        return gameManager.getGeneLevel();
+        return 1;
       case 'arena':
         return gameManager.getCyberneticLevel();
       case 'crew':
@@ -42,8 +48,6 @@ export function FacilityDetailModal({ facility, onClose }: { facility: BaseFacil
         return <WarehouseContent />;
       case 'medical':
         return <MedicalContent />;
-      case 'comm':
-        return <CommContent />;
       case 'research':
         return <ResearchContent />;
       case 'mining':
@@ -57,7 +61,7 @@ export function FacilityDetailModal({ facility, onClose }: { facility: BaseFacil
       case 'market':
         return <MarketContent />;
       case 'relic':
-        return <RuinsContent />;
+        return <RuinsContent onStartRuinBattle={onStartRuinBattle} />;
       default:
         return <LockedContent facility={facility} />;
     }
@@ -71,20 +75,15 @@ export function FacilityDetailModal({ facility, onClose }: { facility: BaseFacil
       backdropFilter: 'blur(4px)',
       zIndex: 100,
       display: 'flex',
-      alignItems: 'center',
       justifyContent: 'center',
-      padding: '16px',
     }}>
       <div style={{
-        background: 'rgba(0, 20, 40, 0.95)',
-        backdropFilter: 'blur(20px)',
-        borderRadius: '16px',
         width: '100%',
-        maxWidth: '400px',
-        maxHeight: '80vh',
-        overflowY: 'auto',
-        border: `2px solid ${facility.color}`,
-        boxShadow: `0 0 40px ${facility.color}40, inset 0 0 40px ${facility.color}10`,
+        maxWidth: '430px',
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        background: 'rgba(0, 20, 40, 0.95)',
       }}>
         <div style={{
           background: `linear-gradient(180deg, ${facility.color}30, ${facility.color}10)`,
@@ -93,6 +92,7 @@ export function FacilityDetailModal({ facility, onClose }: { facility: BaseFacil
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
+          flexShrink: 0,
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <span style={{
@@ -132,7 +132,7 @@ export function FacilityDetailModal({ facility, onClose }: { facility: BaseFacil
           </button>
         </div>
 
-        <div style={{ padding: '16px' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
           {renderFacilityContent()}
         </div>
       </div>

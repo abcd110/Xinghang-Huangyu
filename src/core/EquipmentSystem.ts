@@ -5,7 +5,7 @@ import {
 } from '../data/equipmentTypes';
 import { calculateEquipmentStats } from './EquipmentStatCalculator';
 import type { Player } from './Player';
-import type { BattleEnemy } from './BattleSystem';
+import type { BattleEnemy } from '../data/types';
 
 export interface CalculatedStats {
   attack: number;
@@ -331,16 +331,16 @@ export class EquipmentSystem {
 
   // 根据品质获取最大升华等级
   getMaxSublimationLevel(rarity: string): number {
-    // 普通装备最高3级，按品质依次+2级
+    // 普通装备不可升华，按品质依次增加
     const baseLevels: Record<string, number> = {
-      'common': 3,
-      'uncommon': 5,
-      'rare': 7,
-      'epic': 9,
-      'legendary': 11,
-      'mythic': 13,
+      'common': 0,
+      'uncommon': 0,
+      'rare': 3,
+      'epic': 5,
+      'legendary': 7,
+      'mythic': 10,
     };
-    return baseLevels[rarity] || 3;
+    return baseLevels[rarity] || 0;
   }
 
   clearCooldowns() {

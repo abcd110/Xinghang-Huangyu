@@ -6,7 +6,8 @@ import type { EquipmentInstance } from './EquipmentSystem';
 import { calculateEnemyStats } from '../data/locations';
 import { getItemTemplate } from '../data/items';
 import { ENEMIES, createEnemyInstance } from '../data/enemies';
-import { getRandomEnemyForPlanet, getBossEnemyForPlanet, getEliteEnemyForPlanet } from '../data/enemyAdapter';
+import { getRandomEnemyForPlanet, getBossEnemyForPlanet, getEliteEnemyForPlanet, convertVoidCreatureToEnemy } from '../data/enemyAdapter';
+import { ALL_VOID_CREATURES } from '../data/voidCreatures';
 import { ArmorQuality, ARMOR_QUALITY_NAMES } from '../data/nanoArmorRecipes';
 import { Quest, QuestConditionType, QuestStatus, QuestType, DEFAULT_QUESTS, type QuestData } from './QuestSystem';
 import { EquipmentSlot } from '../data/equipmentTypes';
@@ -24,10 +25,11 @@ import { CommEvent, CommEventData, generateCommEvent, getMaxEvents, getScanCoold
 import { ResearchProject, ResearchProjectData, ResearchStatus, createResearchProject, serializeResearchProject, deserializeResearchProject, canStartResearch, getMaxConcurrentResearch, getResearchSpeedBonus, RESEARCH_PROJECTS } from './ResearchSystem';
 import { MiningTask, MiningTaskData, MiningStatus, MiningSite, MINING_SITES, MINERAL_CONFIG, getMiningYield, getMaxMiningSlots, createMiningTask, serializeMiningTask, deserializeMiningTask, isMiningComplete, getMiningProgress, getCrewMiningBonus, checkMiningEvent, processMiningEvent, getDepthBonusDescription } from './MiningSystem';
 import { Chip, ChipData, ChipSlot, ChipRarity, ChipSet, createChip, upgradeChip, enhanceChip, rerollSubStat, rerollAllSubStats, toggleChipLock, serializeChip, deserializeChip, getUpgradeCost, getEnhanceCost, getRerollCost, getChipStats, getSetBonus, CHIP_RARITY_CONFIG, CHIP_CRAFT_COST } from './ChipSystem';
-import { GeneNode, GeneNodeData, GeneType, GENE_TREE, createGeneNode, upgradeGeneNode, getGeneUpgradeCost, getGeneTotalStats, serializeGeneNode, deserializeGeneNode, GENE_TYPE_CONFIG } from './GeneSystem';
+import { GeneNode, GeneNodeData, GeneType, GENE_TREE, createGeneNode, upgradeGeneNode, getGeneUpgradeCost, getGeneTotalStats, serializeGeneNode, deserializeGeneNode, GENE_TYPE_CONFIG } from './GeneSystemLegacy';
+import { BasePair, GeneSystemState, Chromosome, GeneFragment, BattleContext, GeneSystemV2, createGeneSystemState, findGeneFragments, calculateTotalLifeSteal, calculateGeneStats, getActiveGeneEffects, replaceNucleotide, calculateIntegrity, serializeGeneSystemState, deserializeGeneSystemState, CHROMOSOME_CONFIGS, hasOverflowToShield, checkSurviveFatal, setFragmentCooldown, resetAllCooldowns } from './GeneSystemV2';
 import { Implant, ImplantData, ImplantType, ImplantRarity, IMPLANT_TYPE_CONFIG, IMPLANT_RARITY_CONFIG, createImplant, upgradeImplant, getImplantStats, getImplantUpgradeCost, serializeImplant, deserializeImplant } from './CyberneticSystem';
 import { MarketListing, PlayerListing, MarketTransaction, MarketItemType, MarketRarity, MARKET_MAX_LISTINGS, createMarketListing, isListingExpired, generateSystemListings, serializeMarketListing, deserializeMarketListing, serializePlayerListing, deserializePlayerListing, serializeMarketTransaction, deserializeMarketTransaction } from './MarketSystem';
-import { Ruin, ExploreMission, ExploreStatus, RUIN_TYPE_CONFIG, generateRuins, calculateExploreSuccess, generateRewards, serializeRuin, deserializeRuin, serializeExploreMission, deserializeExploreMission } from './RuinSystem';
+import { Ruin, ExploreMission, ExploreStatus, RUIN_TYPE_CONFIG, RUIN_DIFFICULTY_CONFIG, MAX_DAILY_ATTEMPTS, generateRuins, calculateExploreSuccess, generateRewards, serializeRuin, deserializeRuin, getRuinRewards, getNextDifficulty, RuinDifficulty, RuinType } from './RuinSystem';
 
 export interface GameState {
   player: PlayerData;
@@ -43,13 +45,6 @@ export interface GameState {
   lastShopRefreshDay: number;
   lastShopRefreshDate: string; // 上次商店刷新日期 (YYYY-MM-DD格式)
   playerName: string;
-  locationProgress: Array<[string, {
-    materialProgress: number;
-    huntProgress: number;
-    bossDefeated: boolean;
-    lastBossDefeatDay: number;
-    lastBossChallengeDate: string | null;
-  }]>;
   autoCollectSystem?: {
     state: import('../data/autoCollectTypes').AutoCollectState;
     config: import('../data/autoCollectTypes').AutoCollectConfig;
@@ -59,7 +54,6 @@ export interface GameState {
     defeatedBosses: string[];
   }; // 自动采集系统数据
   baseFacilitySystem?: Record<string, import('./BaseFacilitySystem').FacilityState>; // 基地设施系统数据
-  lastStaminaRecoveryTime?: number; // 上次体力恢复时间戳
   crewMembers?: CrewMemberData[]; // 船员列表
   commEvents?: CommEventData[]; // 通讯事件列表
   lastCommScanTime?: number; // 上次扫描时间戳
@@ -68,15 +62,19 @@ export interface GameState {
   miningTasks?: MiningTaskData[]; // 采矿任务列表
   chips?: ChipData[]; // 芯片列表
   equippedChips?: { [key: number]: string }; // 装备的芯片 key为槽位号
-  geneNodes?: GeneNodeData[]; // 基因节点列表
+  geneNodes?: GeneNodeData[]; // 基因节点列表（旧版兼容）
+  geneSystemState?: string; // 基因系统状态（新版V2：JSON序列化）
   implants?: ImplantData[]; // 机械义体列表
   equippedImplants?: { [key: string]: string }; // 装备的义体 key为类型
   marketListings?: MarketListing[]; // 市场挂单列表
   playerListings?: PlayerListing[]; // 玩家挂单列表
   marketTransactions?: MarketTransaction[]; // 市场交易记录
   ruins?: Ruin[]; // 遗迹列表
-  exploreMissions?: ExploreMission[]; // 探索任务列表
-  lastSaveTime?: number; // 上次保存时间戳（用于离线进度计算）
+  dailyRuinAttempts?: { [ruinType: string]: number }; // 每日挑战次数
+  lastRuinResetDate?: string;
+  lastSaveTime?: number;
+  endlessStageLevel?: number;
+  endlessWaveNumber?: number;
 }
 
 export class GameManager {
@@ -96,23 +94,10 @@ export class GameManager {
 
   // 商店系统
   shopItems: Map<string, ShopItem> = new Map();
-  lastShopRefreshDate: string = ''; // 上次商店刷新日期 (YYYY-MM-DD格式)
+  lastShopRefreshDate: string = '';
 
-  // 地点探索进度
-  locationProgress: Map<string, {
-    materialProgress: number;
-    huntProgress: number;
-    bossDefeated: boolean;
-    lastBossDefeatDay: number;
-    lastBossChallengeDate: string | null; // 上次挑战BOSS的日期 (YYYY-MM-DD格式)
-  }> = new Map();
-
-  // 精神值现实时间回复
-  lastSpiritRecoveryTime: number = Date.now(); // 上次精神值回复时间戳
-  lastSpiritDailyRecoveryDate: string = ''; // 上次每日精神值回复日期
-
-  // 体力现实时间回复
-  lastStaminaRecoveryTime: number = Date.now(); // 上次体力值回复时间戳
+  endlessStageLevel: number = 1;
+  endlessWaveNumber: number = 1;
 
   // 船员系统
   crewMembers: CrewMember[] = [];
@@ -134,6 +119,7 @@ export class GameManager {
 
   // 基因系统
   geneNodes: GeneNode[] = [];
+  geneSystemState: GeneSystemState | null = null;
 
   // 机械飞升系统
   implants: Implant[] = [];
@@ -146,7 +132,8 @@ export class GameManager {
 
   // 遗迹探索系统
   ruins: Ruin[] = [];
-  exploreMissions: ExploreMission[] = [];
+  dailyRuinAttempts: { [ruinType: string]: number } = {};
+  lastRuinResetDate: string = '';
 
   // 自动采集系统
   autoCollectSystem: AutoCollectSystem = new AutoCollectSystem();
@@ -178,85 +165,12 @@ export class GameManager {
     this.crewMembers.push(playerCrew);
   }
 
-  // 检查并回复精神值（基于现实时间）
-  // 每分钟回复1点，每天自动回复50点
-  checkAndRecoverSpirit(): { recovered: number; minutesPassed: number; dailyRecovered: number } {
-    const now = Date.now();
-    const oneMinute = 60 * 1000; // 1分钟的毫秒数
-
-    // 检查每日回复（每天自动回复50点）
-    const today = new Date().toISOString().split('T')[0];
-    let dailyRecovered = 0;
-    if (today !== this.lastSpiritDailyRecoveryDate) {
-      const oldSpirit = this.player.spirit;
-      this.player.spirit = Math.min(this.player.maxSpirit, this.player.spirit + 50);
-      dailyRecovered = this.player.spirit - oldSpirit;
-      this.lastSpiritDailyRecoveryDate = today;
-      if (dailyRecovered > 0) {
-        this.addLog('精神恢复', `每日自动回复 ${dailyRecovered} 精神值`);
-      }
+  setPlayerName(name: string): void {
+    this.playerName = name;
+    const playerCrew = this.crewMembers.find(c => isPlayerCrew(c.id));
+    if (playerCrew) {
+      playerCrew.name = name;
     }
-
-    // 计算经过了多少分钟
-    const elapsedMs = now - this.lastSpiritRecoveryTime;
-    const elapsedMinutes = Math.floor(elapsedMs / oneMinute);
-
-    if (elapsedMinutes <= 0) {
-      return { recovered: 0, minutesPassed: 0, dailyRecovered };
-    }
-
-    // 每分钟回复1点精神值
-    const totalRecovery = elapsedMinutes;
-
-    const oldSpirit = this.player.spirit;
-    this.player.spirit = Math.min(this.player.maxSpirit, this.player.spirit + totalRecovery);
-    const actualRecovered = this.player.spirit - oldSpirit;
-
-    // 更新上次回复时间（只计算完整的分钟）
-    this.lastSpiritRecoveryTime = this.lastSpiritRecoveryTime + (elapsedMinutes * oneMinute);
-
-    if (actualRecovered > 0) {
-      this.addLog('精神恢复', `现实时间经过 ${elapsedMinutes} 分钟，恢复 ${actualRecovered} 精神值`);
-    }
-
-    return { recovered: actualRecovered, minutesPassed: elapsedMinutes, dailyRecovered };
-  }
-
-  // 检查并回复体力（基于现实时间）
-  // 每分钟回复1点，受医疗舱加成
-  checkAndRecoverStamina(): { recovered: number; minutesPassed: number } {
-    const now = Date.now();
-    const oneMinute = 60 * 1000; // 1分钟的毫秒数
-
-    // 计算经过了多少分钟
-    const elapsedMs = now - this.lastStaminaRecoveryTime;
-    const elapsedMinutes = Math.floor(elapsedMs / oneMinute);
-
-    if (elapsedMinutes <= 0) {
-      return { recovered: 0, minutesPassed: 0 };
-    }
-
-    // 医疗舱加成
-    const medicalBonus = this.getMedicalRecoveryBonus();
-    const staminaRegenMultiplier = 1 + medicalBonus / 100;
-
-    // 每分钟回复1点体力，受医疗舱加成
-    const baseRecoveryPerMinute = 1;
-    const totalRecovery = Math.floor(elapsedMinutes * baseRecoveryPerMinute * staminaRegenMultiplier);
-
-    const oldStamina = this.player.stamina;
-    this.player.recoverStamina(totalRecovery);
-    const actualRecovered = this.player.stamina - oldStamina;
-
-    // 更新上次回复时间（只计算完整的分钟）
-    this.lastStaminaRecoveryTime = this.lastStaminaRecoveryTime + (elapsedMinutes * oneMinute);
-
-    if (actualRecovered > 0 && elapsedMinutes >= 5) {
-      // 只在恢复超过5分钟时记录日志，避免刷屏
-      this.addLog('体力恢复', `现实时间经过 ${elapsedMinutes} 分钟，恢复 ${actualRecovered} 体力`);
-    }
-
-    return { recovered: actualRecovered, minutesPassed: elapsedMinutes };
   }
 
   // 初始化任务
@@ -319,92 +233,6 @@ export class GameManager {
     }
   }
 
-  // 获取地点探索进度
-  getLocationProgress(locationId: string) {
-    if (!this.locationProgress.has(locationId)) {
-      this.locationProgress.set(locationId, {
-        materialProgress: 0,
-        huntProgress: 0,
-        bossDefeated: false,
-        lastBossDefeatDay: 0,
-        lastBossChallengeDate: null,
-      });
-    }
-    return this.locationProgress.get(locationId)!;
-  }
-
-  // 更新地点探索进度
-  updateLocationProgress(locationId: string, updates: Partial<{
-    materialProgress: number;
-    huntProgress: number;
-    bossDefeated: boolean;
-  }>): void {
-    const progress = this.getLocationProgress(locationId);
-    if (updates.materialProgress !== undefined) {
-      progress.materialProgress = Math.min(20, Math.max(0, updates.materialProgress));
-    }
-    if (updates.huntProgress !== undefined) {
-      progress.huntProgress = Math.min(80, Math.max(0, updates.huntProgress));
-    }
-    if (updates.bossDefeated !== undefined) {
-      progress.bossDefeated = updates.bossDefeated;
-      if (updates.bossDefeated) {
-        progress.lastBossDefeatDay = this.day;
-        // 记录击败的boss，增加挂机收益
-        this.autoCollectSystem.recordDefeatedBoss(locationId);
-        // 检查是否击败了站台5的Boss，解锁神话站台
-        if (locationId === 'loc_005') {
-          this.unlockMythologyLocations();
-        }
-      }
-    }
-    this.locationProgress.set(locationId, progress);
-  }
-
-  // 解锁神话站台（完成站台5后调用）
-  unlockMythologyLocations(): void {
-    // 解锁第一个神话站台
-    const firstMythLocation = MYTHOLOGY_LOCATIONS.find(
-      (loc) => loc.stationNumber === 1
-    );
-    if (firstMythLocation && !firstMythLocation.isUnlocked) {
-      firstMythLocation.isUnlocked = true;
-      firstMythLocation.deity.isUnlocked = true;
-      this.addLog('系统', '【神话站台已解锁】完成岩石峭壁中继站探索，神话站台「锈蚀赫利俄斯站」已解锁！');
-    }
-  }
-
-  // 检查神话站台是否已解锁
-  isMythologyUnlocked(): boolean {
-    const progress = this.getLocationProgress('loc_005');
-    return progress.bossDefeated;
-  }
-
-  // 检查BOSS是否已刷新（现实时间每天0点刷新）
-  isBossRefreshed(locationId: string): boolean {
-    const progress = this.getLocationProgress(locationId);
-    if (!progress.bossDefeated) return true;
-
-    // 获取今天的日期
-    const today = new Date().toISOString().split('T')[0];
-
-    // 如果今天已经挑战过，返回false
-    if (progress.lastBossChallengeDate === today) {
-      return false;
-    }
-
-    return true;
-  }
-
-  // 记录BOSS挑战日期
-  recordBossChallenge(locationId: string): void {
-    const progress = this.getLocationProgress(locationId);
-    const today = new Date().toISOString().split('T')[0];
-    progress.lastBossChallengeDate = today;
-    this.locationProgress.set(locationId, progress);
-  }
-
-  // 推进时间
   advanceTime(minutes: number): void {
     this.gameTime += minutes;
 
@@ -751,39 +579,21 @@ export class GameManager {
       return { success: false, message: '该物品已达到最大升华等级' };
     }
 
-    // 计算消耗
-    const baseSpiritCost = (subLevel + 1) * 10;
-    const baseStaminaCost = (subLevel + 1) * 5;
+    // 计算神能消耗
+    const spiritCost = (subLevel + 1) * 10;
+    if (this.player.spirit < spiritCost) {
+      return { success: false, message: `神能值不足（需要${spiritCost}）` };
+    }
+
+    // 执行消耗
+    this.player.spirit -= spiritCost;
 
     // 品质升级检查
     const qualityUpgradeLevels: Record<number, number> = { 3: 1, 5: 2, 8: 3 };
     const nextLevel = subLevel + 1;
     const willQualityUpgrade = nextLevel in qualityUpgradeLevels;
 
-    let spiritCost = baseSpiritCost;
-    let staminaCost = baseStaminaCost;
-
-    if (willQualityUpgrade) {
-      spiritCost *= 2;
-      staminaCost *= 2;
-      const spiritRequired = 30 + qualityUpgradeLevels[nextLevel] * 20;
-      if (this.player.maxSpirit < spiritRequired) {
-        return { success: false, message: `品质升级需要最大精神值达到${spiritRequired}` };
-      }
-    }
-
-    if (this.player.spirit < spiritCost) {
-      return { success: false, message: `精神值不足（需要${spiritCost}）` };
-    }
-    if (this.player.stamina < staminaCost) {
-      return { success: false, message: `体力值不足（需要${staminaCost}）` };
-    }
-
-    // 执行消耗
-    this.player.spirit -= spiritCost;
-    this.player.stamina -= staminaCost;
-
-    // 增加升华进度
+    // 计算进度
     const progressNeeded = (subLevel + 1) * 20;
     item.sublimationProgress = (item.sublimationProgress || 0) + Math.floor(Math.random() * 16) + 10;
 
@@ -851,78 +661,6 @@ export class GameManager {
       item.defense = Math.floor((item.defense || 0) * 1.4) + 5;
       item.agility = Math.floor((item.agility || 0) * 1.4) + 5;
     }
-  }
-
-  // 休息（休整）
-  // 消耗：能量x10，冷却x10
-  rest(): { success: boolean; message: string; logs: string[] } {
-    const logs: string[] = [];
-
-    // 检查能量和冷却是否足够
-    const energyCost = 10;  // 能量消耗
-    const coolantCost = 10; // 冷却消耗
-
-    if (this.player.hunger < energyCost) {
-      return {
-        success: false,
-        message: `能量不足，无法休整（需要${energyCost}点）`,
-        logs: ['能量不足，无法休整'],
-      };
-    }
-
-    if (this.player.thirst < coolantCost) {
-      return {
-        success: false,
-        message: `冷却不足，无法休整（需要${coolantCost}点）`,
-        logs: ['冷却不足，无法休整'],
-      };
-    }
-
-    const oldHp = this.player.hp;
-    const oldStamina = this.player.stamina;
-    const oldHunger = this.player.hunger;
-    const oldThirst = this.player.thirst;
-
-    // 医疗舱加成
-    const medicalBonus = this.getMedicalRecoveryBonus(); // 0, 100, 200, 300, 400
-    const medicalMultiplier = 1 + medicalBonus / 100; // 1, 2, 3, 4, 5
-
-    // 基础恢复值（固定值）
-    const baseHpRecovery = 30;
-    const baseStaminaRecovery = 30;
-
-    // 应用医疗舱加成
-    const hpRecovery = Math.floor(baseHpRecovery * medicalMultiplier);
-    const staminaRecovery = Math.floor(baseStaminaRecovery * medicalMultiplier);
-
-    // 恢复生命和体力
-    this.player.heal(hpRecovery);
-    this.player.recoverStamina(staminaRecovery);
-
-    // 消耗能量和冷却
-    this.player.consumeHunger(energyCost);
-    this.player.consumeThirst(coolantCost);
-
-    const hpRestored = this.player.hp - oldHp;
-    const staminaRestored = this.player.stamina - oldStamina;
-    const hungerConsumed = oldHunger - this.player.hunger;
-    const thirstConsumed = oldThirst - this.player.thirst;
-
-    this.advanceTime(120);
-
-    logs.push(`恢复 ${hpRestored} 生命 (基础${baseHpRecovery}${medicalBonus > 0 ? ` ×${medicalMultiplier}` : ''})`);
-    logs.push(`恢复 ${staminaRestored} 体力 (基础${baseStaminaRecovery}${medicalBonus > 0 ? ` ×${medicalMultiplier}` : ''})`);
-    logs.push(`消耗 ${hungerConsumed} 能量`);
-    logs.push(`消耗 ${thirstConsumed} 冷却`);
-
-    this.updateQuestProgress(QuestConditionType.REST, 'train', 1);
-    this.addLog('休整', `休整完成，恢复${hpRestored}生命、${staminaRestored}体力，消耗${hungerConsumed}能量、${thirstConsumed}冷却`);
-
-    return {
-      success: true,
-      message: '休整完成',
-      logs,
-    };
   }
 
   // 探索（增强版）- 已更新为使用星球系统
@@ -1129,10 +867,8 @@ export class GameManager {
       shopItems: Array.from(this.shopItems.values()).map(i => i.serialize()),
       lastShopRefreshDay: this.lastShopRefreshDay,
       playerName: this.playerName,
-      locationProgress: Array.from(this.locationProgress.entries()),
       autoCollectSystem: this.autoCollectSystem.serialize(),
       baseFacilitySystem: this.baseFacilitySystem.serialize(),
-      lastStaminaRecoveryTime: this.lastStaminaRecoveryTime,
       crewMembers: this.crewMembers.map(c => serializeCrewMember(c)),
       commEvents: this.commEvents.map(e => serializeCommEvent(e)),
       lastCommScanTime: this.lastCommScanTime,
@@ -1142,14 +878,18 @@ export class GameManager {
       chips: this.chips.map(c => serializeChip(c)),
       equippedChips: this.equippedChips,
       geneNodes: this.geneNodes.map(n => serializeGeneNode(n)),
+      geneSystemState: this.geneSystemState ? serializeGeneSystemState(this.geneSystemState) : undefined,
       implants: this.implants.map(i => serializeImplant(i)),
       equippedImplants: this.equippedImplants,
       marketListings: this.marketListings.map(l => serializeMarketListing(l)),
       playerListings: this.playerListings.map(l => serializePlayerListing(l)),
       marketTransactions: this.marketTransactions.map(t => serializeMarketTransaction(t)),
       ruins: this.ruins.map(r => serializeRuin(r)),
-      exploreMissions: this.exploreMissions.map(m => serializeExploreMission(m)),
+      dailyRuinAttempts: this.dailyRuinAttempts,
+      lastRuinResetDate: this.lastRuinResetDate,
       lastSaveTime: Date.now(),
+      endlessStageLevel: this.endlessStageLevel,
+      endlessWaveNumber: this.endlessWaveNumber,
     };
   }
 
@@ -1178,11 +918,6 @@ export class GameManager {
     // 更新仓库容量
     this.inventory.setMaxSlots(this.getWarehouseCapacity());
 
-    // 加载体力恢复时间
-    if (state.lastStaminaRecoveryTime) {
-      this.lastStaminaRecoveryTime = state.lastStaminaRecoveryTime;
-    }
-
     // 加载船员
     if (state.crewMembers) {
       this.crewMembers = state.crewMembers.map(c => deserializeCrewMember(c));
@@ -1191,6 +926,11 @@ export class GameManager {
     if (!this.crewMembers.some(c => isPlayerCrew(c.id))) {
       const playerCrew = createPlayerCrew(this.playerName, this.player.level);
       this.crewMembers.unshift(playerCrew);
+    } else {
+      const playerCrew = this.crewMembers.find(c => isPlayerCrew(c.id));
+      if (playerCrew && playerCrew.battleSlot === 0) {
+        playerCrew.battleSlot = 1;
+      }
     }
 
     // 加载通讯事件
@@ -1232,6 +972,19 @@ export class GameManager {
       this.geneNodes = state.geneNodes.map(n => deserializeGeneNode(n));
     }
 
+    // 加载基因系统状态（新版V2）
+    if (state.geneSystemState) {
+      try {
+        this.geneSystemState = deserializeGeneSystemState(state.geneSystemState);
+        this.refreshGeneFragments();
+      } catch (e) {
+        console.error('加载基因系统状态失败:', e);
+        this.initGeneSystemState();
+      }
+    } else {
+      this.initGeneSystemState();
+    }
+
     // 加载机械飞升义体
     if (state.implants) {
       this.implants = state.implants.map(i => deserializeImplant(i)).filter((i): i is Implant => i !== null);
@@ -1260,11 +1013,23 @@ export class GameManager {
     if (state.ruins) {
       this.ruins = state.ruins.map(r => deserializeRuin(r));
     } else {
-      this.ruins = generateRuins(this.getFacilityLevel(FacilityType.RUINS));
+      this.ruins = generateRuins();
     }
 
-    if (state.exploreMissions) {
-      this.exploreMissions = state.exploreMissions.map(m => deserializeExploreMission(m));
+    if (state.dailyRuinAttempts) {
+      this.dailyRuinAttempts = state.dailyRuinAttempts;
+    }
+
+    if (state.lastRuinResetDate) {
+      this.lastRuinResetDate = state.lastRuinResetDate;
+    }
+
+    if (state.endlessStageLevel !== undefined) {
+      this.endlessStageLevel = state.endlessStageLevel;
+    }
+
+    if (state.endlessWaveNumber !== undefined) {
+      this.endlessWaveNumber = state.endlessWaveNumber;
     }
 
     this.day = state.day;
@@ -1295,16 +1060,12 @@ export class GameManager {
       this.shopItems.set(itemData.itemId, item);
     });
 
-    // 加载地点探索进度
-    this.locationProgress.clear();
-    state.locationProgress?.forEach(([locationId, progress]) => {
-      this.locationProgress.set(locationId, progress);
-    });
-
-    // 加载自动采集系统
     if (state.autoCollectSystem) {
       this.autoCollectSystem.load(state.autoCollectSystem);
     }
+
+    // 更新玩家基因属性
+    this.updatePlayerGeneStats();
 
     // 计算离线进度
     if (state.lastSaveTime) {
@@ -1396,7 +1157,6 @@ export class GameManager {
 
     this.quests.clear();
     this.shopItems.clear();
-    this.locationProgress.clear();
 
     this.initQuests();
     this.initShop();
@@ -1672,6 +1432,10 @@ export class GameManager {
       return { success: false, message: '无效的位置编号' };
     }
 
+    if (isPlayerCrew(crewId) && slot === 0) {
+      return { success: false, message: '主角不能移出战斗阵容' };
+    }
+
     // 如果要设置到某个位置，先检查该位置是否已被占用
     if (slot > 0) {
       const existingCrew = this.crewMembers.find(c => c.battleSlot === slot && c.id !== crewId);
@@ -1797,14 +1561,6 @@ export class GameManager {
     if (isEventExpired(event)) {
       this.commEvents.splice(eventIndex, 1);
       return { success: false, message: '事件已过期' };
-    }
-
-    if (event.requirements?.stamina && this.player.stamina < event.requirements.stamina) {
-      return { success: false, message: `体力不足，需要${event.requirements.stamina}点体力` };
-    }
-
-    if (event.requirements?.stamina) {
-      this.player.stamina -= event.requirements.stamina;
     }
 
     event.responded = true;
@@ -2395,12 +2151,12 @@ export class GameManager {
       return { success: false, message: `信用点不足，需要${totalCost.credits}` };
     }
 
-    if (!this.inventory.hasItem('mineral_titanium', totalCost.materials)) {
-      return { success: false, message: `钛矿不足，需要${totalCost.materials}个` };
+    if (!this.inventory.hasItem('chip_material', totalCost.materials)) {
+      return { success: false, message: `芯片材料不足，需要${totalCost.materials}个` };
     }
 
     this.trainCoins -= totalCost.credits;
-    this.inventory.removeItem('mineral_titanium', totalCost.materials);
+    this.inventory.removeItem('chip_material', totalCost.materials);
 
     const result = upgradeChip(chip, materialCount);
 
@@ -2463,24 +2219,17 @@ export class GameManager {
       return { success: false, message: '请先卸下芯片' };
     }
 
-    const rarityIndex = Object.keys(ChipRarity).indexOf(chip.rarity);
     const rewards: string[] = [];
 
-    const credits = 100 * (rarityIndex + 1) * chip.level;
-    this.trainCoins += credits;
-    rewards.push(`${credits}信用点`);
-
     const materialReward = {
-      [ChipRarity.COMMON]: { itemId: 'mineral_iron', count: 5 },
-      [ChipRarity.UNCOMMON]: { itemId: 'mineral_copper', count: 3 },
-      [ChipRarity.RARE]: { itemId: 'mineral_titanium', count: 2 },
-      [ChipRarity.EPIC]: { itemId: 'mineral_crystal', count: 1 },
-      [ChipRarity.LEGENDARY]: { itemId: 'mineral_quantum', count: 1 },
+      [ChipRarity.RARE]: { itemId: 'chip_material', count: 1 },
+      [ChipRarity.EPIC]: { itemId: 'chip_material', count: 5 },
+      [ChipRarity.LEGENDARY]: { itemId: 'chip_material', count: 10 },
     }[chip.rarity];
 
     if (materialReward) {
       this.inventory.addItem(materialReward.itemId, materialReward.count);
-      rewards.push(`${materialReward.count}个材料`);
+      rewards.push(`${materialReward.count}个芯片材料`);
     }
 
     this.chips.splice(chipIndex, 1);
@@ -2615,20 +2364,7 @@ export class GameManager {
 
   // ========== 基因系统 ==========
 
-  // 获取基因工程等级
-  // 获取基因工程等级（根据研究进度）
-  getGeneLevel(): number {
-    let level = 1;
-    for (let i = 5; i >= 2; i--) {
-      if (this.completedResearch.includes(`gene_lv${i}`)) {
-        level = i;
-        break;
-      }
-    }
-    return level;
-  }
-
-  // 初始化基因树
+  // 初始化基因树（旧版兼容）
   initGeneTree(): void {
     if (this.geneNodes.length === 0) {
       GENE_TREE.forEach(template => {
@@ -2638,31 +2374,243 @@ export class GameManager {
     this.updateGeneUnlockStatus();
   }
 
+  // 初始化基因系统（新版V2）
+  initGeneSystemState(): void {
+    this.geneSystemState = createGeneSystemState();
+    this.refreshGeneFragments();
+  }
+
+  // 获取基因系统状态
+  getGeneSystemState(): GeneSystemState {
+    if (!this.geneSystemState) {
+      this.initGeneSystemState();
+    }
+    return this.geneSystemState!;
+  }
+
+  // 刷新基因片段识别
+  refreshGeneFragments(): void {
+    if (!this.geneSystemState) return;
+
+    const allFragments: GeneFragment[] = [];
+    for (const chromosome of this.geneSystemState.chromosomes) {
+      const fragments = findGeneFragments(chromosome);
+      allFragments.push(...fragments);
+    }
+    this.geneSystemState.fragments = allFragments;
+  }
+
+  // 获取当前激活的染色体
+  getActiveChromosome(): Chromosome | null {
+    const state = this.getGeneSystemState();
+    return state.chromosomes.find(c => c.id === state.activeChromosomeId && c.unlocked) || state.chromosomes[0];
+  }
+
+  // 切换激活的染色体
+  switchChromosome(chromosomeId: string): boolean {
+    const state = this.getGeneSystemState();
+    const chromosome = state.chromosomes.find(c => c.id === chromosomeId);
+    if (chromosome && chromosome.unlocked) {
+      state.activeChromosomeId = chromosomeId;
+      return true;
+    }
+    return false;
+  }
+
+  // 替换核苷酸碱基
+  replaceNucleotideBase(chromosomeId: string, position: number, newBase: BasePair): { success: boolean; message: string } {
+    const GENE_EDIT_COST = {
+      credits: 1000,
+      materials: 5,
+    };
+
+    if (this.trainCoins < GENE_EDIT_COST.credits) {
+      return { success: false, message: `信用点不足，需要${GENE_EDIT_COST.credits}` };
+    }
+
+    const geneMaterialCount = this.inventory.getItemCount('gene_material');
+    if (geneMaterialCount < GENE_EDIT_COST.materials) {
+      return { success: false, message: `基因材料不足，需要${GENE_EDIT_COST.materials}，当前${geneMaterialCount}` };
+    }
+
+    const state = this.getGeneSystemState();
+    const chromosome = state.chromosomes.find(c => c.id === chromosomeId);
+
+    if (!chromosome) {
+      return { success: false, message: '染色体不存在' };
+    }
+
+    if (!chromosome.unlocked) {
+      return { success: false, message: '染色体未解锁' };
+    }
+
+    const result = replaceNucleotide(chromosome, position, newBase);
+
+    if (result.success) {
+      this.trainCoins -= GENE_EDIT_COST.credits;
+      this.inventory.removeItem('gene_material', GENE_EDIT_COST.materials);
+      this.refreshGeneFragments();
+      this.updatePlayerGeneStats();
+      this.addLog('基因工程', result.message);
+    }
+
+    return result;
+  }
+
+  // 获取生命偷取百分比
+  getLifeStealPercent(context?: BattleContext): number {
+    const state = this.getGeneSystemState();
+    const activeChromosome = this.getActiveChromosome();
+    const defaultContext: BattleContext = context || {
+      currentHp: this.player.hp,
+      maxHp: this.player.maxHp,
+      turn: 0,
+      comboCount: 0,
+      damageTaken: 0,
+      kills: 0,
+      battleTime: 0,
+      lastActionWasSkill: false,
+      lastActionWasDodge: false,
+      isFatalDamage: false,
+    };
+
+    const chromosomeBonus = activeChromosome?.bonusType ? {
+      type: activeChromosome.bonusType,
+      percent: activeChromosome.bonusPercent,
+    } : undefined;
+
+    state.totalLifeSteal = calculateTotalLifeSteal(state.fragments, defaultContext, chromosomeBonus);
+    return state.totalLifeSteal;
+  }
+
+  // 检查是否有溢出治疗转护盾效果
+  hasOverflowToShield(context?: BattleContext): boolean {
+    const state = this.getGeneSystemState();
+    const defaultContext: BattleContext = context || {
+      currentHp: this.player.hp,
+      maxHp: this.player.maxHp,
+      turn: 0,
+      comboCount: 0,
+      damageTaken: 0,
+      kills: 0,
+      battleTime: 0,
+      lastActionWasSkill: false,
+      lastActionWasDodge: false,
+      isFatalDamage: false,
+    };
+    return hasOverflowToShield(state.fragments, defaultContext);
+  }
+
+  // 检查是否免疫死亡
+  checkSurviveFatal(context?: BattleContext): { canSurvive: boolean; healPercent: number; instanceId?: string; cooldown?: number } {
+    const state = this.getGeneSystemState();
+    const defaultContext: BattleContext = context || {
+      currentHp: this.player.hp,
+      maxHp: this.player.maxHp,
+      turn: 0,
+      comboCount: 0,
+      damageTaken: 0,
+      kills: 0,
+      battleTime: 0,
+      lastActionWasSkill: false,
+      lastActionWasDodge: false,
+      isFatalDamage: true,
+    };
+    return checkSurviveFatal(state.fragments, defaultContext);
+  }
+
+  // 设置基因片段冷却
+  setGeneFragmentCooldown(instanceId: string, cooldown: number): void {
+    const state = this.getGeneSystemState();
+    setFragmentCooldown(state.fragments, instanceId, cooldown);
+  }
+
+  // 重置所有基因片段冷却时间
+  resetAllGeneCooldowns(): void {
+    const state = this.getGeneSystemState();
+    resetAllCooldowns(state.fragments);
+  }
+
+  // 获取基因属性加成
+  getGeneStatsBonus(context?: BattleContext): Record<string, number> {
+    const state = this.getGeneSystemState();
+    const activeChromosome = this.getActiveChromosome();
+    const defaultContext: BattleContext = context || {
+      currentHp: this.player.hp,
+      maxHp: this.player.maxHp,
+      turn: 0,
+      comboCount: 0,
+      damageTaken: 0,
+      kills: 0,
+      battleTime: 0,
+      lastActionWasSkill: false,
+      lastActionWasDodge: false,
+      isFatalDamage: false,
+    };
+
+    const chromosomeBonus = activeChromosome?.bonusType ? {
+      type: activeChromosome.bonusType,
+      percent: activeChromosome.bonusPercent,
+    } : undefined;
+
+    return calculateGeneStats(state.fragments, defaultContext, chromosomeBonus);
+  }
+
+  // 获取激活的基因效果
+  getActiveGeneFragments(context?: BattleContext): GeneFragment[] {
+    const state = this.getGeneSystemState();
+    const defaultContext: BattleContext = context || {
+      currentHp: this.player.hp,
+      maxHp: this.player.maxHp,
+      turn: 0,
+      comboCount: 0,
+      damageTaken: 0,
+      kills: 0,
+      battleTime: 0,
+      lastActionWasSkill: false,
+      lastActionWasDodge: false,
+      isFatalDamage: false,
+    };
+
+    return getActiveGeneEffects(state.fragments, defaultContext);
+  }
+
+  // 获取染色体完整度
+  getChromosomeIntegrity(chromosomeId?: string): number {
+    const state = this.getGeneSystemState();
+    const chromosome = chromosomeId
+      ? state.chromosomes.find(c => c.id === chromosomeId)
+      : this.getActiveChromosome();
+
+    if (!chromosome) return 0;
+    return calculateIntegrity(chromosome);
+  }
+
+  // 更新玩家基因属性（将基因效果应用到玩家）
+  updatePlayerGeneStats(): void {
+    const geneStats = this.getGeneStatsBonus();
+    const lifeSteal = this.getLifeStealPercent();
+    this.player.updateGeneStats(geneStats, lifeSteal);
+  }
+
   // 更新基因解锁状态
   updateGeneUnlockStatus(): void {
-    const level = this.getGeneLevel();
-    const maxUnlocked = 3 + (level - 1) * 2;
-
-    this.geneNodes.forEach((node, index) => {
-      if (index < maxUnlocked) {
-        const prereqsMet = node.prerequisites.every(p => {
-          const prereqNode = this.geneNodes.find(n => n.id === p);
-          return prereqNode && prereqNode.level > 0;
-        });
-        node.unlocked = prereqsMet || node.prerequisites.length === 0;
-      } else {
-        node.unlocked = false;
-      }
+    this.geneNodes.forEach((node) => {
+      const prereqsMet = node.prerequisites.every(p => {
+        const prereqNode = this.geneNodes.find(n => n.id === p);
+        return prereqNode && prereqNode.level > 0;
+      });
+      node.unlocked = prereqsMet || node.prerequisites.length === 0;
     });
   }
 
-  // 获取基因节点
+  // 获取基因节点（旧版兼容）
   getGeneNodes(): GeneNode[] {
     this.updateGeneUnlockStatus();
     return this.geneNodes;
   }
 
-  // 升级基因节点
+  // 升级基因节点（旧版兼容）
   upgradeGeneNode(nodeId: string): { success: boolean; message: string; newValue?: number } {
     const node = this.geneNodes.find(n => n.id === nodeId);
 
@@ -2701,9 +2649,15 @@ export class GameManager {
     return { success: result.success, message: result.success ? '升级成功' : '升级失败', newValue: result.newValue };
   }
 
-  // 获取基因总属性
+  // 获取基因总属性（旧版兼容）
   getGeneTotalStats(): Record<GeneType, number> {
     return getGeneTotalStats(this.geneNodes);
+  }
+
+  // 获取基因片段列表
+  getGeneFragments(): GeneFragment[] {
+    const state = this.getGeneSystemState();
+    return state.fragments;
   }
 
   // ========== 机械飞升系统 ==========
@@ -2893,21 +2847,15 @@ export class GameManager {
       return { success: false, message: '请先卸下义体' };
     }
 
-    const rarityIndex = Object.keys(ImplantRarity).indexOf(implant.rarity);
-    const rewards: string[] = [];
+    const rarityIndex = Object.values(ImplantRarity).indexOf(implant.rarity);
+    const materialReward = (rarityIndex + 1) * 2;
 
-    const credits = 200 * (rarityIndex + 1) * implant.level;
-    this.trainCoins += credits;
-    rewards.push(`${credits}信用点`);
-
-    const materialReward = 2 + rarityIndex * 2 + Math.floor(implant.level / 3);
     this.inventory.addItem('cyber_material', materialReward);
-    rewards.push(`${materialReward}个义体材料`);
 
     this.implants.splice(implantIndex, 1);
-    this.addLog('机械飞升', `分解了义体，获得${rewards.join('、')}`);
+    this.addLog('机械飞升', `分解了义体，获得${materialReward}义体材料`);
 
-    return { success: true, message: '分解成功', rewards: rewards.join('、') };
+    return { success: true, message: '分解成功', rewards: `${materialReward}义体材料` };
   }
 
   // 获取义体总属性加成
@@ -3103,163 +3051,189 @@ export class GameManager {
     return this.getFacilityLevel(FacilityType.RUINS);
   }
 
+  // 获取今日日期字符串
+  private getTodayDateString(): string {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  }
+
+  // 重置每日挑战次数
+  private resetDailyRuinAttempts(): void {
+    const today = this.getTodayDateString();
+    if (this.lastRuinResetDate !== today) {
+      this.dailyRuinAttempts = {};
+      this.lastRuinResetDate = today;
+    }
+  }
+
+  // 更新遗迹战斗结果（用于战斗界面回调）
+  updateRuinBattleResult(ruinId: string, victory: boolean, isFirstClear: boolean): void {
+    console.log(`updateRuinBattleResult: ruinId=${ruinId}, victory=${victory}, isFirstClear=${isFirstClear}`);
+    console.log('this.ruins:', this.ruins);
+    const ruin = this.ruins.find(r => r.id === ruinId);
+    console.log('找到的 ruin:', ruin);
+    if (!ruin) {
+      console.log('未找到 ruin，返回');
+      return;
+    }
+
+    // 只有胜利时才更新状态
+    if (victory) {
+      console.log('胜利，更新状态...');
+      console.log('ruin.type:', ruin.type);
+      console.log('RuinType.RESEARCH_STAR:', RuinType.RESEARCH_STAR);
+      console.log('RuinType.BASE_CORE:', RuinType.BASE_CORE);
+      console.log('比较结果:', ruin.type === RuinType.RESEARCH_STAR, ruin.type === RuinType.BASE_CORE);
+
+      ruin.completedCount += 1;
+      console.log('completedCount 已增加:', ruin.completedCount);
+
+      if (!isFirstClear) {
+        console.log('非首通，扣除挑战次数');
+        this.dailyRuinAttempts[ruin.type] = (this.dailyRuinAttempts[ruin.type] || 0) + 1;
+      } else {
+        console.log('首通，不扣除挑战次数');
+      }
+
+      // 基地核心和科研之星副本不提升难度
+      if (ruin.type === RuinType.RESEARCH_STAR || ruin.type === RuinType.BASE_CORE) {
+        console.log('基地核心或科研之星，不提升难度');
+        ruin.firstClear = false;
+      } else {
+        console.log('提升难度...');
+        console.log('当前难度:', ruin.currentDifficulty);
+        const nextDifficulty = getNextDifficulty(ruin.currentDifficulty);
+        console.log('下一难度:', nextDifficulty);
+        if (nextDifficulty) {
+          ruin.currentDifficulty = nextDifficulty;
+          ruin.firstClear = true;
+          this.dailyRuinAttempts[ruin.type] = 0;
+        } else {
+          ruin.firstClear = false;
+        }
+      }
+    }
+    console.log('updateRuinBattleResult 完成');
+  }
+
   // 获取遗迹列表
   getRuins(): Ruin[] {
-    const level = this.getRuinLevel();
-    const availableRuins = generateRuins(level);
+    const defaultRuins = generateRuins();
 
-    availableRuins.forEach(ar => {
-      const existing = this.ruins.find(r => r.id === ar.id);
+    defaultRuins.forEach(dr => {
+      const existing = this.ruins.find(r => r.id === dr.id);
       if (existing) {
-        ar.completedCount = existing.completedCount;
+        dr.completedCount = existing.completedCount;
+        dr.firstClear = existing.firstClear;
+        dr.currentDifficulty = existing.currentDifficulty || RuinDifficulty.EASY;
+      } else {
+        const oldRuin = this.ruins.find(r => r.type === dr.type);
+        if (oldRuin) {
+          dr.completedCount = oldRuin.completedCount || 0;
+          dr.firstClear = oldRuin.firstClear ?? true;
+          dr.currentDifficulty = oldRuin.currentDifficulty || oldRuin.difficulty || RuinDifficulty.EASY;
+        }
       }
     });
 
-    this.ruins = availableRuins;
+    this.ruins = defaultRuins;
+    this.resetDailyRuinAttempts();
     return this.ruins;
   }
 
-  // 获取探索任务列表
-  getExploreMissions(): ExploreMission[] {
-    return this.exploreMissions;
+  // 获取某类型副本今日剩余挑战次数
+  getRuinRemainingAttempts(ruinType: string): number {
+    this.resetDailyRuinAttempts();
+    const used = this.dailyRuinAttempts[ruinType] || 0;
+    const maxAttempts = (ruinType === 'base_core' || ruinType === 'research_star') ? 3 : MAX_DAILY_ATTEMPTS;
+    return Math.max(0, maxAttempts - used);
   }
 
-  // 开始探索
-  startExplore(ruinId: string, crewIds: string[]): { success: boolean; message: string; mission?: ExploreMission } {
+  // 获取副本预览信息
+  getRuinPreview(ruinId: string): { success: boolean; message: string; preview?: { ruin: Ruin; successRate: number; remainingAttempts: number; isFirstClear: boolean } } {
     const ruin = this.ruins.find(r => r.id === ruinId);
-
     if (!ruin) {
-      return { success: false, message: '遗迹不存在' };
+      return { success: false, message: '副本不存在' };
     }
 
-    if (ruin.status === ExploreStatus.EXPLORING) {
-      return { success: false, message: '该遗迹正在探索中' };
-    }
+    const playerPower = this.player.totalAttack + this.player.totalDefense;
+    const successRate = calculateExploreSuccess(playerPower, ruin.currentDifficulty);
+    const remainingAttempts = this.getRuinRemainingAttempts(ruin.type);
 
-    if (crewIds.length === 0) {
-      return { success: false, message: '请选择至少一名船员' };
-    }
-
-    const crewMembers = crewIds.map(id => this.crewMembers.find(c => c.id === id)).filter((c): c is CrewMember => c !== undefined);
-
-    if (crewMembers.length !== crewIds.length) {
-      return { success: false, message: '部分船员不存在' };
-    }
-
-    for (const crew of crewMembers) {
-      const assignedMission = this.exploreMissions.find(m => m.status === 'ongoing' && m.crewIds.includes(crew.id));
-      if (assignedMission) {
-        return { success: false, message: `${crew.name}正在执行其他任务` };
-      }
-    }
-
-    const mission: ExploreMission = {
-      id: `explore_${Date.now()}`,
-      ruinId,
-      crewIds,
-      startTime: Date.now(),
-      endTime: Date.now() + ruin.duration,
-      status: 'ongoing',
+    return {
+      success: true,
+      message: '获取成功',
+      preview: {
+        ruin,
+        successRate,
+        remainingAttempts,
+        isFirstClear: ruin.firstClear,
+      },
     };
-
-    ruin.status = ExploreStatus.EXPLORING;
-    ruin.assignedCrew = crewIds;
-    this.exploreMissions.push(mission);
-
-    const typeConfig = RUIN_TYPE_CONFIG[ruin.type];
-    this.addLog('遗迹探索', `开始探索${typeConfig.name}：${ruin.name}`);
-
-    return { success: true, message: '探索已开始', mission };
   }
 
-  // 完成探索
-  completeExplore(missionId: string): { success: boolean; message: string; rewards?: { credits: number; items: { itemId: string; count: number }[]; experience: number } } {
-    const missionIndex = this.exploreMissions.findIndex(m => m.id === missionId);
-
-    if (missionIndex === -1) {
-      return { success: false, message: '任务不存在' };
-    }
-
-    const mission = this.exploreMissions[missionIndex];
-
-    if (mission.status !== 'ongoing') {
-      return { success: false, message: '任务已完成' };
-    }
-
-    if (Date.now() < mission.endTime) {
-      return { success: false, message: '探索尚未完成' };
-    }
-
-    const ruin = this.ruins.find(r => r.id === mission.ruinId);
+  // 挑战副本（即时战斗）
+  challengeRuin(ruinId: string): { success: boolean; message: string; rewards?: { credits: number; items: { itemId: string; count: number }[]; experience: number }; isFirstClear?: boolean; isSuccess?: boolean } {
+    const ruin = this.ruins.find(r => r.id === ruinId);
     if (!ruin) {
-      return { success: false, message: '遗迹不存在' };
+      return { success: false, message: '副本不存在' };
     }
 
-    const crewPower = mission.crewIds.reduce((total, id) => {
-      const crew = this.crewMembers.find(c => c.id === id);
-      return total + (crew?.stats.attack || 0) + (crew?.stats.defense || 0);
-    }, 0);
+    this.resetDailyRuinAttempts();
 
-    const successRate = calculateExploreSuccess(crewPower, ruin.difficulty);
+    const remainingAttempts = this.getRuinRemainingAttempts(ruin.type);
+    const isFirstClear = ruin.firstClear;
+
+    if (remainingAttempts <= 0 && !isFirstClear) {
+      return { success: false, message: '今日挑战次数已用完' };
+    }
+
+    const playerPower = this.player.totalAttack + this.player.totalDefense;
+    const successRate = calculateExploreSuccess(playerPower, ruin.currentDifficulty);
     const isSuccess = Math.random() * 100 < successRate;
 
-    const rewards = generateRewards(ruin.rewards, isSuccess);
+    const multiplier = RUIN_DIFFICULTY_CONFIG[ruin.currentDifficulty].multiplier;
+    const ruinRewards = getRuinRewards(ruin);
+    const rewards = generateRewards(ruinRewards, isSuccess, multiplier);
 
     this.trainCoins += rewards.credits;
     rewards.items.forEach(item => {
       this.inventory.addItem(item.itemId, item.count);
     });
 
-    ruin.status = ExploreStatus.AVAILABLE;
-    ruin.assignedCrew = undefined;
-    ruin.completedCount += 1;
+    // 只有挑战成功时才记录完成次数和扣除挑战次数
+    if (isSuccess) {
+      ruin.completedCount += 1;
 
-    mission.status = isSuccess ? 'completed' : 'failed';
-    this.exploreMissions.splice(missionIndex, 1);
+      if (!isFirstClear) {
+        this.dailyRuinAttempts[ruin.type] = (this.dailyRuinAttempts[ruin.type] || 0) + 1;
+      }
+
+      // 基地核心和科研之星副本不提升难度
+      if (ruin.type === RuinType.RESEARCH_STAR || ruin.type === RuinType.BASE_CORE) {
+        ruin.firstClear = false;
+      } else {
+        const nextDifficulty = getNextDifficulty(ruin.currentDifficulty);
+        if (nextDifficulty) {
+          ruin.currentDifficulty = nextDifficulty;
+          ruin.firstClear = true;
+          this.dailyRuinAttempts[ruin.type] = 0;
+        } else {
+          ruin.firstClear = false;
+        }
+      }
+    }
 
     const typeConfig = RUIN_TYPE_CONFIG[ruin.type];
-    this.addLog('遗迹探索', `${isSuccess ? '成功' : '失败'}探索${typeConfig.name}：${ruin.name}，获得${rewards.credits}信用点`);
+    this.addLog('遗迹探索', `${isFirstClear ? '【首通】' : ''}${isSuccess ? '成功' : '失败'}挑战${typeConfig.name}：${ruin.name}，获得${rewards.credits}信用点`);
 
     return {
       success: true,
-      message: isSuccess ? '探索成功！' : '探索失败，但获得部分奖励',
+      message: isSuccess ? '挑战成功！' : '挑战失败，获得部分奖励',
       rewards,
+      isFirstClear: isFirstClear && isSuccess,
+      isSuccess,
     };
-  }
-
-  // 取消探索
-  cancelExplore(missionId: string): { success: boolean; message: string } {
-    const missionIndex = this.exploreMissions.findIndex(m => m.id === missionId);
-
-    if (missionIndex === -1) {
-      return { success: false, message: '任务不存在' };
-    }
-
-    const mission = this.exploreMissions[missionIndex];
-
-    if (mission.status !== 'ongoing') {
-      return { success: false, message: '任务已完成' };
-    }
-
-    const ruin = this.ruins.find(r => r.id === mission.ruinId);
-    if (ruin) {
-      ruin.status = ExploreStatus.AVAILABLE;
-      ruin.assignedCrew = undefined;
-    }
-
-    this.exploreMissions.splice(missionIndex, 1);
-    this.addLog('遗迹探索', '取消了探索任务');
-
-    return { success: true, message: '已取消探索' };
-  }
-
-  // 检查并完成已结束的探索任务
-  checkExploreMissions(): void {
-    this.exploreMissions.forEach(mission => {
-      if (mission.status === 'ongoing' && Date.now() >= mission.endTime) {
-        // 任务已完成，等待玩家领取奖励
-      }
-    });
   }
 
   // ========== 自动采集系统 ==========
@@ -3350,21 +3324,10 @@ export class GameManager {
 
   // 开始战斗
   startBattle(locationId: string, isBoss: boolean = false, isElite: boolean = false): { success: boolean; message: string; enemy?: Enemy } {
-    // 检查是否是新的星球ID格式（以 planet_ 开头）
     if (locationId.startsWith('planet_')) {
       return this.startPlanetBattle(locationId, isBoss, isElite);
     }
 
-    // 检查是否是神话站台
-    const mythLocation = MYTHOLOGY_LOCATIONS.find((l: MythologyLocation) => l.id === locationId);
-
-    if (mythLocation) {
-      // 神话站台战斗
-      return this.startMythologyBattle(mythLocation, isBoss, isElite);
-    }
-
-    // 旧站台系统已弃用，尝试使用星球系统
-    // 将 loc_xxx 格式的ID映射到对应的星球
     const locationToPlanetMap: Record<string, string> = {
       'loc_001': 'planet_alpha', 'loc_002': 'planet_eta', 'loc_003': 'planet_beta',
       'loc_004': 'planet_gamma', 'loc_005': 'planet_delta', 'loc_006': 'planet_epsilon',
@@ -3384,35 +3347,17 @@ export class GameManager {
     // 使用新的虚空怪物系统
     let enemy: Enemy | null = null;
 
-    // 战斗消耗10体力
-    const staminaCost = 10;
-
-    // 检查体力
-    if (this.player.stamina < staminaCost) {
-      return { success: false, message: `体力不足（需要${staminaCost}点）` };
-    }
-
     if (isBoss) {
-      // 检查今天是否已经挑战过
-      if (!this.isBossRefreshed(planetId)) {
-        return { success: false, message: '今日已挑战过该首领，请明天再来' };
-      }
-
       enemy = getBossEnemyForPlanet(planetId);
       if (!enemy) {
-        // 如果新系统没有BOSS，尝试使用旧系统
         return { success: false, message: '该星球没有首领' };
       }
       const enemyInstance = createEnemyInstance(enemy.id);
       if (!enemyInstance) {
         return { success: false, message: '创建首领失败' };
       }
-      // 扣除体力
-      this.player.consumeStamina(staminaCost);
-      // 记录挑战日期（失败不扣除次数，所以在这里记录）
-      this.recordBossChallenge(planetId);
-      this.addLog('战斗', `💀 挑战虚空首领 ${enemyInstance.name}！消耗${staminaCost}体力`);
-      return { success: true, message: `💀 挑战虚空首领 ${enemyInstance.name}！消耗${staminaCost}体力`, enemy: enemyInstance };
+      this.addLog('战斗', `💀 挑战虚空首领 ${enemyInstance.name}！`);
+      return { success: true, message: `💀 挑战虚空首领 ${enemyInstance.name}！`, enemy: enemyInstance };
     }
 
     if (isElite) {
@@ -3424,10 +3369,8 @@ export class GameManager {
       if (!enemyInstance) {
         return { success: false, message: '创建精英虚空生物失败' };
       }
-      // 扣除体力
-      this.player.consumeStamina(staminaCost);
-      this.addLog('战斗', `👾 遭遇了精英 ${enemyInstance.name}！消耗${staminaCost}体力`);
-      return { success: true, message: `👾 遭遇了精英 ${enemyInstance.name}！消耗${staminaCost}体力`, enemy: enemyInstance };
+      this.addLog('战斗', `👾 遭遇了精英 ${enemyInstance.name}！`);
+      return { success: true, message: `👾 遭遇了精英 ${enemyInstance.name}！`, enemy: enemyInstance };
     }
 
     // 普通虚空生物
@@ -3441,95 +3384,8 @@ export class GameManager {
       return { success: false, message: '创建虚空生物失败' };
     }
 
-    // 扣除体力
-    this.player.consumeStamina(staminaCost);
-    this.addLog('战斗', `👾 遭遇了 ${enemyInstance.name}！消耗${staminaCost}体力`);
-    return { success: true, message: `👾 遭遇了 ${enemyInstance.name}！消耗${staminaCost}体力`, enemy: enemyInstance };
-  }
-
-  // 扫荡功能：首次击败boss后解锁，收获等于战胜一次精英敌人，消耗10体力
-  sweepPlanet(planetId: string): { success: boolean; message: string; rewards?: { exp: number; loot: { itemId: string; name: string; quantity: number }[] }; logs: string[] } {
-    const logs: string[] = [];
-
-    // 检查是否已击败该星球的boss
-    const progress = this.getLocationProgress(planetId);
-    if (!progress.bossDefeated) {
-      return { success: false, message: '需要先击败该星球首领才能解锁扫荡', logs };
-    }
-
-    // 检查体力
-    const staminaCost = 10;
-    if (this.player.stamina < staminaCost) {
-      return { success: false, message: `体力不足（需要${staminaCost}点）`, logs };
-    }
-
-    // 消耗体力
-    this.player.consumeStamina(staminaCost);
-    logs.push(`消耗 ${staminaCost} 体力`);
-
-    // 生成精英敌人收益
-    const enemy = getEliteEnemyForPlanet(planetId);
-    if (!enemy) {
-      return { success: false, message: '该星球没有精英虚空生物', logs };
-    }
-
-    const enemyInstance = createEnemyInstance(enemy.id);
-    if (!enemyInstance) {
-      return { success: false, message: '创建精英虚空生物失败', logs };
-    }
-
-    // 获得经验
-    const expGain = enemyInstance.expReward;
-    const levelUpLogs = this.player.addExp(expGain);
-    logs.push(`获得 ${expGain} 经验值`);
-    logs.push(...levelUpLogs);
-
-    // 掉落物品
-    const loot: { itemId: string; name: string; quantity: number }[] = [];
-    enemyInstance.lootTable.forEach(lootItem => {
-      if (Math.random() < lootItem.chance) {
-        const itemTemplate = getItemTemplate(lootItem.itemId);
-        if (itemTemplate && this.inventory.addItem(lootItem.itemId, 1)) {
-          loot.push({ itemId: lootItem.itemId, name: itemTemplate.name, quantity: 1 });
-          logs.push(`获得 ${itemTemplate.name}`);
-        }
-      }
-    });
-
-    // 掉落制造材料（带品质版本）
-    const materialIds = ['mat_001', 'mat_002', 'mat_003', 'mat_004', 'mat_005', 'mat_006', 'mat_007', 'mat_008', 'mat_009', 'mat_010'];
-    const materialCount = 3 + Math.floor(Math.random() * 3); // 3-5个
-
-    // 品质后缀映射
-    const QUALITY_SUFFIX: Record<ArmorQuality, string> = {
-      [ArmorQuality.STARDUST]: '_stardust',
-      [ArmorQuality.ALLOY]: '_alloy',
-      [ArmorQuality.CRYSTAL]: '_crystal',
-      [ArmorQuality.QUANTUM]: '_quantum',
-      [ArmorQuality.VOID]: '_void',
-    };
-
-    for (let i = 0; i < materialCount; i++) {
-      const matId = materialIds[Math.floor(Math.random() * materialIds.length)];
-      // 扫荡产出星尘级材料
-      const qualityId = `${matId}${QUALITY_SUFFIX[ArmorQuality.STARDUST]}`;
-      const itemTemplate = getItemTemplate(qualityId);
-      if (itemTemplate && this.inventory.addItem(qualityId, 1)) {
-        const existing = loot.find(l => l.itemId === qualityId);
-        if (existing) {
-          existing.quantity++;
-        } else {
-          loot.push({ itemId: qualityId, name: itemTemplate.name, quantity: 1 });
-        }
-      }
-    }
-
-    // 推进时间
-    this.advanceTime(30);
-
-    this.addLog('扫荡', `扫荡完成，获得${expGain}经验`);
-
-    return { success: true, message: '扫荡完成', rewards: { exp: expGain, loot }, logs };
+    this.addLog('战斗', `👾 遭遇了 ${enemyInstance.name}！`);
+    return { success: true, message: `👾 遭遇了 ${enemyInstance.name}！`, enemy: enemyInstance };
   }
 
   // ========== 材料合成系统 ==========
@@ -3614,93 +3470,6 @@ export class GameManager {
     return suffixes[quality] || '';
   }
 
-  // 神话站台战斗
-  private startMythologyBattle(mythLocation: MythologyLocation, isBoss: boolean, isElite: boolean): { success: boolean; message: string; enemy?: Enemy } {
-    // 战斗消耗10体力
-    const staminaCost = 10;
-
-    // 检查体力
-    if (this.player.stamina < staminaCost) {
-      return { success: false, message: `体力不足（需要${staminaCost}点）` };
-    }
-
-    if (isBoss) {
-      // 神明BOSS战
-      const bossEnemy = Object.values(ENEMIES).find(e => e.name === mythLocation.bossName);
-      if (!bossEnemy) {
-        return { success: false, message: '神明数据不存在' };
-      }
-      const enemyInstance = createEnemyInstance(bossEnemy.id);
-      if (!enemyInstance) {
-        return { success: false, message: '创建神明失败' };
-      }
-      // 扣除体力
-      this.player.consumeStamina(staminaCost);
-      this.addLog('战斗', `👑 挑战神明 ${enemyInstance.name}！消耗${staminaCost}体力`);
-      return { success: true, message: `👑 挑战神明 ${enemyInstance.name}！消耗${staminaCost}体力`, enemy: enemyInstance };
-    }
-
-    // 根据难度选择敌人类型
-    const enemyTypes = isElite ? mythLocation.eliteEnemyTypes : mythLocation.enemyTypes;
-    const enemyTier = isElite ? mythLocation.eliteEnemyTier : mythLocation.enemyTier;
-
-    if (!enemyTypes || enemyTypes.length === 0) {
-      return { success: false, message: '这个神话站台没有敌人' };
-    }
-
-    // 随机选择一个敌人类型
-    const enemyName = enemyTypes[Math.floor(Math.random() * enemyTypes.length)];
-
-    // 创建敌人实例（使用神明站台的敌人配置）
-    const enemyInstance = this.createMythologyEnemy(enemyName, enemyTier, mythLocation.baseEnemyLevel);
-    if (!enemyInstance) {
-      return { success: false, message: '创建神话敌人失败' };
-    }
-
-    // 扣除体力
-    this.player.consumeStamina(staminaCost);
-    const enemyTypeText = isElite ? '精英' : '';
-    this.addLog('战斗', `遭遇了${enemyTypeText} ${enemyInstance.name}！消耗${staminaCost}体力`);
-    return { success: true, message: `遭遇了${enemyTypeText} ${enemyInstance.name}！消耗${staminaCost}体力`, enemy: enemyInstance };
-  }
-
-  // 创建神话站台敌人
-  private createMythologyEnemy(name: string, tier: string, baseLevel: number): Enemy | null {
-    // 根据等级计算属性
-    const stats = calculateEnemyStats(tier as EnemyTier, baseLevel);
-
-    const enemy: Enemy = {
-      id: `myth_enemy_${Date.now()}`,
-      name: name,
-      hp: stats.hp,
-      maxHp: stats.hp,
-      attack: stats.attack,
-      defense: stats.defense,
-      speed: stats.speed || 10,
-      expReward: stats.expReward || Math.floor(baseLevel * 10),
-      lootTable: this.generateMythologyLoot(tier),
-    };
-
-    return enemy;
-  }
-
-  // 生成神话站台战利品
-  private generateMythologyLoot(tier: string): { itemId: string; chance: number; name: string }[] {
-    const lootTable: { itemId: string; chance: number; name: string }[] = [];
-
-    // 基础掉落
-    lootTable.push({ itemId: 'mat_myth_001', chance: 0.5, name: '神话碎片' });
-    lootTable.push({ itemId: 'mat_myth_002', chance: 0.3, name: '神力结晶' });
-
-    // 根据等级增加稀有掉落
-    if (tier.includes('+')) {
-      lootTable.push({ itemId: 'mat_myth_003', chance: 0.2, name: '古老卷轴' });
-    }
-
-    return lootTable;
-  }
-
-  // 玩家攻击
   playerAttack(enemy: Enemy): { damage: number; isCrit: boolean; enemyDefeated: boolean; logs: string[] } {
     const logs: string[] = [];
 
@@ -3751,8 +3520,6 @@ export class GameManager {
     if (playerDefeated) {
       logs.push('你被击败了！');
       this.isGameOver = true;
-      // 战斗失败，体力归零
-      this.player.stamina = 0;
     }
 
     return { damage, playerDefeated, logs };
@@ -4660,5 +4427,159 @@ export class GameManager {
       this.addLog('升华', `${equipment.name} 升华失败`);
       return { success: false, message: '升华失败，装备未提升' };
     }
+  }
+
+  startEndlessWaveBattle(): { success: boolean; message: string; enemy?: any } {
+    const normalCreatures = ALL_VOID_CREATURES.filter(c => c.creatureType === 'normal');
+    if (normalCreatures.length === 0) {
+      return { success: false, message: '无法生成敌人' };
+    }
+
+    const stageLevel = this.endlessStageLevel;
+    const tierMap: Record<string, number> = { 'T1': 3, 'T2': 8, 'T3': 13, 'T4': 18, 'T5': 23, 'T6': 28 };
+    const targetLevel = 3 + (stageLevel - 1) * 2;
+
+    let filteredCreatures = normalCreatures.filter(c => {
+      const creatureLevel = tierMap[c.tier] || 3;
+      return Math.abs(creatureLevel - targetLevel) <= 5;
+    });
+
+    if (filteredCreatures.length === 0) {
+      filteredCreatures = normalCreatures;
+    }
+
+    const baseCreature = filteredCreatures[Math.floor(Math.random() * filteredCreatures.length)];
+    const baseEnemy = convertVoidCreatureToEnemy(baseCreature);
+    const enemyInstance = createEnemyInstance(baseEnemy.id);
+    if (!enemyInstance) {
+      return { success: false, message: '创建敌人失败' };
+    }
+
+    const baseMultiplier = 0.3;
+    const waveMultiplier = baseMultiplier + (this.endlessStageLevel - 1) * 0.05 + (this.endlessWaveNumber - 1) * 0.01;
+    enemyInstance.maxHp = Math.floor(enemyInstance.maxHp * waveMultiplier);
+    enemyInstance.hp = enemyInstance.maxHp;
+    enemyInstance.attack = Math.floor(enemyInstance.attack * waveMultiplier);
+    enemyInstance.defense = Math.floor(enemyInstance.defense * waveMultiplier);
+
+    this.addLog('无尽战斗', `开始第${this.endlessStageLevel}-${this.endlessWaveNumber}波战斗`);
+    return { success: true, message: `开始第${this.endlessStageLevel}-${this.endlessWaveNumber}波战斗`, enemy: enemyInstance };
+  }
+
+  startEndlessBossBattle(): { success: boolean; message: string; enemy?: any } {
+    const bossCreatures = ALL_VOID_CREATURES.filter(c => c.creatureType === 'boss');
+    if (bossCreatures.length === 0) {
+      return { success: false, message: '无法生成Boss' };
+    }
+
+    const stageLevel = this.endlessStageLevel;
+    const tierMap: Record<string, number> = { 'T1': 3, 'T2': 8, 'T3': 13, 'T4': 18, 'T5': 23, 'T6': 28 };
+    const targetLevel = 3 + (stageLevel - 1) * 2;
+
+    let filteredCreatures = bossCreatures.filter(c => {
+      const creatureLevel = tierMap[c.tier] || 3;
+      return Math.abs(creatureLevel - targetLevel) <= 5;
+    });
+
+    if (filteredCreatures.length === 0) {
+      filteredCreatures = bossCreatures;
+    }
+
+    const baseCreature = filteredCreatures[Math.floor(Math.random() * filteredCreatures.length)];
+    const baseEnemy = convertVoidCreatureToEnemy(baseCreature);
+    const enemyInstance = createEnemyInstance(baseEnemy.id);
+    if (!enemyInstance) {
+      return { success: false, message: '创建Boss失败' };
+    }
+
+    const bossMultiplier = this.calculateBossMultiplier();
+    enemyInstance.maxHp = Math.floor(enemyInstance.maxHp * bossMultiplier);
+    enemyInstance.hp = enemyInstance.maxHp;
+    enemyInstance.attack = Math.floor(enemyInstance.attack * bossMultiplier);
+    enemyInstance.defense = Math.floor(enemyInstance.defense * bossMultiplier);
+    // 只显示boss名称，不带前缀
+
+    this.addLog('无尽Boss', `开始第${this.endlessStageLevel}关Boss战斗`);
+    return { success: true, message: `开始第${this.endlessStageLevel}关Boss战斗`, enemy: enemyInstance };
+  }
+
+  calculateWaveRewards(): { credits: number; materials: { itemId: string; count: number }[]; exp: number } {
+    const credits = 100;
+    const materials: { itemId: string; count: number }[] = [];
+
+    const materialIds = ['mat_001_stardust', 'mat_002_stardust', 'mat_003_stardust', 'mat_004_stardust', 'mat_005_stardust'];
+    const randomMatId = materialIds[Math.floor(Math.random() * materialIds.length)];
+    const minCount = Math.max(1, this.endlessStageLevel - 1);
+    const maxCount = Math.min(10, this.endlessStageLevel + 1);
+    const count = Math.floor(minCount + Math.random() * (maxCount - minCount + 1));
+    materials.push({ itemId: randomMatId, count });
+
+    const expMultiplier = Math.max(1, Math.floor(this.endlessStageLevel / 10));
+    const exp = 10 * expMultiplier;
+
+    return { credits, materials, exp };
+  }
+
+  calculateBossMultiplier(): number {
+    const stageLevel = this.endlessStageLevel;
+    const baseMultiplier = 0.5;
+    const linearBonus = baseMultiplier + (stageLevel - 1) * 0.08;
+    const milestoneBonus = Math.floor(stageLevel / 10);
+    const multiplier = linearBonus * Math.pow(1.5, milestoneBonus);
+    return multiplier;
+  }
+
+  refreshPlayerState(): void {
+    const chipStatBonus = this.getChipStatBonus();
+    const chipHp = chipStatBonus['生命'] || 0;
+    const chipHpPercent = (chipStatBonus['生命%'] || 0) / 100;
+    const maxHpWithChip = Math.floor((this.player.totalMaxHp + chipHp) * (1 + chipHpPercent));
+    this.player.hp = maxHpWithChip;
+
+    if (this.geneSystemState && this.geneSystemState.fragments) {
+      resetAllCooldowns(this.geneSystemState.fragments);
+    }
+  }
+
+  handleWaveVictory(): { credits: number; materials: { itemId: string; count: number }[]; exp: number } {
+    const rewards = this.calculateWaveRewards();
+    this.trainCoins += rewards.credits;
+
+    for (const mat of rewards.materials) {
+      this.inventory.addItem(mat.itemId, mat.count);
+    }
+
+    this.player.addExp(rewards.exp);
+
+    this.endlessWaveNumber++;
+    this.refreshPlayerState();
+
+    this.addLog('无尽战斗', `第${this.endlessStageLevel}-${this.endlessWaveNumber - 1}波胜利，获得${rewards.credits}信用点，${rewards.exp}经验`);
+    return rewards;
+  }
+
+  handleBossVictory(): { credits: number; materials: { itemId: string; count: number }[]; exp: number } {
+    const credits = 500 * this.endlessStageLevel;
+    this.trainCoins += credits;
+
+    const materials: { itemId: string; count: number }[] = [];
+    const materialIds = ['mat_001_quantum', 'mat_002_quantum', 'mat_003_quantum', 'mat_004_quantum', 'mat_005_quantum'];
+    const randomMatId = materialIds[Math.floor(Math.random() * materialIds.length)];
+    const minCount = Math.max(1, this.endlessStageLevel - 1);
+    const maxCount = Math.min(10, this.endlessStageLevel + 1);
+    const count = Math.floor(minCount + Math.random() * (maxCount - minCount + 1));
+    this.inventory.addItem(randomMatId, count);
+    materials.push({ itemId: randomMatId, count });
+
+    const expMultiplier = Math.max(1, Math.floor(this.endlessStageLevel / 10));
+    const exp = 100 * expMultiplier;
+    this.player.addExp(exp);
+
+    this.endlessStageLevel++;
+    this.endlessWaveNumber = 1;
+    this.refreshPlayerState();
+
+    this.addLog('无尽Boss', `第${this.endlessStageLevel - 1}关Boss胜利，获得${credits}信用点，${exp}经验`);
+    return { credits, materials, exp };
   }
 }

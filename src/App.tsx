@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import StartScreen from './screens/StartScreen';
+import NameInputScreen from './screens/NameInputScreen';
 import HomeScreen from './screens/HomeScreen';
 import PlayerScreen from './screens/PlayerScreen';
 import InventoryScreen from './screens/InventoryScreen';
@@ -10,12 +11,10 @@ import { BaseScreen } from './screens/baseScreen';
 
 import DecomposeScreen from './screens/DecomposeScreen';
 import MaterialSynthesisScreen from './screens/MaterialSynthesisScreen';
-import BattleScreen from './screens/BattleScreen';
 import EnhanceScreen from './screens/EnhanceScreen';
 import SublimationScreen from './screens/SublimationScreen';
 import TestScreen from './screens/TestScreen';
-import ExplorationSelectScreen from './screens/ExplorationSelectScreen';
-import PlanetExplorationScreen from './screens/PlanetExplorationScreen';
+import EndlessBattleScreen from './screens/EndlessBattleScreen';
 import BottomNav from './components/BottomNav';
 import { ToastContainer } from './components/Toast';
 import { useGameStore } from './stores/gameStore';
@@ -48,11 +47,11 @@ function PlaceholderScreen({ title, onBack }: { title: string; onBack: () => voi
 
 type ScreenType =
   | 'start'
+  | 'name-input'
   | 'home'
   | 'player'
   | 'inventory'
-  | 'exploration'
-  | 'normal-stations'
+  | 'endless-battle'
   | 'quests'
   | 'shop'
   | 'crafting'
@@ -61,7 +60,6 @@ type ScreenType =
   | 'decompose'
   | 'synthesis'
   | 'settings'
-  | 'battle'
   | 'mythology'
   | 'mythology_explore'
   | 'test'
@@ -69,20 +67,14 @@ type ScreenType =
 
 // 有效的屏幕类型集合，用于类型守卫
 const VALID_SCREENS: readonly ScreenType[] = [
-  'start', 'home', 'player', 'inventory', 'exploration', 'normal-stations',
+  'start', 'name-input', 'home', 'player', 'inventory', 'endless-battle',
   'quests', 'shop', 'crafting', 'equipment', 'sublimation', 'decompose',
-  'synthesis', 'settings', 'battle', 'mythology', 'mythology_explore', 'test', 'base'
+  'synthesis', 'settings', 'mythology', 'mythology_explore', 'test', 'base'
 ] as const;
 
 // 类型守卫函数
 function isValidScreen(screen: string): screen is ScreenType {
   return VALID_SCREENS.includes(screen as ScreenType);
-}
-
-interface BattleParams {
-  locationId: string;
-  isBoss?: boolean;
-  isElite?: boolean;
 }
 
 interface NavigateParams {
@@ -92,28 +84,9 @@ interface NavigateParams {
 
 function App() {
   const [currentScreen, setCurrentScreen] = useState<ScreenType>('start');
-  const [battleParams, setBattleParams] = useState<BattleParams | null>(null);
-  const [returnToActionSelect, setReturnToActionSelect] = useState(false);
-  const [planetTypeFilter, setPlanetTypeFilter] = useState<string | null>(null);
+  const [inRuinBattle, setInRuinBattle] = useState(false);
+  const [inFacilityDetail, setInFacilityDetail] = useState(false);
   const { saveGame, toasts, removeToast, gameManager } = useGameStore();
-
-  // 现实时间体力恢复
-  useEffect(() => {
-    if (currentScreen === 'start') return;
-
-    // 每分钟检查一次体力恢复
-    const checkStaminaRecovery = () => {
-      gameManager.checkAndRecoverStamina();
-    };
-
-    // 初始检查
-    checkStaminaRecovery();
-
-    // 设置定时器
-    const interval = setInterval(checkStaminaRecovery, 60000); // 每分钟检查一次
-
-    return () => clearInterval(interval);
-  }, [currentScreen, gameManager]);
 
   // 研究进度更新 - 每秒更新
   useEffect(() => {
@@ -157,30 +130,42 @@ function App() {
     return () => clearInterval(interval);
   }, [currentScreen]);
 
-  const handleStartGame = useCallback(() => {
-    setCurrentScreen('home');
+  // 神能自然恢复 - 每分钟恢复1点
+  useEffect(() => {
+    if (currentScreen === 'start') return;
+
+    const { gameManager } = useGameStore.getState();
+
+    const interval = setInterval(() => {
+      if (gameManager.player.spirit < gameManager.player.maxSpirit) {
+        gameManager.player.spirit = Math.min(
+          gameManager.player.maxSpirit,
+          gameManager.player.spirit + 1
+        );
+      }
+    }, 60000);
+
+    return () => clearInterval(interval);
+  }, [currentScreen]);
+
+  const handleStartGame = useCallback((hasExistingSave: boolean = false) => {
+    if (hasExistingSave) {
+      setCurrentScreen('home');
+    } else {
+      setCurrentScreen('name-input');
+    }
   }, []);
 
+  const handleNameConfirm = useCallback((name: string) => {
+    gameManager.setPlayerName(name);
+    saveGame();
+    setCurrentScreen('home');
+  }, [gameManager, saveGame]);
+
   const handleNavigate = useCallback((screen: string, params?: NavigateParams) => {
-    // 类型守卫检查
     if (!isValidScreen(screen)) {
       console.warn(`Invalid screen type: ${screen}`);
       return;
-    }
-
-    if (screen === 'battle' && params?.locationId) {
-      setBattleParams({ locationId: params.locationId });
-    }
-
-    // 处理星球类型筛选
-    if (screen === 'normal-stations' && params?.planetType) {
-      setPlanetTypeFilter(params.planetType);
-    }
-
-    // 如果点击主页，清除所有探索状态（返回列车）
-    if (screen === 'home') {
-      setBattleParams(null);
-      setPlanetTypeFilter(null);
     }
 
     setCurrentScreen(screen);
@@ -188,82 +173,26 @@ function App() {
 
   const handleBack = useCallback(() => {
     setCurrentScreen('home');
-    setBattleParams(null);
   }, []);
-
-  const handleStartBattle = useCallback((locationId: string, isBoss?: boolean, isElite?: boolean) => {
-    setBattleParams({ locationId, isBoss, isElite });
-    setCurrentScreen('battle');
-  }, []);
-
-  const handleBattleEnd = async (action: 'continue_hunt' | 'return_collect' | 'boss_defeated') => {
-    if (action === 'continue_hunt') {
-      // 继续狩猎 - 保持在战斗页面，BattleScreen内部会重新初始化
-      return;
-    } else if (action === 'return_collect') {
-      // 返回收集物资 - 回到探索页面的选择行动界面
-      setReturnToActionSelect(true);
-      // 检查是否是从神话站台来的
-      if (battleParams?.locationId?.startsWith('myth_')) {
-        setCurrentScreen('mythology_explore');
-      } else {
-        setCurrentScreen('normal-stations');
-      }
-      // 保存游戏
-      await saveGame();
-    } else if (action === 'boss_defeated') {
-      // BOSS击败 - 回到探索页面，标记BOSS已击败
-      setReturnToActionSelect(true);
-      // 检查是否是从神话站台来的
-      if (battleParams?.locationId?.startsWith('myth_')) {
-        setCurrentScreen('mythology_explore');
-      } else {
-        setCurrentScreen('normal-stations');
-      }
-      // 保存游戏
-      await saveGame();
-    }
-    // 不清空 battleParams，让 ExplorationScreen 可以获取当前地点
-  };
 
   // 渲染当前屏幕
   const renderScreen = () => {
     switch (currentScreen) {
       case 'start':
         return <StartScreen onStartGame={handleStartGame} />;
+      case 'name-input':
+        return <NameInputScreen onConfirm={handleNameConfirm} />;
       case 'home':
         return <HomeScreen onNavigate={handleNavigate} />;
       case 'player':
         return <PlayerScreen onBack={handleBack} />;
       case 'inventory':
         return <InventoryScreen onBack={handleBack} onNavigate={handleNavigate} />;
-      case 'exploration':
-        return <ExplorationSelectScreen onBack={handleBack} onNavigate={handleNavigate} />;
-      case 'normal-stations':
+      case 'endless-battle':
         return (
-          <PlanetExplorationScreen
-            onBack={() => {
-              setReturnToActionSelect(false);
-              setCurrentScreen('exploration');
-            }}
-            onStartBattle={handleStartBattle}
-            initialPlanetId={battleParams?.locationId}
-            returnToActionSelect={returnToActionSelect}
-            onActionSelectHandled={() => setReturnToActionSelect(false)}
-            planetTypeFilter={planetTypeFilter}
-          />
-        );
-      case 'battle':
-        return battleParams ? (
-          <BattleScreen
-            locationId={battleParams.locationId}
-            isBoss={battleParams.isBoss}
-            isElite={battleParams.isElite}
+          <EndlessBattleScreen
             onBack={handleBack}
-            onBattleEnd={handleBattleEnd}
           />
-        ) : (
-          <HomeScreen onNavigate={handleNavigate} />
         );
       case 'quests':
         return <QuestScreen onBack={handleBack} />;
@@ -289,14 +218,14 @@ function App() {
       case 'test':
         return <TestScreen onBack={handleBack} />;
       case 'base':
-        return <BaseScreen onNavigate={handleNavigate} onBack={handleBack} />;
+        return <BaseScreen onNavigate={handleNavigate} onBack={handleBack} onBattleStateChange={setInRuinBattle} onDetailStateChange={setInFacilityDetail} />;
       default:
         return <HomeScreen onNavigate={handleNavigate} />;
     }
   };
 
   // 判断是否显示底部导航
-  const showBottomNav = currentScreen !== 'start' && currentScreen !== 'battle';
+  const showBottomNav = currentScreen !== 'start' && currentScreen !== 'name-input' && currentScreen !== 'battle' && !inRuinBattle && !inFacilityDetail;
 
   return (
     <div className="space-theme" style={{
