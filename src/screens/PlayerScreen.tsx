@@ -1,35 +1,15 @@
 import { useState } from 'react';
 import { useGameStore } from '../stores/gameStore';
-import { EquipmentSlot } from '../data/equipmentTypes';
+import { EquipmentSlot, SLOT_NAMES, SLOT_ICONS } from '../data/equipmentTypes';
 import { EquipmentInstance } from '../core/EquipmentSystem';
 import type { InventoryItem } from '../data/types';
+import { RARITY_COLORS } from '../data/types';
 import { calculateEquipmentStats } from '../core/EquipmentStatCalculator';
+import { useForceUpdate } from './baseScreen/shared';
 
 interface PlayerScreenProps {
   onBack: () => void;
 }
-
-const SLOT_ICONS: Record<EquipmentSlot, string> = {
-  [EquipmentSlot.HEAD]: '头',
-  [EquipmentSlot.BODY]: '甲',
-  [EquipmentSlot.LEGS]: '腿',
-  [EquipmentSlot.FEET]: '靴',
-  [EquipmentSlot.WEAPON]: '武',
-  [EquipmentSlot.ACCESSORY]: '饰',
-  [EquipmentSlot.SHOULDER]: '肩',
-  [EquipmentSlot.ARM]: '臂',
-};
-
-const SLOT_NAMES: Record<EquipmentSlot, string> = {
-  [EquipmentSlot.HEAD]: '盔',
-  [EquipmentSlot.BODY]: '炉',
-  [EquipmentSlot.SHOULDER]: '盾',
-  [EquipmentSlot.ARM]: '臂',
-  [EquipmentSlot.LEGS]: '腿',
-  [EquipmentSlot.FEET]: '靴',
-  [EquipmentSlot.WEAPON]: '武器',
-  [EquipmentSlot.ACCESSORY]: '饰品',
-};
 
 // 战甲槽位（6个）
 const ARMOR_SLOTS: EquipmentSlot[] = [
@@ -41,24 +21,13 @@ const ARMOR_SLOTS: EquipmentSlot[] = [
   EquipmentSlot.FEET,
 ];
 
-
-
-const RARITY_COLORS = {
-  common: '#9ca3af',
-  uncommon: '#4ade80',
-  rare: '#60a5fa',
-  epic: '#c084fc',
-  legendary: '#00d4ff',
-  mythic: '#f87171',
-};
-
 export default function PlayerScreen({ onBack }: PlayerScreenProps) {
   const { gameManager, saveGame, getChipStatBonus, getChipSetBonuses } = useGameStore();
   const player = gameManager.player;
   const [selectedItem, setSelectedItem] = useState<EquipmentInstance | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<EquipmentSlot | null>(null);
   const [showBackpack, setShowBackpack] = useState(false);
-  const [, setRefreshKey] = useState(0);
+  const forceRefresh = useForceUpdate();
 
   // 获取芯片加成
   const chipStatBonus = getChipStatBonus();
@@ -120,9 +89,6 @@ export default function PlayerScreen({ onBack }: PlayerScreenProps) {
     equippedCount >= 4 ? { description: '4件套：力场强化 - 攻击 +20%，暴击率 +5%' } : null,
     equippedCount >= 6 ? { description: '6件套：纳米觉醒 - 攻击 +35%，暴击率 +10%，战斗护盾' } : null,
   ].filter(Boolean) as { description: string }[];
-
-  // 强制刷新
-  const forceRefresh = () => setRefreshKey(prev => prev + 1);
 
   // 处理装备槽位点击
   const handleSlotClick = (slot: EquipmentSlot, item: EquipmentInstance | undefined) => {
@@ -501,7 +467,7 @@ export default function PlayerScreen({ onBack }: PlayerScreenProps) {
           const lifeSteal = player.lifeStealPercent;
           const hasGeneStats = Object.keys(geneStats).length > 0 || lifeSteal > 0;
           if (!hasGeneStats) return null;
-          
+
           const statNames: Record<string, string> = {
             maxHpPercent: '最大HP',
             attackPercent: '攻击力',
@@ -519,7 +485,7 @@ export default function PlayerScreen({ onBack }: PlayerScreenProps) {
             hit: '命中',
             dodge: '闪避',
           };
-          
+
           return (
             <div style={{
               backgroundColor: '#1a1f3a',

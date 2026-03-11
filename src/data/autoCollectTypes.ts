@@ -112,8 +112,8 @@ export function getAvailableRobots(): CollectRobot[] {
   return COLLECT_ROBOTS;
 }
 
-// 材料ID列表（用于随机掉落）
+// 材料ID列表（用于随机掉落）- 纳米战甲制造材料（简化版）
 export const MATERIAL_IDS = [
-  'mat_001', 'mat_002', 'mat_003', 'mat_004', 'mat_005',
-  'mat_006', 'mat_007', 'mat_008', 'mat_009', 'mat_010',
+  'mat_001', 'mat_003', 'mat_004', 'mat_005',
+  'mat_006', 'mat_007', 'mat_010',
 ];

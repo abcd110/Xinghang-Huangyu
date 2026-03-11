@@ -15,15 +15,7 @@ import {
 } from '../data/autoCollectTypes';
 import { getItemTemplate } from '../data/items';
 import { ArmorQuality } from '../data/nanoArmorRecipes';
-
-// 材料品质后缀映射
-const QUALITY_SUFFIX: Record<ArmorQuality, string> = {
-  [ArmorQuality.STARDUST]: '_stardust',
-  [ArmorQuality.ALLOY]: '_alloy',
-  [ArmorQuality.CRYSTAL]: '_crystal',
-  [ArmorQuality.QUANTUM]: '_quantum',
-  [ArmorQuality.VOID]: '_void',
-};
+import { QUALITY_SUFFIX } from '../data/constants';
 
 // 每日最大挂机时间（小时）
 const MAX_DAILY_HOURS = 24;

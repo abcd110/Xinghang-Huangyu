@@ -108,10 +108,10 @@ export const FACILITY_DEFINITIONS: FacilityDefinition[] = [
     maxLevel: 5,
     levels: [
       { level: 1, upgradeCost: { credits: 0, materials: [] }, effects: { description: '船员容量', value: 5 } },
-      { level: 2, upgradeCost: { credits: 3000, materials: [{ itemId: 'mat_002_stardust', count: 8 }] }, effects: { description: '船员容量', value: 6 } },
-      { level: 3, upgradeCost: { credits: 6000, materials: [{ itemId: 'mat_002_alloy', count: 10 }] }, effects: { description: '船员容量', value: 7 } },
-      { level: 4, upgradeCost: { credits: 12000, materials: [{ itemId: 'mat_002_crystal', count: 12 }] }, effects: { description: '船员容量', value: 8 } },
-      { level: 5, upgradeCost: { credits: 25000, materials: [{ itemId: 'mat_002_quantum', count: 15 }] }, effects: { description: '船员容量', value: 9 } },
+      { level: 2, upgradeCost: { credits: 3000, materials: [{ itemId: 'mat_001_stardust', count: 8 }] }, effects: { description: '船员容量', value: 6 } },
+      { level: 3, upgradeCost: { credits: 6000, materials: [{ itemId: 'mat_001_alloy', count: 10 }] }, effects: { description: '船员容量', value: 7 } },
+      { level: 4, upgradeCost: { credits: 12000, materials: [{ itemId: 'mat_001_crystal', count: 12 }] }, effects: { description: '船员容量', value: 8 } },
+      { level: 5, upgradeCost: { credits: 25000, materials: [{ itemId: 'mat_001_quantum', count: 15 }] }, effects: { description: '船员容量', value: 9 } },
     ],
   },
   {

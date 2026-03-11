@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useGameStore } from '../../stores/gameStore';
 import { RuinType, RUIN_TYPE_CONFIG, RUIN_DIFFICULTY_CONFIG, MAX_DAILY_ATTEMPTS, type Ruin, getRuinRewards } from '../../core/RuinSystem';
 import { getItemName } from './utils';
-import { MessageToast, type MessageState } from './shared';
+import { MessageToast, useMessage } from './shared';
 import { styles, colors } from './styles';
 
 interface RuinsContentProps {
@@ -17,14 +17,9 @@ const getMaxAttempts = (type: RuinType): number => {
 export function RuinsContent({ onStartRuinBattle }: RuinsContentProps) {
   const { gameManager, saveGame, getRuins, getRuinRemainingAttempts, updateRuinBattleResult } = useGameStore();
   const [selectedRuinId, setSelectedRuinId] = useState<string | null>(null);
-  const [message, setMessage] = useState<MessageState | null>(null);
+  const { message, showMessage } = useMessage(3000);
 
   const ruins = getRuins();
-
-  const showMessage = (text: string, type: 'success' | 'error') => {
-    setMessage({ text, type });
-    setTimeout(() => setMessage(null), 3000);
-  };
 
   const startBattle = (ruin: Ruin) => {
     if (!onStartRuinBattle) return;

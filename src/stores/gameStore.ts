@@ -231,13 +231,16 @@ export const useGameStore = create<GameStore>((set, get) => {
     action: () => T,
     save: boolean = true
   ): T => {
-    const { gameManager } = get();
     const result = action();
     if (save) {
       get().saveGame();
     }
-    // 强制更新gameManager引用以触发UI刷新
-    set({ gameManager, logs: gameManager.logs });
+    // 强制触发UI刷新 - 使用时间戳确保状态变化
+    set({ 
+      gameManager: get().gameManager, 
+      logs: [...get().gameManager.logs],
+      _lastUpdate: Date.now()
+    } as GameStore & { _lastUpdate: number });
     return result;
   };
 

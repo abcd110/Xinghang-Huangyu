@@ -2,14 +2,11 @@ import { getItemTemplate } from '../../data/items';
 
 const MATERIAL_BASE_NAMES: Record<string, string> = {
   'mat_001': '星铁基础构件',
-  'mat_002': '星铜传导组件',
   'mat_003': '钛钢外甲坯料',
   'mat_004': '战甲能量晶核',
   'mat_005': '稀土传感基质',
   'mat_006': '虚空防护核心',
   'mat_007': '推进模块燃料',
-  'mat_008': '纳米韧化纤维',
-  'mat_009': '陨铁缓冲衬垫',
   'mat_010': '量子紧固组件',
   'mineral_iron': '铁矿石',
   'mineral_copper': '铜矿石',
@@ -18,7 +15,7 @@ const MATERIAL_BASE_NAMES: Record<string, string> = {
   'mineral_quantum': '量子矿石',
   'chip_material': '芯片材料',
   'gene_material': '基因材料',
-  'cyber_material': '义体材料',
+  'cyber_materials': '义体材料',
   'cyber_core': '赛博核心',
 };
 

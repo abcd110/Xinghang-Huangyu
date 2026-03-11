@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useGameStore } from '../stores/gameStore';
+import { generateStars, type Star } from '../utils/stars';
 
 interface StartScreenProps {
   onStartGame: (hasExistingSave: boolean) => void;
@@ -7,7 +8,7 @@ interface StartScreenProps {
 
 export default function StartScreen({ onStartGame }: StartScreenProps) {
   const { hasSave, init, newGame, loadGame, isLoading } = useGameStore();
-  const [stars, setStars] = useState<Array<{ id: number; x: number; y: number; size: number; delay: number }>>([]);
+  const [stars, setStars] = useState<Star[]>([]);
   const [showTitle, setShowTitle] = useState(false);
   const [showButtons, setShowButtons] = useState(false);
 
@@ -26,18 +27,7 @@ export default function StartScreen({ onStartGame }: StartScreenProps) {
 
   // 生成随机星星 - 使用 requestAnimationFrame 避免在 effect 中直接 setState
   useEffect(() => {
-    const generateStars = () => {
-      const newStars = Array.from({ length: 50 }, (_, i) => ({
-        id: i,
-        x: Math.random() * 100,
-        y: Math.random() * 100,
-        size: Math.random() * 3 + 1,
-        delay: Math.random() * 3,
-      }));
-      setStars(newStars);
-    };
-
-    requestAnimationFrame(generateStars);
+    requestAnimationFrame(() => setStars(generateStars(50)));
   }, []);
 
   const handleNewGame = () => {

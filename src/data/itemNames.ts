@@ -1,15 +1,12 @@
 // 物品中文名称映射
 export const ITEM_NAME_MAP: Record<string, string> = {
-  // 基础材料 - 纳米战甲制造材料
+  // 基础材料 - 纳米战甲制造材料（简化版）
   'mat_001': '星铁基础构件',
-  'mat_002': '星铜传导组件',
   'mat_003': '钛钢外甲坯料',
   'mat_004': '战甲能量晶核',
   'mat_005': '稀土传感基质',
   'mat_006': '虚空防护核心',
   'mat_007': '推进模块燃料',
-  'mat_008': '纳米韧化纤维',
-  'mat_009': '陨铁缓冲衬垫',
   'mat_010': '量子紧固组件',
 
   // 神话站台材料
@@ -64,14 +61,11 @@ export function getItemNameWithIcon(itemId: string): string {
 // 获取物品图标
 function getItemIcon(itemId: string): string {
   if (itemId.includes('bronze') || itemId.includes('mat_001')) return '🔩';
-  if (itemId.includes('mat_002')) return '⚡';
   if (itemId.includes('mat_003')) return '🔧';
   if (itemId.includes('mat_004')) return '💎';
   if (itemId.includes('mat_005')) return '🧪';
   if (itemId.includes('mat_006')) return '🔮';
   if (itemId.includes('mat_007')) return '⛽';
-  if (itemId.includes('mat_008')) return '🧵';
-  if (itemId.includes('mat_009')) return '🌑';
   if (itemId.includes('mat_010')) return '🔩';
   if (itemId.includes('light') || itemId.includes('shard')) return '✨';
   if (itemId.includes('weapon')) return '⚔️';

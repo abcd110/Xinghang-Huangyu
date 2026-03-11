@@ -8,7 +8,7 @@ import {
   GENE_FRAGMENT_TEMPLATES,
   CHROMOSOME_CONFIGS,
 } from '../../core/GeneSystemV2';
-import { MessageToast, type MessageState } from './shared';
+import { MessageToast, useMessage, useForceUpdate } from './shared';
 import { styles, colors } from './styles';
 
 const GENE_TYPE_NAMES: Record<string, string> = {
@@ -270,12 +270,10 @@ function DNAStrandView({
 export function GeneContent() {
   const { gameManager, saveGame } = useGameStore();
   const [selectedPosition, setSelectedPosition] = useState<number | null>(null);
-  const [message, setMessage] = useState<MessageState | null>(null);
+  const { message, showMessage } = useMessage();
   const [showManual, setShowManual] = useState(false);
   const [viewOffset, setViewOffset] = useState(0);
-  const [, setRefreshKey] = useState(0);
-
-  const forceRefresh = () => setRefreshKey(k => k + 1);
+  const forceRefresh = useForceUpdate();
 
   if (!gameManager) {
     return <div style={{ color: '#fff', padding: '20px', textAlign: 'center' }}>加载中...</div>;
@@ -294,11 +292,6 @@ export function GeneContent() {
   const viewRange = {
     start: Math.min(viewOffset, maxOffset),
     end: Math.min(viewOffset + VIEW_SIZE, totalLength)
-  };
-
-  const showMessage = (text: string, type: 'success' | 'error') => {
-    setMessage({ text, type });
-    setTimeout(() => setMessage(null), 2000);
   };
 
   const handleReplaceBase = async (newBase: BasePair) => {

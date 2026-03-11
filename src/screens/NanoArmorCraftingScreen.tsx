@@ -14,19 +14,11 @@ import {
 import { EquipmentSlot } from '../data/equipmentTypes';
 import { ItemRarity } from '../data/types';
 import type { EquipmentInstance } from '../core/EquipmentSystem';
+import { QUALITY_SUFFIX, QUALITY_TO_RARITY } from '../data/constants';
 
 interface NanoArmorCraftingScreenProps {
   onBack: () => void;
 }
-
-// 材料品质后缀
-const QUALITY_SUFFIX: Record<ArmorQuality, string> = {
-  [ArmorQuality.STARDUST]: '_stardust',
-  [ArmorQuality.ALLOY]: '_alloy',
-  [ArmorQuality.CRYSTAL]: '_crystal',
-  [ArmorQuality.QUANTUM]: '_quantum',
-  [ArmorQuality.VOID]: '_void',
-};
 
 // NanoArmorSlot 到 EquipmentSlot 的映射
 const SLOT_MAPPING: Record<NanoArmorSlot, EquipmentSlot> = {
@@ -36,15 +28,6 @@ const SLOT_MAPPING: Record<NanoArmorSlot, EquipmentSlot> = {
   [NanoArmorSlot.ARM]: EquipmentSlot.ARM,
   [NanoArmorSlot.LEG]: EquipmentSlot.LEGS,
   [NanoArmorSlot.BOOT]: EquipmentSlot.FEET,
-};
-
-// 品质到稀有度的映射
-const QUALITY_TO_RARITY: Record<ArmorQuality, ItemRarity> = {
-  [ArmorQuality.STARDUST]: ItemRarity.COMMON,
-  [ArmorQuality.ALLOY]: ItemRarity.UNCOMMON,
-  [ArmorQuality.CRYSTAL]: ItemRarity.RARE,
-  [ArmorQuality.QUANTUM]: ItemRarity.EPIC,
-  [ArmorQuality.VOID]: ItemRarity.LEGENDARY,
 };
 
 // 品质发光效果

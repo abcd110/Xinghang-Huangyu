@@ -1,25 +1,17 @@
 import { useState } from 'react';
 import { useGameStore } from '../stores/gameStore';
-import { ItemType, ItemRarity, TYPE_NAMES } from '../data/types';
+import { ItemType, ItemRarity, TYPE_NAMES, RARITY_COLORS } from '../data/types';
 import type { InventoryItem } from '../data/types';
 import type { EquipmentInstance } from '../core/EquipmentSystem';
-import { EquipmentSlot } from '../data/equipmentTypes';
+import { EquipmentSlot, SLOT_ICONS } from '../data/equipmentTypes';
 import { calculateEquipmentStats } from '../core/EquipmentStatCalculator';
+import { SciFiButton } from '../components/SciFiButton';
 import 货舱背景 from '../assets/images/货舱背景.jpg';
 
 interface InventoryScreenProps {
   onBack: () => void;
   onNavigate?: (screen: string) => void;
 }
-
-const RARITY_COLORS_MAP: Record<ItemRarity, string> = {
-  [ItemRarity.COMMON]: '#9ca3af',
-  [ItemRarity.UNCOMMON]: '#4ade80',
-  [ItemRarity.RARE]: '#60a5fa',
-  [ItemRarity.EPIC]: '#c084fc',
-  [ItemRarity.LEGENDARY]: '#00d4ff',
-  [ItemRarity.MYTHIC]: '#f87171',
-};
 
 const RARITY_BORDERS: Record<ItemRarity, string> = {
   [ItemRarity.COMMON]: '#2a3050',
@@ -28,17 +20,6 @@ const RARITY_BORDERS: Record<ItemRarity, string> = {
   [ItemRarity.EPIC]: '#9333ea',
   [ItemRarity.LEGENDARY]: '#0099cc',
   [ItemRarity.MYTHIC]: '#dc2626',
-};
-
-const SLOT_ICONS: Record<EquipmentSlot, string> = {
-  [EquipmentSlot.HEAD]: '头',
-  [EquipmentSlot.BODY]: '甲',
-  [EquipmentSlot.LEGS]: '腿',
-  [EquipmentSlot.FEET]: '靴',
-  [EquipmentSlot.WEAPON]: '武',
-  [EquipmentSlot.ACCESSORY]: '饰',
-  [EquipmentSlot.SHOULDER]: '肩',
-  [EquipmentSlot.ARM]: '臂',
 };
 
 // 品质配置
@@ -420,7 +401,7 @@ export default function InventoryScreen({ onBack, onNavigate }: InventoryScreenP
 function ItemSlot({ item, onClick }: { item: InventoryItem; onClick: () => void }) {
   const { quality: itemQuality } = extractEquipmentName(item.name);
   const qualityConfig = itemQuality ? QUALITY_CONFIG[itemQuality] : null;
-  const rarityColor = qualityConfig ? qualityConfig.color : RARITY_COLORS_MAP[item.rarity];
+  const rarityColor = qualityConfig ? qualityConfig.color : RARITY_COLORS[item.rarity];
   const borderColor = qualityConfig ? qualityConfig.color : RARITY_BORDERS[item.rarity];
 
   return (
@@ -615,7 +596,7 @@ function ItemDetailModal({
   isEquipment: boolean;
   isConsumable: boolean;
 }) {
-  const rarityColor = RARITY_COLORS_MAP[item.rarity];
+  const rarityColor = RARITY_COLORS[item.rarity];
   const [discardQuantity, setDiscardQuantity] = useState(1);
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
 
@@ -864,85 +845,6 @@ function ItemDetailModal({
   );
 }
 
-// 科幻风格按钮组件
-function SciFiButton({
-  onClick,
-  label,
-  variant = 'default'
-}: {
-  onClick: () => void;
-  label: string;
-  variant?: 'primary' | 'secondary' | 'success' | 'danger' | 'info' | 'default';
-}) {
-  const variantStyles = {
-    primary: {
-      background: 'linear-gradient(135deg, rgba(0, 212, 255, 0.3), rgba(0, 212, 255, 0.1))',
-      border: '1px solid rgba(0, 212, 255, 0.6)',
-      color: '#00d4ff',
-      shadow: '0 0 15px rgba(0, 212, 255, 0.3)',
-    },
-    secondary: {
-      background: 'linear-gradient(135deg, rgba(124, 58, 237, 0.3), rgba(124, 58, 237, 0.1))',
-      border: '1px solid rgba(124, 58, 237, 0.6)',
-      color: '#c084fc',
-      shadow: '0 0 15px rgba(124, 58, 237, 0.3)',
-    },
-    success: {
-      background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.3), rgba(34, 197, 94, 0.1))',
-      border: '1px solid rgba(34, 197, 94, 0.6)',
-      color: '#4ade80',
-      shadow: '0 0 15px rgba(34, 197, 94, 0.3)',
-    },
-    danger: {
-      background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.3), rgba(239, 68, 68, 0.1))',
-      border: '1px solid rgba(239, 68, 68, 0.6)',
-      color: '#f87171',
-      shadow: '0 0 15px rgba(239, 68, 68, 0.3)',
-    },
-    info: {
-      background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(59, 130, 246, 0.1))',
-      border: '1px solid rgba(59, 130, 246, 0.6)',
-      color: '#60a5fa',
-      shadow: '0 0 15px rgba(59, 130, 246, 0.3)',
-    },
-    default: {
-      background: 'rgba(255, 255, 255, 0.1)',
-      border: '1px solid rgba(255, 255, 255, 0.2)',
-      color: '#d1d5db',
-      shadow: 'none',
-    },
-  };
-
-  const style = variantStyles[variant];
-
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        padding: '12px',
-        background: style.background,
-        color: style.color,
-        fontWeight: 'bold',
-        borderRadius: '8px',
-        border: style.border,
-        cursor: 'pointer',
-        boxShadow: style.shadow,
-        transition: 'all 0.3s ease',
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.transform = 'translateY(-2px)';
-        e.currentTarget.style.boxShadow = style.shadow.replace('0.3', '0.5');
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.transform = 'translateY(0)';
-        e.currentTarget.style.boxShadow = style.shadow;
-      }}
-    >
-      {label}
-    </button>
-  );
-}
-
 // 丢弃确认弹窗
 function DiscardConfirmModal({
   item,
@@ -1126,7 +1028,7 @@ function EnhancePreviewModal({
   onClose: () => void;
   onGoToEnhance: () => void;
 }) {
-  const rarityColor = RARITY_COLORS_MAP[item.rarity];
+  const rarityColor = RARITY_COLORS[item.rarity];
   const getSuccessRateColor = (rate: number) => {
     if (rate >= 0.8) return '#4ade80';
     if (rate >= 0.6) return '#00d4ff';
@@ -1333,7 +1235,7 @@ function EquipmentDetailModal({
   onClose: () => void;
   onEquip: () => void;
 }) {
-  const rarityColor = RARITY_COLORS_MAP[equipment.rarity];
+  const rarityColor = RARITY_COLORS[equipment.rarity];
 
   return (
     <div style={{

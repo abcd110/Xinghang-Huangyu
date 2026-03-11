@@ -163,14 +163,16 @@ export interface EquipmentBattleState {
   stackableEffects: Map<string, number>; // 效果ID -> 层数
 }
 
-// 装备部位名称
+// 装备部位名称 - 科幻风格
 export const SLOT_NAMES: Record<EquipmentSlot, string> = {
-  [EquipmentSlot.HEAD]: '头部',
-  [EquipmentSlot.BODY]: '衣服',
-  [EquipmentSlot.LEGS]: '裤子',
-  [EquipmentSlot.FEET]: '靴子',
+  [EquipmentSlot.HEAD]: '盔',
+  [EquipmentSlot.BODY]: '炉',
+  [EquipmentSlot.LEGS]: '腿',
+  [EquipmentSlot.FEET]: '靴',
   [EquipmentSlot.WEAPON]: '武器',
   [EquipmentSlot.ACCESSORY]: '饰品',
+  [EquipmentSlot.SHOULDER]: '盾',
+  [EquipmentSlot.ARM]: '臂',
 };
 
 // 装备部位图标
@@ -181,6 +183,8 @@ export const SLOT_ICONS: Record<EquipmentSlot, string> = {
   [EquipmentSlot.FEET]: '👢',
   [EquipmentSlot.WEAPON]: '⚔️',
   [EquipmentSlot.ACCESSORY]: '💍',
+  [EquipmentSlot.SHOULDER]: '🛡️',
+  [EquipmentSlot.ARM]: '💪',
 };
 
 // 特效类型名称

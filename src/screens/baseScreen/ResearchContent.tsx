@@ -2,12 +2,12 @@ import { useState, useEffect } from 'react';
 import { useGameStore } from '../../stores/gameStore';
 import { ResearchStatus } from '../../core/ResearchSystem';
 import { getItemName } from './utils';
-import { CenteredMessageToast, type MessageState } from './shared';
+import { CenteredMessageToast, useMessage } from './shared';
 import { styles, colors } from './styles';
 
 export function ResearchContent() {
   const { gameManager, saveGame, startResearch, cancelResearch } = useGameStore();
-  const [message, setMessage] = useState<MessageState | null>(null);
+  const { message, showMessage } = useMessage();
   const [selectedProject, setSelectedProject] = useState<string | null>(null);
   const [, forceUpdate] = useState(0);
 
@@ -30,11 +30,6 @@ export function ResearchContent() {
     const m = Math.floor((seconds % 3600) / 60);
     const s = seconds % 60;
     return h > 0 ? `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}` : `${m}:${s.toString().padStart(2, '0')}`;
-  };
-
-  const showMessage = (text: string, type: 'success' | 'error') => {
-    setMessage({ text, type });
-    setTimeout(() => setMessage(null), 2000);
   };
 
   const handleStartResearch = async (projectId: string) => {

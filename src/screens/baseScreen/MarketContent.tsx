@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useGameStore } from '../../stores/gameStore';
 import { FacilityType } from '../../core/BaseFacilitySystem';
-import { MessageToast, type MessageState } from './shared';
+import { MessageToast, useMessage } from './shared';
 import { styles, colors } from './styles';
 
 interface ShopItem {
@@ -107,15 +107,10 @@ export function MarketContent() {
   const [activeCategory, setActiveCategory] = useState<'material' | 'mineral' | 'ticket'>('material');
   const [selectedItem, setSelectedItem] = useState<ShopItem | null>(null);
   const [buyQuantity, setBuyQuantity] = useState(1);
-  const [message, setMessage] = useState<MessageState | null>(null);
+  const { message, showMessage } = useMessage();
 
   const level = gameManager.getFacilityLevel(FacilityType.MARKET);
   const trainCoins = gameManager.trainCoins;
-
-  const showMessage = (text: string, type: 'success' | 'error') => {
-    setMessage({ text, type });
-    setTimeout(() => setMessage(null), 2000);
-  };
 
   const handleBuy = async () => {
     if (!selectedItem) return;

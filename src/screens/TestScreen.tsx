@@ -14,6 +14,7 @@ import {
 import { ENHANCE_STONE_ID } from '../core/EnhanceSystem';
 import { EquipmentSlot } from '../data/equipmentTypes';
 import type { EquipmentInstance } from '../core/EquipmentSystem';
+import { QUALITY_SUFFIX, QUALITY_TO_RARITY } from '../data/constants';
 
 interface TestScreenProps {
   onBack: () => void;
@@ -40,14 +41,11 @@ const RARITY_NAMES: Record<ItemRarity, string> = {
 // 纳米战甲材料基础ID
 const NANO_ARMOR_MATERIALS = [
   { id: 'mat_001', name: '星铁基础构件' },
-  { id: 'mat_002', name: '星铜传导组件' },
   { id: 'mat_003', name: '钛钢外甲坯料' },
   { id: 'mat_004', name: '战甲能量晶核' },
   { id: 'mat_005', name: '稀土传感基质' },
   { id: 'mat_006', name: '虚空防护核心' },
   { id: 'mat_007', name: '推进模块燃料' },
-  { id: 'mat_008', name: '纳米韧化纤维' },
-  { id: 'mat_009', name: '陨铁缓冲衬垫' },
   { id: 'mat_010', name: '量子紧固组件' },
 ];
 
@@ -68,15 +66,6 @@ const MINERAL_MATERIALS = [
   { id: 'mineral_quantum', name: '量子矿', color: '#ec4899' },
 ];
 
-// 品质后缀
-const QUALITY_SUFFIX: Record<ArmorQuality, string> = {
-  [ArmorQuality.STARDUST]: '_stardust',
-  [ArmorQuality.ALLOY]: '_alloy',
-  [ArmorQuality.CRYSTAL]: '_crystal',
-  [ArmorQuality.QUANTUM]: '_quantum',
-  [ArmorQuality.VOID]: '_void',
-};
-
 // NanoArmorSlot 到 EquipmentSlot 的映射
 const SLOT_MAPPING: Record<NanoArmorSlot, EquipmentSlot> = {
   [NanoArmorSlot.HELMET]: EquipmentSlot.HEAD,
@@ -85,15 +74,6 @@ const SLOT_MAPPING: Record<NanoArmorSlot, EquipmentSlot> = {
   [NanoArmorSlot.ARM]: EquipmentSlot.ARM,
   [NanoArmorSlot.LEG]: EquipmentSlot.LEGS,
   [NanoArmorSlot.BOOT]: EquipmentSlot.FEET,
-};
-
-// 品质到稀有度的映射
-const QUALITY_TO_RARITY: Record<ArmorQuality, ItemRarity> = {
-  [ArmorQuality.STARDUST]: ItemRarity.COMMON,
-  [ArmorQuality.ALLOY]: ItemRarity.UNCOMMON,
-  [ArmorQuality.CRYSTAL]: ItemRarity.RARE,
-  [ArmorQuality.QUANTUM]: ItemRarity.EPIC,
-  [ArmorQuality.VOID]: ItemRarity.LEGENDARY,
 };
 
 export default function TestScreen({ onBack }: TestScreenProps) {

@@ -10,8 +10,13 @@ export default function QuestScreen({ onBack }: QuestScreenProps) {
   const { gameManager, claimQuestReward } = useGameStore();
   const [activeTab, setActiveTab] = useState<QuestType>(QuestType.MAIN);
 
+  // 筛选任务：显示对应类型的所有可见任务
+  // ACTIVE: 进行中, COMPLETED: 可领奖, AVAILABLE: 可接取(日常任务)
   const quests = Array.from(gameManager.quests.values()).filter(
-    q => q.questType === activeTab && (q.status === QuestStatus.ACTIVE || q.status === QuestStatus.COMPLETED)
+    q => q.questType === activeTab && 
+         (q.status === QuestStatus.ACTIVE || 
+          q.status === QuestStatus.COMPLETED || 
+          q.status === QuestStatus.AVAILABLE)
   );
 
   const handleClaimReward = (questId: string) => {

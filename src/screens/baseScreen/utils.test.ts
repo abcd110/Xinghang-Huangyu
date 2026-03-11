@@ -224,10 +224,10 @@ describe('utils', () => {
           credits: 0,
           materials: [
             { itemId: 'mat_001', count: 5 },
-            { itemId: 'mat_002', count: 3 },
+            { itemId: 'mat_003', count: 3 },
           ],
         });
-        expect(result).toBe('星铁基础构件 x5 + 星铜传导组件 x3');
+        expect(result).toBe('星铁基础构件 x5 + 钛钢外甲坯料 x3');
       });
 
       it('应正确格式化大量材料', () => {
@@ -236,12 +236,12 @@ describe('utils', () => {
           credits: 0,
           materials: [
             { itemId: 'mat_001', count: 1 },
-            { itemId: 'mat_002', count: 2 },
-            { itemId: 'mat_003', count: 3 },
-            { itemId: 'mat_004', count: 4 },
+            { itemId: 'mat_003', count: 2 },
+            { itemId: 'mat_004', count: 3 },
+            { itemId: 'mat_005', count: 4 },
           ],
         });
-        expect(result).toBe('星铁基础构件 x1 + 星铜传导组件 x2 + 钛钢外甲坯料 x3 + 战甲能量晶核 x4');
+        expect(result).toBe('星铁基础构件 x1 + 钛钢外甲坯料 x2 + 战甲能量晶核 x3 + 稀土传感基质 x4');
       });
     });
 

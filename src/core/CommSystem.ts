@@ -154,7 +154,7 @@ const EVENT_TEMPLATES: Array<{
     minCredits: 300,
     maxCredits: 600,
     possibleItems: [
-      { itemId: 'mat_002_alloy', minCount: 3, maxCount: 6 },
+      { itemId: 'mat_001_alloy', minCount: 3, maxCount: 6 },
       { itemId: 'recruit_ticket_normal', minCount: 1, maxCount: 2 },
     ],
     minExp: 50,
@@ -233,7 +233,7 @@ const EVENT_TEMPLATES: Array<{
     maxCredits: 500,
     possibleItems: [
       { itemId: 'mat_001_stardust', minCount: 5, maxCount: 10 },
-      { itemId: 'mat_002_stardust', minCount: 3, maxCount: 6 },
+      { itemId: 'mat_003_stardust', minCount: 3, maxCount: 6 },
     ],
     minExp: 30,
     maxExp: 60,

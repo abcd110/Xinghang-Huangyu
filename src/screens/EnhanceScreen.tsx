@@ -2,26 +2,15 @@ import { useState, useEffect, useCallback } from 'react';
 import { useGameStore } from '../stores/gameStore';
 import { ItemType, RARITY_COLORS } from '../data/types';
 import type { InventoryItem } from '../data/types';
-import { EquipmentSlot } from '../data/equipmentTypes';
+import { EquipmentSlot, SLOT_NAMES } from '../data/equipmentTypes';
 import { EnhanceResultType, type EnhancePreview, type EnhanceResult } from '../core/EnhanceSystem';
+import { SciFiButton } from '../components/SciFiButton';
+import { useForceUpdate } from '../screens/baseScreen/shared';
 import 强化背景 from '../assets/images/强化背景.jpg';
 
 interface EnhanceScreenProps {
   onBack: () => void;
 }
-
-
-
-const SLOT_NAMES: Record<EquipmentSlot, string> = {
-  [EquipmentSlot.HEAD]: '头部',
-  [EquipmentSlot.BODY]: '身体',
-  [EquipmentSlot.LEGS]: '腿部',
-  [EquipmentSlot.FEET]: '脚部',
-  [EquipmentSlot.WEAPON]: '武器',
-  [EquipmentSlot.ACCESSORY]: '饰品',
-  [EquipmentSlot.SHOULDER]: '肩甲',
-  [EquipmentSlot.ARM]: '臂甲',
-};
 
 // 战甲槽位（6个）
 const ARMOR_SLOTS: EquipmentSlot[] = [
@@ -36,18 +25,13 @@ const ARMOR_SLOTS: EquipmentSlot[] = [
 export default function EnhanceScreen({ onBack }: EnhanceScreenProps) {
   const { gameManager, getEnhancePreview, enhanceItem } = useGameStore();
   const player = gameManager.player;
-  const [, setRefreshKey] = useState(0);
+  const forceRefresh = useForceUpdate();
 
   const [selectedSlot, setSelectedSlot] = useState<EquipmentSlot | null>(null);
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
   const [preview, setPreview] = useState<EnhancePreview | null>(null);
   const [result, setResult] = useState<EnhanceResult | null>(null);
   const [isEnhancing, setIsEnhancing] = useState(false);
-
-  // 强制刷新
-  const forceRefresh = useCallback(() => {
-    setRefreshKey(prev => prev + 1);
-  }, []);
 
   // 获取槽位中的装备（只返回已装备的装备）
   const getEquipmentInSlot = useCallback((slot: EquipmentSlot): InventoryItem | null => {
@@ -633,45 +617,5 @@ export default function EnhanceScreen({ onBack }: EnhanceScreenProps) {
         }
       `}</style>
     </div>
-  );
-}
-
-// 科幻按钮组件
-function SciFiButton({
-  onClick,
-  label,
-  variant = 'default'
-}: {
-  onClick: () => void;
-  label: string;
-  variant?: 'primary' | 'default';
-}) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '6px',
-        background: variant === 'primary' ? 'rgba(244, 63, 94, 0.2)' : 'rgba(255, 255, 255, 0.1)',
-        border: variant === 'primary' ? '1px solid rgba(244, 63, 94, 0.5)' : '1px solid rgba(255, 255, 255, 0.2)',
-        borderRadius: '8px',
-        padding: '8px 12px',
-        color: variant === 'primary' ? '#f43f5e' : '#a1a1aa',
-        fontSize: '14px',
-        cursor: 'pointer',
-        transition: 'all 0.3s ease',
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.background = variant === 'primary' ? 'rgba(244, 63, 94, 0.3)' : 'rgba(255, 255, 255, 0.15)';
-        e.currentTarget.style.boxShadow = variant === 'primary' ? '0 0 10px rgba(244, 63, 94, 0.3)' : 'none';
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.background = variant === 'primary' ? 'rgba(244, 63, 94, 0.2)' : 'rgba(255, 255, 255, 0.1)';
-        e.currentTarget.style.boxShadow = 'none';
-      }}
-    >
-      {label}
-    </button>
   );
 }

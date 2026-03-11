@@ -53,6 +53,22 @@ export function CenteredMessageToast({ message }: { message: MessageState | null
   );
 }
 
+export function useMessage(duration: number = 2000) {
+  const [message, setMessage] = useState<MessageState | null>(null);
+
+  const showMessage = useCallback((text: string, type: 'success' | 'error') => {
+    setMessage({ text, type });
+    setTimeout(() => setMessage(null), duration);
+  }, [duration]);
+
+  return { message, showMessage, MessageToast };
+}
+
+export function useForceUpdate() {
+  const [, setRefreshKey] = useState(0);
+  return useCallback(() => setRefreshKey(k => k + 1), []);
+}
+
 interface ConfirmDialogProps {
   show: boolean;
   title: string;

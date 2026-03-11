@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useGameStore } from '../../stores/gameStore';
 import { Implant, ImplantType, ImplantRarity, IMPLANT_TYPE_CONFIG, IMPLANT_RARITY_CONFIG, getImplantStats, getImplantUpgradeCost } from '../../core/CyberneticSystem';
-import { MessageToast, type MessageState } from './shared';
+import { MessageToast, useMessage } from './shared';
 import { styles, colors } from './styles';
 
 export function CyberneticContent() {
@@ -11,7 +11,7 @@ export function CyberneticContent() {
   const [selectedCraftType, setSelectedCraftType] = useState<ImplantType | null>(null);
   const [filterType, setFilterType] = useState<ImplantType | null>(null);
   const [showDecomposeConfirm, setShowDecomposeConfirm] = useState(false);
-  const [message, setMessage] = useState<MessageState | null>(null);
+  const { message, showMessage } = useMessage();
 
   const implants = gameManager.getImplants();
   const equippedImplants = gameManager.getEquippedImplants();
@@ -19,11 +19,6 @@ export function CyberneticContent() {
   const craftableRarities = getCraftableImplantRarities();
   const level = gameManager.getCyberneticLevel();
   const totalStats = getImplantTotalStats();
-
-  const showMessage = (text: string, type: 'success' | 'error') => {
-    setMessage({ text, type });
-    setTimeout(() => setMessage(null), 2000);
-  };
 
   const handleCraft = async (type: ImplantType, rarity: ImplantRarity) => {
     const result = craftImplant(type, rarity);

@@ -258,16 +258,17 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
         {/* 顶部信息栏 */}
         <header style={{
           flexShrink: 0,
-          padding: '16px 20px',
+          padding: '12px 16px',
           position: 'relative',
           zIndex: 10
         }}>
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'space-between'
+            justifyContent: 'space-between',
+            gap: '12px'
           }}>
-            {/* 战甲档案 */}
+            {/* 玩家名字 */}
             <div
               onClick={handleRocketClick}
               style={{
@@ -275,63 +276,75 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
                 alignItems: 'center',
                 gap: '8px',
                 cursor: 'pointer',
-                userSelect: 'none'
+                userSelect: 'none',
+                background: 'rgba(0, 0, 0, 0.4)',
+                border: '1px solid rgba(0, 212, 255, 0.3)',
+                borderRadius: '20px',
+                padding: '6px 12px'
               }}
             >
-              <span style={{ fontSize: '20px' }}>🚀</span>
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <span style={{
-                  color: '#00d4ff',
-                  fontSize: '14px',
-                  fontWeight: 'bold',
-                  letterSpacing: '1px',
-                  textShadow: '0 0 10px rgba(0, 212, 255, 0.5)'
-                }}>
-                  {gameManager.playerName || '战甲档案'}
-                </span>
-                <span style={{
-                  color: 'rgba(0, 212, 255, 0.6)',
-                  fontSize: '9px',
-                  letterSpacing: '2px'
-                }}>
-                  PILOT PROFILE
-                </span>
-              </div>
+              <span style={{ fontSize: '16px' }}>🚀</span>
+              <span style={{
+                color: '#00d4ff',
+                fontSize: '13px',
+                fontWeight: 'bold',
+                textShadow: '0 0 10px rgba(0, 212, 255, 0.5)'
+              }}>
+                {gameManager.playerName || '战甲档案'}
+              </span>
               {rocketClickCount > 0 && (
                 <span style={{
                   fontSize: '10px',
                   color: rocketClickCount >= 2 ? '#ef4444' : '#00d4ff',
-                  marginLeft: '4px'
+                  marginLeft: '2px'
                 }}>
                   ({rocketClickCount}/3)
                 </span>
               )}
             </div>
 
-            {/* 中间：等级|第X天 */}
+            {/* 等级 + 经验条 */}
             <div style={{
               display: 'flex',
-              flexDirection: 'column',
               alignItems: 'center',
-              position: 'absolute',
-              left: '50%',
-              transform: 'translateX(-50%)'
+              gap: '8px',
+              background: 'rgba(0, 0, 0, 0.4)',
+              border: '1px solid rgba(0, 212, 255, 0.3)',
+              borderRadius: '20px',
+              padding: '6px 12px'
             }}>
               <span style={{
-                color: '#ffffff',
-                fontSize: '16px',
+                color: '#00d4ff',
+                fontSize: '13px',
                 fontWeight: 'bold',
-                letterSpacing: '2px'
+                textShadow: '0 0 10px rgba(0, 212, 255, 0.5)',
+                whiteSpace: 'nowrap'
               }}>
-                Lv.{player.level} | 第{day}天
+                Lv.{player.level}
               </span>
-              <span style={{
-                color: 'rgba(255,255,255,0.5)',
-                fontSize: '14px',
-                fontFamily: 'monospace',
-                letterSpacing: '1px'
+              <div style={{
+                width: '60px',
+                height: '5px',
+                background: 'rgba(255, 255, 255, 0.1)',
+                borderRadius: '3px',
+                overflow: 'hidden'
               }}>
-                {hours.toString().padStart(2, '0')}:{minutes.toString().padStart(2, '0')}
+                <div style={{
+                  height: '100%',
+                  width: `${(player.exp / player.expToNext) * 100}%`,
+                  background: 'linear-gradient(90deg, #00d4ff, #0099cc)',
+                  borderRadius: '3px',
+                  boxShadow: '0 0 10px rgba(0, 212, 255, 0.8)',
+                  transition: 'width 0.3s ease'
+                }} />
+              </div>
+              <span style={{
+                color: 'rgba(255, 255, 255, 0.7)',
+                fontSize: '10px',
+                fontFamily: 'monospace',
+                whiteSpace: 'nowrap'
+              }}>
+                {player.exp}/{player.expToNext}
               </span>
             </div>
 
@@ -348,7 +361,7 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
               <span style={{ fontSize: '14px' }}>💎</span>
               <span style={{
                 color: '#00d4ff',
-                fontSize: '14px',
+                fontSize: '13px',
                 fontWeight: 'bold',
                 textShadow: '0 0 5px rgba(0, 212, 255, 0.3)'
               }}>
@@ -357,35 +370,6 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
             </div>
           </div>
         </header>
-
-        {/* 状态栏 */}
-        <div style={{
-          flexShrink: 0,
-          padding: '12px 16px',
-          position: 'relative',
-          zIndex: 10
-        }}>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(2, 1fr)',
-            gap: '8px'
-          }}>
-            <StatusCard
-              label="生命"
-              value={player.hp}
-              max={finalMaxHp}
-              color="#ef4444"
-              icon="❤️"
-            />
-            <StatusCard
-              label="神能"
-              value={player.spirit}
-              max={player.maxSpirit}
-              color="#8b5cf6"
-              icon="🧠"
-            />
-          </div>
-        </div>
 
         {/* 自动采集面板 */}
         <AutoCollectPanel
@@ -440,7 +424,7 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginTop: '12px' }}>
             <ActionButton
               iconImage={材料合成Img}
-              label="材料合成"
+              label="材料工程"
               color="#10b981"
               glowColor="rgba(16, 185, 129, 0.6)"
               onClick={() => onNavigate('synthesis')}
@@ -448,20 +432,20 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
               delay={200}
             />
             <ActionButton
-              iconImage={星骸解构Img}
-              label="星骸解构"
-              color="#94a3b8"
-              glowColor="rgba(148, 163, 184, 0.7)"
-              onClick={() => onNavigate('decompose')}
-              mounted={mounted}
-              delay={250}
-            />
-            <ActionButton
               iconImage={战甲档案Img}
               label="战甲档案"
               color="#60a5fa"
               glowColor="rgba(96, 165, 250, 0.6)"
               onClick={() => onNavigate('player')}
+              mounted={mounted}
+              delay={250}
+            />
+            <ActionButton
+              iconImage={星骸解构Img}
+              label="星骸解构"
+              color="#94a3b8"
+              glowColor="rgba(148, 163, 184, 0.7)"
+              onClick={() => onNavigate('decompose')}
               mounted={mounted}
               delay={300}
             />

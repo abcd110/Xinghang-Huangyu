@@ -3,6 +3,7 @@ import { useGameStore } from '../stores/gameStore';
 import 招募背景 from '../assets/images/招募背景.jpg';
 import { CrewMember, RecruitType, RARITY_CONFIG, ROLE_CONFIG, isPlayerCrew } from '../core/CrewSystem';
 import { FacilityType } from '../core/BaseFacilitySystem';
+import { useMessage, useForceUpdate } from './baseScreen/shared';
 
 interface CrewScreenProps {
   onBack: () => void;
@@ -13,8 +14,8 @@ export default function CrewScreen({ onBack }: CrewScreenProps) {
   const [activeTab, setActiveTab] = useState<'recruit' | 'roster' | 'battle'>('recruit');
   const [recruitSubTab, setRecruitSubTab] = useState<'normal' | 'limited'>('normal');
   const [selectedCrew, setSelectedCrew] = useState<CrewMember | null>(null);
-  const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
-  const [, setRefreshKey] = useState(0);
+  const { message, showMessage } = useMessage();
+  const forceRefresh = useForceUpdate();
   const [recruitResult, setRecruitResult] = useState<CrewMember[] | null>(null);
   const [showingResult, setShowingResult] = useState(false);
   const [currentResultIndex, setCurrentResultIndex] = useState(0);
@@ -28,11 +29,6 @@ export default function CrewScreen({ onBack }: CrewScreenProps) {
   const normalTicketCount = getRecruitTicketCount(RecruitType.NORMAL);
   const limitedTicketCount = getRecruitTicketCount(RecruitType.LIMITED);
 
-  const showMessage = (text: string, type: 'success' | 'error') => {
-    setMessage({ text, type });
-    setTimeout(() => setMessage(null), 2000);
-  };
-
   const handleRecruit = async (recruitType: RecruitType, tenPull: boolean = false) => {
     if (tenPull) {
       const result = recruitCrewTen(recruitType);
@@ -40,7 +36,7 @@ export default function CrewScreen({ onBack }: CrewScreenProps) {
         setRecruitResult(result.crews);
         setCurrentResultIndex(0);
         setShowingResult(true);
-        setRefreshKey(k => k + 1);
+        forceRefresh();
         await saveGame();
       } else {
         showMessage(result.message, 'error');
@@ -51,7 +47,7 @@ export default function CrewScreen({ onBack }: CrewScreenProps) {
         setRecruitResult([result.crew]);
         setCurrentResultIndex(0);
         setShowingResult(true);
-        setRefreshKey(k => k + 1);
+        forceRefresh();
         await saveGame();
       } else {
         showMessage(result.message, 'error');
@@ -63,7 +59,7 @@ export default function CrewScreen({ onBack }: CrewScreenProps) {
     const result = gameManager.setCrewBattleSlot(crewId, slot);
     if (result.success) {
       showMessage(result.message, 'success');
-      setRefreshKey(k => k + 1);
+      forceRefresh();
       setSelectedCrew(null);
       await saveGame();
     } else {
@@ -76,7 +72,7 @@ export default function CrewScreen({ onBack }: CrewScreenProps) {
     const result = gameManager.dismissCrew(crewId);
     if (result.success) {
       showMessage(result.message, 'success');
-      setRefreshKey(k => k + 1);
+      forceRefresh();
       setSelectedCrew(null);
       await saveGame();
     } else {

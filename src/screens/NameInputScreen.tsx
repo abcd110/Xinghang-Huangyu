@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { generateStars, type Star } from '../utils/stars';
 
 interface NameInputScreenProps {
   onConfirm: (name: string) => void;
@@ -9,21 +10,10 @@ export default function NameInputScreen({ onConfirm }: NameInputScreenProps) {
   const [showTitle, setShowTitle] = useState(false);
   const [showInput, setShowInput] = useState(false);
   const [error, setError] = useState('');
-  const [stars, setStars] = useState<Array<{ id: number; x: number; y: number; size: number; delay: number }>>([]);
+  const [stars, setStars] = useState<Star[]>([]);
 
   useEffect(() => {
-    const generateStars = () => {
-      const newStars = Array.from({ length: 50 }, (_, i) => ({
-        id: i,
-        x: Math.random() * 100,
-        y: Math.random() * 100,
-        size: Math.random() * 3 + 1,
-        delay: Math.random() * 3,
-      }));
-      setStars(newStars);
-    };
-
-    requestAnimationFrame(generateStars);
+    requestAnimationFrame(() => setStars(generateStars(50)));
 
     const titleTimer = setTimeout(() => setShowTitle(true), 300);
     const inputTimer = setTimeout(() => setShowInput(true), 800);

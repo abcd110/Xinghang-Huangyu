@@ -1,31 +1,26 @@
 import { useState, useEffect } from 'react';
 import { useGameStore } from '../../stores/gameStore';
 import { MINERAL_CONFIG, getMiningProgress, getRemainingTime, formatMiningTime, getDepthBonusDescription, getCrewMiningBonus, getMiningEfficiencyBonus, getMiningSpeedBonus, getMiningDepthBonus, getMaxMiningSlots } from '../../core/MiningSystem';
-import { MessageToast, type MessageState } from './shared';
+import { MessageToast, useMessage, useForceUpdate } from './shared';
 import { styles, colors } from './styles';
 
 export function MiningContent() {
   const { gameManager, saveGame, startMiningWithCrew, collectMining } = useGameStore();
-  const [message, setMessage] = useState<MessageState | null>(null);
+  const { message, showMessage } = useMessage();
   const [selectedSite, setSelectedSite] = useState<string | null>(null);
   const [selectedCrew, setSelectedCrew] = useState<string[]>([]);
   const [showCrewSelect, setShowCrewSelect] = useState(false);
-  const [, forceUpdate] = useState(0);
+  const forceUpdate = useForceUpdate();
 
   useEffect(() => {
-    const timer = setInterval(() => forceUpdate(n => n + 1), 1000);
+    const timer = setInterval(() => forceUpdate(), 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [forceUpdate]);
 
   const sites = gameManager.getAvailableMiningSites();
   const tasks = gameManager.getMiningTasks();
   const crewMembers = gameManager.getCrewMembers();
   const level = gameManager.getMiningLevel();
-
-  const showMessage = (text: string, type: 'success' | 'error') => {
-    setMessage({ text, type });
-    setTimeout(() => setMessage(null), 2000);
-  };
 
   const handleStartMining = async (siteId: string) => {
     const result = startMiningWithCrew(siteId, selectedCrew);

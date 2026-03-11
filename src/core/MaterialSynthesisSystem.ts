@@ -2,27 +2,7 @@
 // 5个低级材料 → 1个高级材料
 
 import { ArmorQuality } from '../data/nanoArmorRecipes';
-
-// 材料ID前缀
-const MATERIAL_IDS = ['mat_001', 'mat_002', 'mat_003', 'mat_004', 'mat_005', 'mat_006', 'mat_007', 'mat_008', 'mat_009', 'mat_010'];
-
-// 品质后缀
-const QUALITY_SUFFIX: Record<ArmorQuality, string> = {
-  [ArmorQuality.STARDUST]: '_stardust',
-  [ArmorQuality.ALLOY]: '_alloy',
-  [ArmorQuality.CRYSTAL]: '_crystal',
-  [ArmorQuality.QUANTUM]: '_quantum',
-  [ArmorQuality.VOID]: '_void',
-};
-
-// 品质名称
-const QUALITY_NAMES: Record<ArmorQuality, string> = {
-  [ArmorQuality.STARDUST]: '星尘级',
-  [ArmorQuality.ALLOY]: '合金级',
-  [ArmorQuality.CRYSTAL]: '晶核级',
-  [ArmorQuality.QUANTUM]: '量子级',
-  [ArmorQuality.VOID]: '虚空级',
-};
+import { QUALITY_SUFFIX, QUALITY_NAMES, MATERIAL_IDS } from '../data/constants';
 
 // 合成配方：从低品质到高品质
 export interface SynthesisRecipe {
@@ -195,17 +175,12 @@ export function getSynthesizableMaterials(
 function getMaterialBaseName(materialId: string): string {
   const names: Record<string, string> = {
     'mat_001': '星铁基础构件',
-    'mat_002': '星铜传导组件',
     'mat_003': '钛钢外甲坯料',
     'mat_004': '战甲能量晶核',
     'mat_005': '稀土传感基质',
     'mat_006': '虚空防护核心',
     'mat_007': '推进模块燃料',
-    'mat_008': '纳米韧化纤维',
-    'mat_009': '陨铁缓冲衬垫',
     'mat_010': '量子紧固组件',
   };
   return names[materialId] || materialId;
 }
-
-export { QUALITY_SUFFIX, QUALITY_NAMES, MATERIAL_IDS };

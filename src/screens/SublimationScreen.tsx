@@ -1,27 +1,15 @@
 import { useState } from 'react';
 import { useGameStore } from '../stores/gameStore';
-import { EquipmentSlot, EquipmentRarity } from '../data/equipmentTypes';
+import { EquipmentSlot, EquipmentRarity, SLOT_NAMES } from '../data/equipmentTypes';
 import { equipmentSystem } from '../core/EquipmentSystem';
-import { ItemRarity } from '../data/types';
+import { ItemRarity, RARITY_COLORS, RARITY_NAMES } from '../data/types';
 import { calculateEquipmentStats } from '../core/EquipmentStatCalculator';
+import { SciFiButton } from '../components/SciFiButton';
 import 舰桥背景 from '../assets/images/舰桥背景.jpg';
 
 interface SublimationScreenProps {
   onBack: () => void;
 }
-
-
-
-const SLOT_NAMES: Record<EquipmentSlot, string> = {
-  [EquipmentSlot.HEAD]: '头部',
-  [EquipmentSlot.BODY]: '身体',
-  [EquipmentSlot.LEGS]: '腿部',
-  [EquipmentSlot.FEET]: '脚部',
-  [EquipmentSlot.WEAPON]: '武器',
-  [EquipmentSlot.ACCESSORY]: '饰品',
-  [EquipmentSlot.SHOULDER]: '肩甲',
-  [EquipmentSlot.ARM]: '臂甲',
-};
 
 // 战甲槽位（6个）
 const ARMOR_SLOTS: EquipmentSlot[] = [
@@ -32,24 +20,6 @@ const ARMOR_SLOTS: EquipmentSlot[] = [
   EquipmentSlot.LEGS,
   EquipmentSlot.FEET,
 ];
-
-const RARITY_COLORS: Record<ItemRarity, string> = {
-  [EquipmentRarity.COMMON]: '#9ca3af',
-  [EquipmentRarity.UNCOMMON]: '#4ade80',
-  [EquipmentRarity.RARE]: '#60a5fa',
-  [EquipmentRarity.EPIC]: '#c084fc',
-  [EquipmentRarity.LEGENDARY]: '#00d4ff',
-  [EquipmentRarity.MYTHIC]: '#f87171',
-};
-
-const RARITY_NAMES: Record<ItemRarity, string> = {
-  [EquipmentRarity.COMMON]: '普通',
-  [EquipmentRarity.UNCOMMON]: '优秀',
-  [EquipmentRarity.RARE]: '稀有',
-  [EquipmentRarity.EPIC]: '史诗',
-  [EquipmentRarity.LEGENDARY]: '传说',
-  [EquipmentRarity.MYTHIC]: '神话',
-};
 
 export default function SublimationScreen({ onBack }: SublimationScreenProps) {
   const { gameManager, saveGame } = useGameStore();
@@ -606,45 +576,5 @@ export default function SublimationScreen({ onBack }: SublimationScreenProps) {
         }
       `}</style>
     </div>
-  );
-}
-
-// 科幻按钮组件
-function SciFiButton({
-  onClick,
-  label,
-  variant = 'default'
-}: {
-  onClick: () => void;
-  label: string;
-  variant?: 'primary' | 'default';
-}) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '6px',
-        background: variant === 'primary' ? 'rgba(251, 191, 36, 0.2)' : 'rgba(255, 255, 255, 0.1)',
-        border: variant === 'primary' ? '1px solid rgba(251, 191, 36, 0.5)' : '1px solid rgba(255, 255, 255, 0.2)',
-        borderRadius: '8px',
-        padding: '8px 12px',
-        color: variant === 'primary' ? '#fbbf24' : '#a1a1aa',
-        fontSize: '14px',
-        cursor: 'pointer',
-        transition: 'all 0.3s ease',
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.background = variant === 'primary' ? 'rgba(251, 191, 36, 0.3)' : 'rgba(255, 255, 255, 0.15)';
-        e.currentTarget.style.boxShadow = variant === 'primary' ? '0 0 10px rgba(251, 191, 36, 0.3)' : 'none';
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.background = variant === 'primary' ? 'rgba(251, 191, 36, 0.2)' : 'rgba(255, 255, 255, 0.1)';
-        e.currentTarget.style.boxShadow = 'none';
-      }}
-    >
-      {label}
-    </button>
   );
 }

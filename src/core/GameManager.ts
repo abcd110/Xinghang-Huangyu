@@ -5,9 +5,7 @@ import { ItemType, ItemRarity } from '../data/types';
 import type { EquipmentInstance } from './EquipmentSystem';
 import { calculateEnemyStats } from '../data/locations';
 import { getItemTemplate } from '../data/items';
-import { ENEMIES, createEnemyInstance } from '../data/enemies';
-import { getRandomEnemyForPlanet, getBossEnemyForPlanet, getEliteEnemyForPlanet, convertVoidCreatureToEnemy } from '../data/enemyAdapter';
-import { ALL_VOID_CREATURES } from '../data/voidCreatures';
+import { ENEMIES, createEnemyInstance, getEnemyById, getEnemiesByLocation, getRandomEnemyByLocation } from '../data/enemies';
 import { ArmorQuality, ARMOR_QUALITY_NAMES } from '../data/nanoArmorRecipes';
 import { Quest, QuestConditionType, QuestStatus, QuestType, DEFAULT_QUESTS, type QuestData } from './QuestSystem';
 import { EquipmentSlot } from '../data/equipmentTypes';
@@ -289,13 +287,36 @@ export class GameManager {
 
   // 更新任务进度
   updateQuestProgress(conditionType: QuestConditionType, targetId: string, amount: number = 1): void {
+    console.log('[任务调试] updateQuestProgress 被调用', { conditionType, targetId, amount });
+    console.log('[任务调试] 当前任务数量:', this.quests.size);
+
     this.quests.forEach(quest => {
-      if (quest.status !== QuestStatus.ACTIVE) return;
+      console.log('[任务调试] 检查任务:', quest.id, '状态:', quest.status, '条件数量:', quest.conditions.length);
+
+      if (quest.status !== QuestStatus.ACTIVE) {
+        console.log('[任务调试] 任务状态不是 ACTIVE，跳过');
+        return;
+      }
 
       quest.conditions.forEach(condition => {
+        console.log('[任务调试] 检查条件:', {
+          conditionType: condition.conditionType,
+          targetId: condition.targetId,
+          currentAmount: condition.currentAmount,
+          requiredAmount: condition.requiredAmount
+        });
+
         if (condition.conditionType === conditionType &&
           (condition.targetId === targetId || condition.targetId === 'any')) {
-          condition.updateProgress(amount);
+          console.log('[任务调试] 条件匹配，更新进度');
+
+          // 对于 REACH_STAGE，设置为当前关卡数而不是累加
+          if (conditionType === QuestConditionType.REACH_STAGE) {
+            condition.currentAmount = Math.max(condition.currentAmount, amount);
+          } else {
+            condition.updateProgress(amount);
+          }
+          console.log('[任务调试] 更新后进度:', condition.currentAmount, '/', condition.requiredAmount);
 
           if (quest.isCompleted()) {
             quest.complete();
@@ -352,7 +373,7 @@ export class GameManager {
       this.inventory.addItem(materialId, quantity);
     });
 
-    quest.rewardClaimed();
+    quest.claimReward();
     this.unlockFollowUpQuests(questId);
 
     let rewardMsg = `获得 ${reward.exp} 经验值`;
@@ -702,7 +723,7 @@ export class GameManager {
       // 搜寻物资 - 掉落带品质的基础材料
       if (Math.random() < 0.6) {
         // 随机掉落星尘级材料
-        const basicMaterials = ['mat_001', 'mat_002', 'mat_003', 'mat_004'];
+        const basicMaterials = ['mat_001', 'mat_003', 'mat_004', 'mat_007'];
         const baseId = basicMaterials[Math.floor(Math.random() * basicMaterials.length)];
         const itemId = `${baseId}_stardust`;
         const itemTemplate = getItemTemplate(itemId);
@@ -3320,74 +3341,6 @@ export class GameManager {
     return this.autoCollectSystem.getAvailableLocations(this.player.level);
   }
 
-  // ========== 战斗系统 ==========
-
-  // 开始战斗
-  startBattle(locationId: string, isBoss: boolean = false, isElite: boolean = false): { success: boolean; message: string; enemy?: Enemy } {
-    if (locationId.startsWith('planet_')) {
-      return this.startPlanetBattle(locationId, isBoss, isElite);
-    }
-
-    const locationToPlanetMap: Record<string, string> = {
-      'loc_001': 'planet_alpha', 'loc_002': 'planet_eta', 'loc_003': 'planet_beta',
-      'loc_004': 'planet_gamma', 'loc_005': 'planet_delta', 'loc_006': 'planet_epsilon',
-      'loc_007': 'planet_zeta', 'loc_008': 'planet_theta',
-    };
-    const planetId = locationToPlanetMap[locationId];
-    if (planetId) {
-      return this.startPlanetBattle(planetId, isBoss, isElite);
-    }
-
-    // 无法识别的地点
-    return { success: false, message: '地点不存在或已弃用' };
-  }
-
-  // 新星球战斗系统
-  private startPlanetBattle(planetId: string, isBoss: boolean, isElite: boolean): { success: boolean; message: string; enemy?: Enemy } {
-    // 使用新的虚空怪物系统
-    let enemy: Enemy | null = null;
-
-    if (isBoss) {
-      enemy = getBossEnemyForPlanet(planetId);
-      if (!enemy) {
-        return { success: false, message: '该星球没有首领' };
-      }
-      const enemyInstance = createEnemyInstance(enemy.id);
-      if (!enemyInstance) {
-        return { success: false, message: '创建首领失败' };
-      }
-      this.addLog('战斗', `💀 挑战虚空首领 ${enemyInstance.name}！`);
-      return { success: true, message: `💀 挑战虚空首领 ${enemyInstance.name}！`, enemy: enemyInstance };
-    }
-
-    if (isElite) {
-      enemy = getEliteEnemyForPlanet(planetId);
-      if (!enemy) {
-        return { success: false, message: '该星球没有精英虚空生物' };
-      }
-      const enemyInstance = createEnemyInstance(enemy.id);
-      if (!enemyInstance) {
-        return { success: false, message: '创建精英虚空生物失败' };
-      }
-      this.addLog('战斗', `👾 遭遇了精英 ${enemyInstance.name}！`);
-      return { success: true, message: `👾 遭遇了精英 ${enemyInstance.name}！`, enemy: enemyInstance };
-    }
-
-    // 普通虚空生物
-    enemy = getRandomEnemyForPlanet(planetId, 'normal');
-    if (!enemy) {
-      return { success: false, message: '该星球没有虚空生物' };
-    }
-
-    const enemyInstance = createEnemyInstance(enemy.id);
-    if (!enemyInstance) {
-      return { success: false, message: '创建虚空生物失败' };
-    }
-
-    this.addLog('战斗', `👾 遭遇了 ${enemyInstance.name}！`);
-    return { success: true, message: `👾 遭遇了 ${enemyInstance.name}！`, enemy: enemyInstance };
-  }
-
   // ========== 材料合成系统 ==========
 
   // 合成材料
@@ -3645,19 +3598,16 @@ export class GameManager {
       return ArmorQuality.STARDUST;
     };
 
-    // 新的材料ID列表 (mat_001~mat_010) - 纳米战甲制造材料
+    // 新的材料ID列表 - 纳米战甲制造材料（简化版）
     // 权重基于战甲配方总需求量：需求量越高，掉落率越高
     const NEW_MATERIAL_IDS = [
-      { id: 'mat_001', name: '星铁基础构件', weight: 47 },    // 总需求47
-      { id: 'mat_002', name: '星铜传导组件', weight: 36 },    // 总需求36
-      { id: 'mat_003', name: '钛钢外甲坯料', weight: 20 },    // 总需求20
-      { id: 'mat_004', name: '战甲能量晶核', weight: 7 },     // 总需求7
-      { id: 'mat_005', name: '稀土传感基质', weight: 3 },     // 总需求3
-      { id: 'mat_006', name: '虚空防护核心', weight: 4 },     // 总需求4
-      { id: 'mat_007', name: '推进模块燃料', weight: 11 },    // 总需求11
-      { id: 'mat_008', name: '纳米韧化纤维', weight: 28 },    // 总需求28
-      { id: 'mat_009', name: '陨铁缓冲衬垫', weight: 9 },     // 总需求9
-      { id: 'mat_010', name: '量子紧固组件', weight: 13 },    // 总需求13
+      { id: 'mat_001', name: '星铁基础构件', weight: 60 },
+      { id: 'mat_003', name: '钛钢外甲坯料', weight: 5 },
+      { id: 'mat_004', name: '战甲能量晶核', weight: 5 },
+      { id: 'mat_005', name: '稀土传感基质', weight: 5 },
+      { id: 'mat_006', name: '虚空防护核心', weight: 5 },
+      { id: 'mat_007', name: '推进模块燃料', weight: 5 },
+      { id: 'mat_010', name: '量子紧固组件', weight: 5 },
     ];
 
     // 加权随机选择材料类型
@@ -4430,8 +4380,8 @@ export class GameManager {
   }
 
   startEndlessWaveBattle(): { success: boolean; message: string; enemy?: any } {
-    const normalCreatures = ALL_VOID_CREATURES.filter(c => c.creatureType === 'normal');
-    if (normalCreatures.length === 0) {
+    const normalEnemies = ENEMIES.filter(e => e.enemyType === 'normal');
+    if (normalEnemies.length === 0) {
       return { success: false, message: '无法生成敌人' };
     }
 
@@ -4439,18 +4389,17 @@ export class GameManager {
     const tierMap: Record<string, number> = { 'T1': 3, 'T2': 8, 'T3': 13, 'T4': 18, 'T5': 23, 'T6': 28 };
     const targetLevel = 3 + (stageLevel - 1) * 2;
 
-    let filteredCreatures = normalCreatures.filter(c => {
-      const creatureLevel = tierMap[c.tier] || 3;
-      return Math.abs(creatureLevel - targetLevel) <= 5;
+    let filteredEnemies = normalEnemies.filter(e => {
+      const enemyLevel = tierMap[e.tier] || 3;
+      return Math.abs(enemyLevel - targetLevel) <= 5;
     });
 
-    if (filteredCreatures.length === 0) {
-      filteredCreatures = normalCreatures;
+    if (filteredEnemies.length === 0) {
+      filteredEnemies = normalEnemies;
     }
 
-    const baseCreature = filteredCreatures[Math.floor(Math.random() * filteredCreatures.length)];
-    const baseEnemy = convertVoidCreatureToEnemy(baseCreature);
-    const enemyInstance = createEnemyInstance(baseEnemy.id);
+    const baseEnemyData = filteredEnemies[Math.floor(Math.random() * filteredEnemies.length)];
+    const enemyInstance = createEnemyInstance(baseEnemyData.id);
     if (!enemyInstance) {
       return { success: false, message: '创建敌人失败' };
     }
@@ -4467,8 +4416,8 @@ export class GameManager {
   }
 
   startEndlessBossBattle(): { success: boolean; message: string; enemy?: any } {
-    const bossCreatures = ALL_VOID_CREATURES.filter(c => c.creatureType === 'boss');
-    if (bossCreatures.length === 0) {
+    const bossEnemies = ENEMIES.filter(e => e.enemyType === 'boss');
+    if (bossEnemies.length === 0) {
       return { success: false, message: '无法生成Boss' };
     }
 
@@ -4476,18 +4425,17 @@ export class GameManager {
     const tierMap: Record<string, number> = { 'T1': 3, 'T2': 8, 'T3': 13, 'T4': 18, 'T5': 23, 'T6': 28 };
     const targetLevel = 3 + (stageLevel - 1) * 2;
 
-    let filteredCreatures = bossCreatures.filter(c => {
-      const creatureLevel = tierMap[c.tier] || 3;
-      return Math.abs(creatureLevel - targetLevel) <= 5;
+    let filteredEnemies = bossEnemies.filter(e => {
+      const enemyLevel = tierMap[e.tier] || 3;
+      return Math.abs(enemyLevel - targetLevel) <= 5;
     });
 
-    if (filteredCreatures.length === 0) {
-      filteredCreatures = bossCreatures;
+    if (filteredEnemies.length === 0) {
+      filteredEnemies = bossEnemies;
     }
 
-    const baseCreature = filteredCreatures[Math.floor(Math.random() * filteredCreatures.length)];
-    const baseEnemy = convertVoidCreatureToEnemy(baseCreature);
-    const enemyInstance = createEnemyInstance(baseEnemy.id);
+    const baseEnemyData = filteredEnemies[Math.floor(Math.random() * filteredEnemies.length)];
+    const enemyInstance = createEnemyInstance(baseEnemyData.id);
     if (!enemyInstance) {
       return { success: false, message: '创建Boss失败' };
     }
@@ -4497,7 +4445,6 @@ export class GameManager {
     enemyInstance.hp = enemyInstance.maxHp;
     enemyInstance.attack = Math.floor(enemyInstance.attack * bossMultiplier);
     enemyInstance.defense = Math.floor(enemyInstance.defense * bossMultiplier);
-    // 只显示boss名称，不带前缀
 
     this.addLog('无尽Boss', `开始第${this.endlessStageLevel}关Boss战斗`);
     return { success: true, message: `开始第${this.endlessStageLevel}关Boss战斗`, enemy: enemyInstance };
@@ -4507,8 +4454,46 @@ export class GameManager {
     const credits = 100;
     const materials: { itemId: string; count: number }[] = [];
 
-    const materialIds = ['mat_001_stardust', 'mat_002_stardust', 'mat_003_stardust', 'mat_004_stardust', 'mat_005_stardust'];
-    const randomMatId = materialIds[Math.floor(Math.random() * materialIds.length)];
+    const MATERIAL_WEIGHTS = [
+      { id: 'mat_001', weight: 50 },
+      { id: 'mat_003', weight: 15 },
+      { id: 'mat_004', weight: 12 },
+      { id: 'mat_005', weight: 8 },
+      { id: 'mat_006', weight: 6 },
+      { id: 'mat_007', weight: 10 },
+      { id: 'mat_010', weight: 9 },
+    ];
+
+    const totalWeight = MATERIAL_WEIGHTS.reduce((sum, m) => sum + m.weight, 0);
+    let random = Math.random() * totalWeight;
+    let selectedBaseId = 'mat_001';
+    for (const mat of MATERIAL_WEIGHTS) {
+      random -= mat.weight;
+      if (random <= 0) {
+        selectedBaseId = mat.id;
+        break;
+      }
+    }
+
+    const QUALITY_WEIGHTS = [
+      { suffix: '_stardust', weight: 40 },
+      { suffix: '_alloy', weight: 25 },
+      { suffix: '_crystal', weight: 20 },
+      { suffix: '_quantum', weight: 10 },
+      { suffix: '_void', weight: 5 },
+    ];
+    const qualityTotalWeight = QUALITY_WEIGHTS.reduce((sum, q) => sum + q.weight, 0);
+    let qualityRandom = Math.random() * qualityTotalWeight;
+    let qualitySuffix = '_stardust';
+    for (const q of QUALITY_WEIGHTS) {
+      qualityRandom -= q.weight;
+      if (qualityRandom <= 0) {
+        qualitySuffix = q.suffix;
+        break;
+      }
+    }
+    const randomMatId = selectedBaseId + qualitySuffix;
+
     const minCount = Math.max(1, this.endlessStageLevel - 1);
     const maxCount = Math.min(10, this.endlessStageLevel + 1);
     const count = Math.floor(minCount + Math.random() * (maxCount - minCount + 1));
@@ -4551,6 +4536,9 @@ export class GameManager {
 
     this.player.addExp(rewards.exp);
 
+    // 更新任务进度 - 每波击败敌人
+    this.updateQuestProgress(QuestConditionType.KILL_ENEMY, 'any', 1);
+
     this.endlessWaveNumber++;
     this.refreshPlayerState();
 
@@ -4563,8 +4551,47 @@ export class GameManager {
     this.trainCoins += credits;
 
     const materials: { itemId: string; count: number }[] = [];
-    const materialIds = ['mat_001_quantum', 'mat_002_quantum', 'mat_003_quantum', 'mat_004_quantum', 'mat_005_quantum'];
-    const randomMatId = materialIds[Math.floor(Math.random() * materialIds.length)];
+
+    const MATERIAL_WEIGHTS = [
+      { id: 'mat_001', weight: 50 },
+      { id: 'mat_003', weight: 15 },
+      { id: 'mat_004', weight: 12 },
+      { id: 'mat_005', weight: 8 },
+      { id: 'mat_006', weight: 6 },
+      { id: 'mat_007', weight: 10 },
+      { id: 'mat_010', weight: 9 },
+    ];
+
+    const totalWeight = MATERIAL_WEIGHTS.reduce((sum, m) => sum + m.weight, 0);
+    let random = Math.random() * totalWeight;
+    let selectedBaseId = 'mat_001';
+    for (const mat of MATERIAL_WEIGHTS) {
+      random -= mat.weight;
+      if (random <= 0) {
+        selectedBaseId = mat.id;
+        break;
+      }
+    }
+
+    const QUALITY_WEIGHTS = [
+      { suffix: '_stardust', weight: 10 },
+      { suffix: '_alloy', weight: 20 },
+      { suffix: '_crystal', weight: 30 },
+      { suffix: '_quantum', weight: 25 },
+      { suffix: '_void', weight: 15 },
+    ];
+    const qualityTotalWeight = QUALITY_WEIGHTS.reduce((sum, q) => sum + q.weight, 0);
+    let qualityRandom = Math.random() * qualityTotalWeight;
+    let qualitySuffix = '_stardust';
+    for (const q of QUALITY_WEIGHTS) {
+      qualityRandom -= q.weight;
+      if (qualityRandom <= 0) {
+        qualitySuffix = q.suffix;
+        break;
+      }
+    }
+    const randomMatId = selectedBaseId + qualitySuffix;
+
     const minCount = Math.max(1, this.endlessStageLevel - 1);
     const maxCount = Math.min(10, this.endlessStageLevel + 1);
     const count = Math.floor(minCount + Math.random() * (maxCount - minCount + 1));
@@ -4575,8 +4602,15 @@ export class GameManager {
     const exp = 100 * expMultiplier;
     this.player.addExp(exp);
 
+    // 更新任务进度 - Boss击败
+    this.updateQuestProgress(QuestConditionType.KILL_ENEMY, 'any', 1);
+
     this.endlessStageLevel++;
     this.endlessWaveNumber = 1;
+
+    // 更新任务进度 - 关卡达成
+    this.updateQuestProgress(QuestConditionType.REACH_STAGE, 'any', this.endlessStageLevel);
+
     this.refreshPlayerState();
 
     this.addLog('无尽Boss', `第${this.endlessStageLevel - 1}关Boss胜利，获得${credits}信用点，${exp}经验`);

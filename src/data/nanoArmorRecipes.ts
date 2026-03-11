@@ -97,12 +97,7 @@ export const RECIPE_HELMET: NanoArmorRecipe = {
   description: '集成神经接口与量子传感阵列，提供战场态势感知与虚空能量屏蔽',
   materials: [
     { itemId: 'mat_001', name: '星铁基础构件', count: 8 },
-    { itemId: 'mat_002', name: '星铜传导组件', count: 6 },
-    { itemId: 'mat_004', name: '战甲能量晶核', count: 3 },
-    { itemId: 'mat_005', name: '稀土传感基质', count: 2 },
-    { itemId: 'mat_006', name: '虚空防护核心', count: 1 },
-    { itemId: 'mat_008', name: '纳米韧化纤维', count: 4 },
-    { itemId: 'mat_010', name: '量子紧固组件', count: 2 },
+    { itemId: 'mat_005', name: '稀土传感基质', count: 5 },
   ],
   baseStats: {
     defense: 2,
@@ -122,13 +117,7 @@ export const RECIPE_CHEST: NanoArmorRecipe = {
   description: '内置微型聚变核心，为全身战甲提供能源，具备最强防护性能',
   materials: [
     { itemId: 'mat_001', name: '星铁基础构件', count: 12 },
-    { itemId: 'mat_002', name: '星铜传导组件', count: 8 },
-    { itemId: 'mat_003', name: '钛钢外甲坯料', count: 6 },
-    { itemId: 'mat_004', name: '战甲能量晶核', count: 4 },
-    { itemId: 'mat_006', name: '虚空防护核心', count: 2 },
-    { itemId: 'mat_008', name: '纳米韧化纤维', count: 6 },
-    { itemId: 'mat_009', name: '陨铁缓冲衬垫', count: 3 },
-    { itemId: 'mat_010', name: '量子紧固组件', count: 3 },
+    { itemId: 'mat_004', name: '战甲能量晶核', count: 5 },
   ],
   baseStats: {
     defense: 3,
@@ -147,13 +136,8 @@ export const RECIPE_SHOULDER: NanoArmorRecipe = {
   name: '相位护盾肩',
   description: '搭载相位偏移护盾发生器，可偏转实体与能量攻击',
   materials: [
-    { itemId: 'mat_001', name: '星铁基础构件', count: 7 },
-    { itemId: 'mat_002', name: '星铜传导组件', count: 5 },
-    { itemId: 'mat_003', name: '钛钢外甲坯料', count: 5 },
-    { itemId: 'mat_006', name: '虚空防护核心', count: 1 },
-    { itemId: 'mat_008', name: '纳米韧化纤维', count: 4 },
-    { itemId: 'mat_009', name: '陨铁缓冲衬垫', count: 2 },
-    { itemId: 'mat_010', name: '量子紧固组件', count: 2 },
+    { itemId: 'mat_001', name: '星铁基础构件', count: 12 },
+    { itemId: 'mat_006', name: '虚空防护核心', count: 5 },
   ],
   baseStats: {
     defense: 1,
@@ -172,12 +156,8 @@ export const RECIPE_ARM: NanoArmorRecipe = {
   name: '脉冲力场臂',
   description: '覆盖脉冲力场发生器，增强近战攻击并保护精密关节',
   materials: [
-    { itemId: 'mat_001', name: '星铁基础构件', count: 6 },
-    { itemId: 'mat_002', name: '星铜传导组件', count: 7 },
-    { itemId: 'mat_003', name: '钛钢外甲坯料', count: 4 },
-    { itemId: 'mat_005', name: '稀土传感基质', count: 1 },
-    { itemId: 'mat_008', name: '纳米韧化纤维', count: 5 },
-    { itemId: 'mat_010', name: '量子紧固组件', count: 2 },
+    { itemId: 'mat_001', name: '星铁基础构件', count: 12 },
+    { itemId: 'mat_003', name: '钛钢外甲坯料', count: 5 },
   ],
   baseStats: {
     attack: 5,
@@ -194,13 +174,8 @@ export const RECIPE_LEG: NanoArmorRecipe = {
   name: '推进悬浮腿',
   description: '侧重推进燃料、承重结构、关节韧性',
   materials: [
-    { itemId: 'mat_001', name: '星铁基础构件', count: 9 },
-    { itemId: 'mat_002', name: '星铜传导组件', count: 6 },
-    { itemId: 'mat_003', name: '钛钢外甲坯料', count: 5 },
-    { itemId: 'mat_007', name: '推进模块燃料', count: 6 },
-    { itemId: 'mat_008', name: '纳米韧化纤维', count: 5 },
-    { itemId: 'mat_009', name: '陨铁缓冲衬垫', count: 2 },
-    { itemId: 'mat_010', name: '量子紧固组件', count: 2 },
+    { itemId: 'mat_001', name: '星铁基础构件', count: 8 },
+    { itemId: 'mat_007', name: '推进模块燃料', count: 5 },
   ],
   baseStats: {
     defense: 2,
@@ -219,12 +194,8 @@ export const RECIPE_BOOT: NanoArmorRecipe = {
   name: '反重力战靴',
   description: '微型反重力引擎与缓冲力场，实现静音移动与高空着陆',
   materials: [
-    { itemId: 'mat_001', name: '星铁基础构件', count: 5 },
-    { itemId: 'mat_002', name: '星铜传导组件', count: 4 },
-    { itemId: 'mat_007', name: '推进模块燃料', count: 5 },
-    { itemId: 'mat_008', name: '纳米韧化纤维', count: 4 },
-    { itemId: 'mat_009', name: '陨铁缓冲衬垫', count: 2 },
-    { itemId: 'mat_010', name: '量子紧固组件', count: 2 },
+    { itemId: 'mat_001', name: '星铁基础构件', count: 8 },
+    { itemId: 'mat_010', name: '量子紧固组件', count: 5 },
   ],
   baseStats: {
     defense: 1,
@@ -259,16 +230,13 @@ export function getRecipeById(id: string): NanoArmorRecipe | undefined {
 // 整套「纳米战甲」总材料需求统计
 // ============================================
 export const TOTAL_MATERIALS_NEEDED = {
-  'mat_001': { name: '星铁基础构件', count: 47 },
-  'mat_002': { name: '星铜传导组件', count: 36 },
-  'mat_003': { name: '钛钢外甲坯料', count: 20 },
-  'mat_004': { name: '战甲能量晶核', count: 7 },
-  'mat_005': { name: '稀土传感基质', count: 3 },
+  'mat_001': { name: '星铁基础构件', count: 60 },
+  'mat_003': { name: '钛钢外甲坯料', count: 5 },
+  'mat_004': { name: '战甲能量晶核', count: 5 },
+  'mat_005': { name: '稀土传感基质', count: 5 },
   'mat_006': { name: '虚空防护核心', count: 5 },
-  'mat_007': { name: '推进模块燃料', count: 11 },
-  'mat_008': { name: '纳米韧化纤维', count: 28 },
-  'mat_009': { name: '陨铁缓冲衬垫', count: 10 },
-  'mat_010': { name: '量子紧固组件', count: 14 },
+  'mat_007': { name: '推进模块燃料', count: 5 },
+  'mat_010': { name: '量子紧固组件', count: 5 },
 };
 
 // 品质合成配置

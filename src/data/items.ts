@@ -1428,10 +1428,6 @@ export const ITEMS: Record<string, Item> = {
     id: 'mat_001', name: '星铁基础构件', type: ItemType.MATERIAL, rarity: ItemRarity.COMMON,
     description: '战甲基础结构材料，用量最大。', sublimationLevel: 0,
   },
-  'mat_002': {
-    id: 'mat_002', name: '星铜传导组件', type: ItemType.MATERIAL, rarity: ItemRarity.COMMON,
-    description: '能源与信号传导材料，全部位通用。', sublimationLevel: 0,
-  },
   'mat_003': {
     id: 'mat_003', name: '钛钢外甲坯料', type: ItemType.MATERIAL, rarity: ItemRarity.UNCOMMON,
     description: '胸/肩/臂/腿外甲专用材料。', sublimationLevel: 0,
@@ -1452,14 +1448,6 @@ export const ITEMS: Record<string, Item> = {
     id: 'mat_007', name: '推进模块燃料', type: ItemType.MATERIAL, rarity: ItemRarity.COMMON,
     description: '腿甲、战靴推进系统燃料。', sublimationLevel: 0,
   },
-  'mat_008': {
-    id: 'mat_008', name: '纳米韧化纤维', type: ItemType.MATERIAL, rarity: ItemRarity.UNCOMMON,
-    description: '全部位关节/内衬韧性材料。', sublimationLevel: 0,
-  },
-  'mat_009': {
-    id: 'mat_009', name: '陨铁缓冲衬垫', type: ItemType.MATERIAL, rarity: ItemRarity.UNCOMMON,
-    description: '胸/肩/腿/靴抗冲击层材料。', sublimationLevel: 0,
-  },
   'mat_010': {
     id: 'mat_010', name: '量子紧固组件', type: ItemType.MATERIAL, rarity: ItemRarity.RARE,
     description: '全部位精密连接材料，极稀有。', sublimationLevel: 0,
@@ -1471,10 +1459,6 @@ export const ITEMS: Record<string, Item> = {
   'mat_001_stardust': {
     id: 'mat_001_stardust', name: '星铁基础构件(星尘)', type: ItemType.MATERIAL, rarity: ItemRarity.COMMON,
     description: '星尘级战甲基础结构材料。', sublimationLevel: 0,
-  },
-  'mat_002_stardust': {
-    id: 'mat_002_stardust', name: '星铜传导组件(星尘)', type: ItemType.MATERIAL, rarity: ItemRarity.COMMON,
-    description: '星尘级能源与信号传导材料。', sublimationLevel: 0,
   },
   'mat_003_stardust': {
     id: 'mat_003_stardust', name: '钛钢外甲坯料(星尘)', type: ItemType.MATERIAL, rarity: ItemRarity.COMMON,
@@ -1496,14 +1480,6 @@ export const ITEMS: Record<string, Item> = {
     id: 'mat_007_stardust', name: '推进模块燃料(星尘)', type: ItemType.MATERIAL, rarity: ItemRarity.COMMON,
     description: '星尘级推进系统燃料。', sublimationLevel: 0,
   },
-  'mat_008_stardust': {
-    id: 'mat_008_stardust', name: '纳米韧化纤维(星尘)', type: ItemType.MATERIAL, rarity: ItemRarity.COMMON,
-    description: '星尘级关节/内衬韧性材料。', sublimationLevel: 0,
-  },
-  'mat_009_stardust': {
-    id: 'mat_009_stardust', name: '陨铁缓冲衬垫(星尘)', type: ItemType.MATERIAL, rarity: ItemRarity.COMMON,
-    description: '星尘级抗冲击层材料。', sublimationLevel: 0,
-  },
   'mat_010_stardust': {
     id: 'mat_010_stardust', name: '量子紧固组件(星尘)', type: ItemType.MATERIAL, rarity: ItemRarity.COMMON,
     description: '星尘级精密连接材料。', sublimationLevel: 0,
@@ -1515,10 +1491,6 @@ export const ITEMS: Record<string, Item> = {
   'mat_001_alloy': {
     id: 'mat_001_alloy', name: '星铁基础构件(合金)', type: ItemType.MATERIAL, rarity: ItemRarity.UNCOMMON,
     description: '合金级战甲基础结构材料。', sublimationLevel: 0,
-  },
-  'mat_002_alloy': {
-    id: 'mat_002_alloy', name: '星铜传导组件(合金)', type: ItemType.MATERIAL, rarity: ItemRarity.UNCOMMON,
-    description: '合金级能源与信号传导材料。', sublimationLevel: 0,
   },
   'mat_003_alloy': {
     id: 'mat_003_alloy', name: '钛钢外甲坯料(合金)', type: ItemType.MATERIAL, rarity: ItemRarity.UNCOMMON,
@@ -1540,14 +1512,6 @@ export const ITEMS: Record<string, Item> = {
     id: 'mat_007_alloy', name: '推进模块燃料(合金)', type: ItemType.MATERIAL, rarity: ItemRarity.UNCOMMON,
     description: '合金级推进系统燃料。', sublimationLevel: 0,
   },
-  'mat_008_alloy': {
-    id: 'mat_008_alloy', name: '纳米韧化纤维(合金)', type: ItemType.MATERIAL, rarity: ItemRarity.UNCOMMON,
-    description: '合金级关节/内衬韧性材料。', sublimationLevel: 0,
-  },
-  'mat_009_alloy': {
-    id: 'mat_009_alloy', name: '陨铁缓冲衬垫(合金)', type: ItemType.MATERIAL, rarity: ItemRarity.UNCOMMON,
-    description: '合金级抗冲击层材料。', sublimationLevel: 0,
-  },
   'mat_010_alloy': {
     id: 'mat_010_alloy', name: '量子紧固组件(合金)', type: ItemType.MATERIAL, rarity: ItemRarity.UNCOMMON,
     description: '合金级精密连接材料。', sublimationLevel: 0,
@@ -1559,10 +1523,6 @@ export const ITEMS: Record<string, Item> = {
   'mat_001_crystal': {
     id: 'mat_001_crystal', name: '星铁基础构件(晶核)', type: ItemType.MATERIAL, rarity: ItemRarity.RARE,
     description: '晶核级战甲基础结构材料。', sublimationLevel: 0,
-  },
-  'mat_002_crystal': {
-    id: 'mat_002_crystal', name: '星铜传导组件(晶核)', type: ItemType.MATERIAL, rarity: ItemRarity.RARE,
-    description: '晶核级能源与信号传导材料。', sublimationLevel: 0,
   },
   'mat_003_crystal': {
     id: 'mat_003_crystal', name: '钛钢外甲坯料(晶核)', type: ItemType.MATERIAL, rarity: ItemRarity.RARE,
@@ -1584,14 +1544,6 @@ export const ITEMS: Record<string, Item> = {
     id: 'mat_007_crystal', name: '推进模块燃料(晶核)', type: ItemType.MATERIAL, rarity: ItemRarity.RARE,
     description: '晶核级推进系统燃料。', sublimationLevel: 0,
   },
-  'mat_008_crystal': {
-    id: 'mat_008_crystal', name: '纳米韧化纤维(晶核)', type: ItemType.MATERIAL, rarity: ItemRarity.RARE,
-    description: '晶核级关节/内衬韧性材料。', sublimationLevel: 0,
-  },
-  'mat_009_crystal': {
-    id: 'mat_009_crystal', name: '陨铁缓冲衬垫(晶核)', type: ItemType.MATERIAL, rarity: ItemRarity.RARE,
-    description: '晶核级抗冲击层材料。', sublimationLevel: 0,
-  },
   'mat_010_crystal': {
     id: 'mat_010_crystal', name: '量子紧固组件(晶核)', type: ItemType.MATERIAL, rarity: ItemRarity.RARE,
     description: '晶核级精密连接材料。', sublimationLevel: 0,
@@ -1603,10 +1555,6 @@ export const ITEMS: Record<string, Item> = {
   'mat_001_quantum': {
     id: 'mat_001_quantum', name: '星铁基础构件(量子)', type: ItemType.MATERIAL, rarity: ItemRarity.EPIC,
     description: '量子级战甲基础结构材料。', sublimationLevel: 0,
-  },
-  'mat_002_quantum': {
-    id: 'mat_002_quantum', name: '星铜传导组件(量子)', type: ItemType.MATERIAL, rarity: ItemRarity.EPIC,
-    description: '量子级能源与信号传导材料。', sublimationLevel: 0,
   },
   'mat_003_quantum': {
     id: 'mat_003_quantum', name: '钛钢外甲坯料(量子)', type: ItemType.MATERIAL, rarity: ItemRarity.EPIC,
@@ -1628,14 +1576,6 @@ export const ITEMS: Record<string, Item> = {
     id: 'mat_007_quantum', name: '推进模块燃料(量子)', type: ItemType.MATERIAL, rarity: ItemRarity.EPIC,
     description: '量子级推进系统燃料。', sublimationLevel: 0,
   },
-  'mat_008_quantum': {
-    id: 'mat_008_quantum', name: '纳米韧化纤维(量子)', type: ItemType.MATERIAL, rarity: ItemRarity.EPIC,
-    description: '量子级关节/内衬韧性材料。', sublimationLevel: 0,
-  },
-  'mat_009_quantum': {
-    id: 'mat_009_quantum', name: '陨铁缓冲衬垫(量子)', type: ItemType.MATERIAL, rarity: ItemRarity.EPIC,
-    description: '量子级抗冲击层材料。', sublimationLevel: 0,
-  },
   'mat_010_quantum': {
     id: 'mat_010_quantum', name: '量子紧固组件(量子)', type: ItemType.MATERIAL, rarity: ItemRarity.EPIC,
     description: '量子级精密连接材料。', sublimationLevel: 0,
@@ -1647,10 +1587,6 @@ export const ITEMS: Record<string, Item> = {
   'mat_001_void': {
     id: 'mat_001_void', name: '星铁基础构件(虚空)', type: ItemType.MATERIAL, rarity: ItemRarity.LEGENDARY,
     description: '虚空级战甲基础结构材料。', sublimationLevel: 0,
-  },
-  'mat_002_void': {
-    id: 'mat_002_void', name: '星铜传导组件(虚空)', type: ItemType.MATERIAL, rarity: ItemRarity.LEGENDARY,
-    description: '虚空级能源与信号传导材料。', sublimationLevel: 0,
   },
   'mat_003_void': {
     id: 'mat_003_void', name: '钛钢外甲坯料(虚空)', type: ItemType.MATERIAL, rarity: ItemRarity.LEGENDARY,
@@ -1671,14 +1607,6 @@ export const ITEMS: Record<string, Item> = {
   'mat_007_void': {
     id: 'mat_007_void', name: '推进模块燃料(虚空)', type: ItemType.MATERIAL, rarity: ItemRarity.LEGENDARY,
     description: '虚空级推进系统燃料。', sublimationLevel: 0,
-  },
-  'mat_008_void': {
-    id: 'mat_008_void', name: '纳米韧化纤维(虚空)', type: ItemType.MATERIAL, rarity: ItemRarity.LEGENDARY,
-    description: '虚空级关节/内衬韧性材料。', sublimationLevel: 0,
-  },
-  'mat_009_void': {
-    id: 'mat_009_void', name: '陨铁缓冲衬垫(虚空)', type: ItemType.MATERIAL, rarity: ItemRarity.LEGENDARY,
-    description: '虚空级抗冲击层材料。', sublimationLevel: 0,
   },
   'mat_010_void': {
     id: 'mat_010_void', name: '量子紧固组件(虚空)', type: ItemType.MATERIAL, rarity: ItemRarity.LEGENDARY,
