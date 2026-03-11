@@ -1,6 +1,6 @@
 import { useGameStore } from '../../stores/gameStore';
 import type { BaseFacility } from './types';
-import { EnergyContent, WarehouseContent, MedicalContent } from './BasicFacilities';
+import { EnergyContent, WarehouseContent } from './BasicFacilities';
 import { ResearchContent } from './ResearchContent';
 import { MiningContent } from './MiningContent';
 import { ChipContent } from './ChipContent';
@@ -46,8 +46,6 @@ export function FacilityDetailModal({ facility, onClose, onStartRuinBattle }: Fa
         return <EnergyContent />;
       case 'warehouse':
         return <WarehouseContent />;
-      case 'medical':
-        return <MedicalContent />;
       case 'research':
         return <ResearchContent />;
       case 'mining':

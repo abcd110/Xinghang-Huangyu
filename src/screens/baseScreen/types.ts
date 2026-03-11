@@ -13,7 +13,6 @@ export const FACILITIES: BaseFacility[] = [
   { id: 'crew', name: '船员舱', icon: '👥', description: '招募与管理船员', color: '#00d4ff', status: 'active' },
   { id: 'energy', name: '能源核心', icon: '⚡', description: '升级星舰能源系统', color: '#f59e0b', level: 1, maxLevel: 10, status: 'active' },
   { id: 'warehouse', name: '星际仓库', icon: '📦', description: '扩展存储容量', color: '#10b981', level: 1, maxLevel: 10, status: 'active' },
-  { id: 'medical', name: '医疗舱', icon: '🏥', description: '提升恢复效率', color: '#ef4444', level: 1, maxLevel: 5, status: 'active' },
   { id: 'research', name: '科研实验室', icon: '🔬', description: '解锁新配方', color: '#c084fc', status: 'active' },
   { id: 'mining', name: '采矿平台', icon: '⛏️', description: '自动采集矿物资源', color: '#f59e0b', level: 1, maxLevel: 5, status: 'active' },
   { id: 'chip', name: '芯片研发', icon: '💾', description: '研发战斗芯片', color: '#00d4ff', level: 1, maxLevel: 3, status: 'active' },

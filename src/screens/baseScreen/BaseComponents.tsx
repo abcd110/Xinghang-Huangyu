@@ -98,7 +98,6 @@ export function FacilityCard({ facility, onClick }: { facility: BaseFacility; on
         const facilityTypeMap: Record<string, FacilityType> = {
           'energy': FacilityType.ENERGY,
           'warehouse': FacilityType.WAREHOUSE,
-          'medical': FacilityType.MEDICAL,
           'comm': FacilityType.COMM,
           'market': FacilityType.MARKET,
           'relic': FacilityType.RELIC,

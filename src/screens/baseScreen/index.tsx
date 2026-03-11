@@ -261,7 +261,7 @@ function BaseScreen({ onBack, onNavigate, onBattleStateChange, onDetailStateChan
 export { FACILITIES, type BaseFacility } from './types';
 export { BaseHeader, BaseOverview, FacilityCard } from './BaseComponents';
 export { FacilityDetailModal } from './FacilityDetailModal';
-export { EnergyContent, WarehouseContent, MedicalContent } from './BasicFacilities';
+export { EnergyContent, WarehouseContent } from './BasicFacilities';
 export { ResearchContent } from './ResearchContent';
 export { MiningContent } from './MiningContent';
 export { ChipContent } from './ChipContent';

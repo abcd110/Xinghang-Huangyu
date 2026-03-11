@@ -1,6 +1,7 @@
 // 星械锻造所 - 纳米战甲制造界面（优化版）
 import { useState, useMemo, useCallback } from 'react';
 import { useGameStore } from '../stores/gameStore';
+import { QuestConditionType } from '../core/QuestSystem';
 import {
   NanoArmorSlot,
   NANO_ARMOR_SLOT_NAMES,
@@ -234,6 +235,7 @@ export default function NanoArmorCraftingScreen({ onBack }: NanoArmorCraftingScr
     const added = inventory.addEquipment(equipmentInstance);
 
     if (added) {
+      gameManager.updateQuestProgress(QuestConditionType.CRAFT, 'any', 1);
       setCraftingResult({
         success: true,
         message: `成功制造 ${equipmentInstance.name}！`,

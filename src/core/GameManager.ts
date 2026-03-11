@@ -1206,42 +1206,6 @@ export class GameManager {
     return this.baseFacilitySystem.getWarehouseCapacity();
   }
 
-  // 获取医疗舱恢复加成
-  getMedicalRecoveryBonus(): number {
-    return this.baseFacilitySystem.getMedicalRecoveryBonus();
-  }
-
-  // 获取医疗舱效率详情
-  getMedicalEfficiency(): {
-    level: number;
-    hpRecoveryBase: number;
-    hpRecoveryActual: number;
-    staminaRecoveryBase: number;
-    staminaRecoveryActual: number;
-    staminaRegenBase: number;
-    staminaRegenActual: number;
-    bonusPercent: number;
-  } {
-    const level = this.getFacilityLevel(FacilityType.MEDICAL);
-    const bonus = this.getMedicalRecoveryBonus();
-    const multiplier = 1 + bonus / 100;
-
-    const hpRecoveryBase = 30;
-    const staminaRecoveryBase = 30;
-    const staminaRegenBase = 1; // 每分钟基础恢复1点体力（现实时间）
-
-    return {
-      level,
-      hpRecoveryBase,
-      hpRecoveryActual: Math.floor(hpRecoveryBase * multiplier),
-      staminaRecoveryBase,
-      staminaRecoveryActual: Math.floor(staminaRecoveryBase * multiplier),
-      staminaRegenBase,
-      staminaRegenActual: Math.floor(staminaRegenBase * multiplier),
-      bonusPercent: bonus,
-    };
-  }
-
   // 获取设施升级预览
   getFacilityUpgradePreview(facilityId: FacilityType): {
     canUpgrade: boolean;
@@ -4371,6 +4335,7 @@ export class GameManager {
     this.player.equipMythologyItem(updated);
 
     if (success) {
+      this.updateQuestProgress(QuestConditionType.SUBLIMATE, 'any', 1);
       this.addLog('升华', `${equipment.name} 升华成功！达到 升华+${updated.sublimationLevel}`);
       return { success: true, message: `升华成功！${equipment.name} 达到 升华+${updated.sublimationLevel}`, newLevel: updated.sublimationLevel };
     } else {
@@ -4404,8 +4369,21 @@ export class GameManager {
       return { success: false, message: '创建敌人失败' };
     }
 
-    const baseMultiplier = 0.3;
-    const waveMultiplier = baseMultiplier + (this.endlessStageLevel - 1) * 0.05 + (this.endlessWaveNumber - 1) * 0.01;
+    const baseMultiplier = 0.7;
+    const stageGrowth = Math.pow(1.18, this.endlessStageLevel - 1);
+    let waveMultiplier = baseMultiplier * stageGrowth + (this.endlessWaveNumber - 1) * 0.04;
+    if (this.endlessStageLevel >= 5) {
+      waveMultiplier *= 1.3;
+    }
+    if (this.endlessStageLevel >= 10) {
+      waveMultiplier *= 1.5;
+    }
+    if (this.endlessStageLevel >= 15) {
+      waveMultiplier *= 1.8;
+    }
+    if (this.endlessStageLevel >= 20) {
+      waveMultiplier *= 2.2;
+    }
     enemyInstance.maxHp = Math.floor(enemyInstance.maxHp * waveMultiplier);
     enemyInstance.hp = enemyInstance.maxHp;
     enemyInstance.attack = Math.floor(enemyInstance.attack * waveMultiplier);
@@ -4508,9 +4486,14 @@ export class GameManager {
   calculateBossMultiplier(): number {
     const stageLevel = this.endlessStageLevel;
     const baseMultiplier = 0.5;
-    const linearBonus = baseMultiplier + (stageLevel - 1) * 0.08;
-    const milestoneBonus = Math.floor(stageLevel / 10);
-    const multiplier = linearBonus * Math.pow(1.5, milestoneBonus);
+    const linearGrowth = 0.08 * (stageLevel - 1);
+    let multiplier = baseMultiplier + linearGrowth;
+    if (stageLevel >= 10) {
+      multiplier *= 1.6;
+    }
+    if (stageLevel >= 20) {
+      multiplier *= 2.0;
+    }
     return multiplier;
   }
 

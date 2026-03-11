@@ -101,7 +101,6 @@ export const styles = {
 export const colors = {
   energy: '#f59e0b',
   warehouse: '#10b981',
-  medical: '#ef4444',
   comm: '#8b5cf6',
   research: '#c084fc',
   mining: '#f59e0b',

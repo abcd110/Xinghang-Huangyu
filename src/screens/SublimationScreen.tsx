@@ -5,6 +5,7 @@ import { equipmentSystem } from '../core/EquipmentSystem';
 import { ItemRarity, RARITY_COLORS, RARITY_NAMES } from '../data/types';
 import { calculateEquipmentStats } from '../core/EquipmentStatCalculator';
 import { SciFiButton } from '../components/SciFiButton';
+import { QuestConditionType } from '../core/QuestSystem';
 import 舰桥背景 from '../assets/images/舰桥背景.jpg';
 
 interface SublimationScreenProps {
@@ -56,6 +57,10 @@ export default function SublimationScreen({ onBack }: SublimationScreenProps) {
     if (consumeSuccess) {
       const updated = equipmentSystem.sublimateEquipment(selectedEquipment, success);
       player.equipMythologyItem(updated);
+
+      if (success) {
+        gameManager.updateQuestProgress(QuestConditionType.SUBLIMATE, 'any', 1);
+      }
 
       setResult({
         success,

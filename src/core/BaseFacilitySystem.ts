@@ -2,7 +2,6 @@ export enum FacilityType {
   CREW = 'crew',
   ENERGY = 'energy',
   WAREHOUSE = 'warehouse',
-  MEDICAL = 'medical',
   RESEARCH = 'research',
   MINING = 'mining',
   CHIP = 'chip',
@@ -82,21 +81,6 @@ export const FACILITY_DEFINITIONS: FacilityDefinition[] = [
       { level: 8, upgradeCost: { credits: 0, materials: [{ itemId: 'base_core', count: 1 }] }, effects: { description: '存储容量', value: 400 } },
       { level: 9, upgradeCost: { credits: 0, materials: [{ itemId: 'base_core', count: 1 }] }, effects: { description: '存储容量', value: 480 } },
       { level: 10, upgradeCost: { credits: 0, materials: [{ itemId: 'base_core', count: 1 }] }, effects: { description: '存储容量', value: 600 } },
-    ],
-  },
-  {
-    id: FacilityType.MEDICAL,
-    name: '医疗舱',
-    icon: '🏥',
-    description: '提升休整恢复效率',
-    color: '#ef4444',
-    maxLevel: 5,
-    levels: [
-      { level: 1, upgradeCost: { credits: 0, materials: [] }, effects: { description: '恢复效率', value: 0 } },
-      { level: 2, upgradeCost: { credits: 0, materials: [{ itemId: 'base_core', count: 1 }] }, effects: { description: '恢复效率', value: 100 } },
-      { level: 3, upgradeCost: { credits: 0, materials: [{ itemId: 'base_core', count: 1 }] }, effects: { description: '恢复效率', value: 200 } },
-      { level: 4, upgradeCost: { credits: 0, materials: [{ itemId: 'base_core', count: 1 }] }, effects: { description: '恢复效率', value: 300 } },
-      { level: 5, upgradeCost: { credits: 0, materials: [{ itemId: 'base_core', count: 1 }] }, effects: { description: '恢复效率', value: 400 } },
     ],
   },
   {
@@ -268,14 +252,6 @@ export class BaseFacilitySystem {
     if (!def) return 100;
     const levelData = def.levels.find(l => l.level === level);
     return levelData?.effects.value ?? 100;
-  }
-
-  getMedicalRecoveryBonus(): number {
-    const level = this.getFacilityLevel(FacilityType.MEDICAL);
-    const def = this.getFacilityDefinition(FacilityType.MEDICAL);
-    if (!def) return 0;
-    const levelData = def.levels.find(l => l.level === level);
-    return levelData?.effects.value ?? 0;
   }
 
   canUpgrade(facilityId: FacilityType, credits: number, hasMaterials: (itemId: string, count: number) => boolean): { canUpgrade: boolean; reason?: string; missingMaterials?: { itemId: string; count: number }[] } {

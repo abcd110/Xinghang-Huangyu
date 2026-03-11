@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.trainsurvival.game',
-  appName: '列车求生',
+  appName: '星航荒宇',
   webDir: 'dist',
   server: {
     androidScheme: 'https',

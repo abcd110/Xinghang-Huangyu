@@ -98,17 +98,6 @@ interface GameStore {
   getFacilityLevel: (facilityId: import('../core/BaseFacilitySystem').FacilityType) => number;
   getEnergyCoreEfficiency: () => number;
   getWarehouseCapacity: () => number;
-  getMedicalRecoveryBonus: () => number;
-  getMedicalEfficiency: () => {
-    level: number;
-    hpRecoveryBase: number;
-    hpRecoveryActual: number;
-    staminaRecoveryBase: number;
-    staminaRecoveryActual: number;
-    staminaRegenBase: number;
-    staminaRegenActual: number;
-    bonusPercent: number;
-  };
   getFacilityUpgradePreview: (facilityId: import('../core/BaseFacilitySystem').FacilityType) => {
     canUpgrade: boolean;
     reason?: string;
@@ -236,8 +225,8 @@ export const useGameStore = create<GameStore>((set, get) => {
       get().saveGame();
     }
     // 强制触发UI刷新 - 使用时间戳确保状态变化
-    set({ 
-      gameManager: get().gameManager, 
+    set({
+      gameManager: get().gameManager,
       logs: [...get().gameManager.logs],
       _lastUpdate: Date.now()
     } as GameStore & { _lastUpdate: number });
@@ -453,8 +442,6 @@ export const useGameStore = create<GameStore>((set, get) => {
     getFacilityLevel: (facilityId) => get().gameManager.getFacilityLevel(facilityId),
     getEnergyCoreEfficiency: () => get().gameManager.getEnergyCoreEfficiency(),
     getWarehouseCapacity: () => get().gameManager.getWarehouseCapacity(),
-    getMedicalRecoveryBonus: () => get().gameManager.getMedicalRecoveryBonus(),
-    getMedicalEfficiency: () => get().gameManager.getMedicalEfficiency(),
     getFacilityUpgradePreview: (facilityId) => get().gameManager.getFacilityUpgradePreview(facilityId),
     upgradeFacility: (facilityId) => executeGameAction(() => get().gameManager.upgradeFacility(facilityId)),
     getAllFacilities: () => get().gameManager.getAllFacilities(),
