@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useGameStore } from '../../stores/gameStore';
-import { RuinType, RUIN_TYPE_CONFIG, RUIN_DIFFICULTY_CONFIG, MAX_DAILY_ATTEMPTS, type Ruin, getRuinRewards } from '../../core/RuinSystem';
+import { RuinType, RUIN_TYPE_CONFIG, RUIN_DIFFICULTY_CONFIG, MAX_DAILY_ATTEMPTS, type Ruin, getRuinRewards, getRuinSweepRewards } from '../../core/RuinSystem';
 import { getItemName } from './utils';
 import { MessageToast, useMessage } from './shared';
 import { styles, colors } from './styles';
@@ -39,7 +39,7 @@ export function RuinsContent({ onStartRuinBattle }: RuinsContentProps) {
       return;
     }
 
-    const ruinRewards = getRuinRewards(ruin);
+    const ruinRewards = getRuinSweepRewards(ruin);
     const rewards = {
       credits: ruinRewards.credits,
       items: ruinRewards.items.map(item => ({ ...item })),
@@ -259,35 +259,115 @@ export function RuinsContent({ onStartRuinBattle }: RuinsContentProps) {
 
                   {/* 奖励预览 */}
                   <div style={{
-                    background: 'rgba(251, 191, 36, 0.08)',
-                    borderRadius: '8px',
-                    padding: '12px',
+                    background: 'rgba(251, 191, 36, 0.05)',
+                    borderRadius: '10px',
+                    padding: '10px',
                     marginBottom: '12px',
-                    border: '1px solid rgba(251, 191, 36, 0.15)',
+                    border: '1px solid rgba(251, 191, 36, 0.12)',
                   }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
-                      <span style={{ fontSize: '13px' }}>💰</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
+                      <span style={{ fontSize: '14px' }}>💰</span>
                       <span style={{ color: '#fbbf24', fontSize: '12px', fontWeight: 'bold' }}>奖励预览</span>
                     </div>
-                    <div style={{ color: '#fff', fontSize: '12px', lineHeight: '1.6' }}>
-                      {(() => {
-                        const ruinRewards = getRuinRewards(ruin);
-                        return (
-                          <>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '6px' }}>
-                              <span style={{ color: '#fbbf24' }}>💵</span>
-                              <span>{ruinRewards.credits} 信用点</span>
+                    {(() => {
+                      const sweepRewards = getRuinSweepRewards(ruin);
+                      const challengeRewards = getRuinRewards(ruin);
+                      const sweepDifficultyConfig = RUIN_DIFFICULTY_CONFIG[ruin.completedDifficulty];
+                      const challengeDifficultyConfig = RUIN_DIFFICULTY_CONFIG[ruin.currentDifficulty];
+                      const canSweep = ruin.completedCount > 0;
+                      
+                      return (
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          {canSweep && (
+                            <div style={{ 
+                              flex: 1, 
+                              background: 'rgba(34, 197, 94, 0.08)',
+                              borderRadius: '8px',
+                              padding: '10px',
+                              border: '1px solid rgba(34, 197, 94, 0.2)',
+                            }}>
+                              <div style={{ 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                gap: '4px', 
+                                marginBottom: '8px',
+                                paddingBottom: '6px',
+                                borderBottom: '1px solid rgba(34, 197, 94, 0.15)',
+                              }}>
+                                <span style={{ fontSize: '12px' }}>🔄</span>
+                                <span style={{ color: '#22c55e', fontWeight: 'bold', fontSize: '11px' }}>扫荡</span>
+                                <span style={{ 
+                                  color: '#22c55e', 
+                                  fontSize: '9px', 
+                                  background: 'rgba(34, 197, 94, 0.2)',
+                                  padding: '1px 6px',
+                                  borderRadius: '4px',
+                                }}>{sweepDifficultyConfig.name}</span>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '6px' }}>
+                                <span style={{ color: '#fbbf24', fontSize: '11px' }}>💵</span>
+                                <span style={{ fontSize: '11px' }}>{sweepRewards.credits}</span>
+                              </div>
+                              {sweepRewards.items.length > 0 && (
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px' }}>
+                                  {sweepRewards.items.map((item, idx) => (
+                                    <span
+                                      key={idx}
+                                      style={{
+                                        background: 'rgba(34, 197, 94, 0.15)',
+                                        padding: '2px 6px',
+                                        borderRadius: '4px',
+                                        fontSize: '9px',
+                                        color: '#86efac',
+                                      }}
+                                    >
+                                      {getItemName(item.itemId)} x{item.count}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
                             </div>
-                            {ruinRewards.items.length > 0 && (
-                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                                {ruinRewards.items.map((item, idx) => (
+                          )}
+                          <div style={{ 
+                            flex: 1, 
+                            background: 'rgba(245, 158, 11, 0.08)',
+                            borderRadius: '8px',
+                            padding: '10px',
+                            border: '1px solid rgba(245, 158, 11, 0.2)',
+                          }}>
+                            <div style={{ 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              gap: '4px', 
+                              marginBottom: '8px',
+                              paddingBottom: '6px',
+                              borderBottom: '1px solid rgba(245, 158, 11, 0.15)',
+                            }}>
+                              <span style={{ fontSize: '12px' }}>⚔️</span>
+                              <span style={{ color: '#f59e0b', fontWeight: 'bold', fontSize: '11px' }}>挑战</span>
+                              <span style={{ 
+                                color: '#f59e0b', 
+                                fontSize: '9px', 
+                                background: 'rgba(245, 158, 11, 0.2)',
+                                padding: '1px 6px',
+                                borderRadius: '4px',
+                              }}>{challengeDifficultyConfig.name}</span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '6px' }}>
+                              <span style={{ color: '#fbbf24', fontSize: '11px' }}>💵</span>
+                              <span style={{ fontSize: '11px' }}>{challengeRewards.credits}</span>
+                            </div>
+                            {challengeRewards.items.length > 0 && (
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px' }}>
+                                {challengeRewards.items.map((item, idx) => (
                                   <span
                                     key={idx}
                                     style={{
-                                      background: 'rgba(255, 255, 255, 0.1)',
-                                      padding: '3px 10px',
+                                      background: 'rgba(245, 158, 11, 0.15)',
+                                      padding: '2px 6px',
                                       borderRadius: '4px',
-                                      fontSize: '11px',
+                                      fontSize: '9px',
+                                      color: '#fcd34d',
                                     }}
                                   >
                                     {getItemName(item.itemId)} x{item.count}
@@ -295,10 +375,10 @@ export function RuinsContent({ onStartRuinBattle }: RuinsContentProps) {
                                 ))}
                               </div>
                             )}
-                          </>
-                        );
-                      })()}
-                    </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   {/* 操作按钮 */}

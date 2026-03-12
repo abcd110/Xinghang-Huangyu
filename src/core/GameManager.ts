@@ -2753,12 +2753,16 @@ export class GameManager {
       return { success: false, message: `信用点不足，需要${cost.credits}` };
     }
 
-    if (!this.inventory.hasItem(cost.materials.itemId, cost.materials.count)) {
-      return { success: false, message: `材料不足，需要${cost.materials.count}个` };
+    for (const mat of cost.materials) {
+      if (!this.inventory.hasItem(mat.itemId, mat.count)) {
+        return { success: false, message: `材料不足，需要${mat.itemId} x${mat.count}` };
+      }
     }
 
     this.trainCoins -= cost.credits;
-    this.inventory.removeItem(cost.materials.itemId, cost.materials.count);
+    for (const mat of cost.materials) {
+      this.inventory.removeItem(mat.itemId, mat.count);
+    }
 
     const result = upgradeImplant(implant);
 
@@ -3062,7 +3066,6 @@ export class GameManager {
       return;
     }
 
-    // 只有胜利时才更新状态
     if (victory) {
       console.log('胜利，更新状态...');
       console.log('ruin.type:', ruin.type);
@@ -3071,7 +3074,9 @@ export class GameManager {
       console.log('比较结果:', ruin.type === RuinType.RESEARCH_STAR, ruin.type === RuinType.BASE_CORE);
 
       ruin.completedCount += 1;
+      ruin.completedDifficulty = ruin.currentDifficulty;
       console.log('completedCount 已增加:', ruin.completedCount);
+      console.log('completedDifficulty 已更新:', ruin.completedDifficulty);
 
       if (!isFirstClear) {
         console.log('非首通，扣除挑战次数');
@@ -3080,7 +3085,6 @@ export class GameManager {
         console.log('首通，不扣除挑战次数');
       }
 
-      // 基地核心和科研之星副本不提升难度
       if (ruin.type === RuinType.RESEARCH_STAR || ruin.type === RuinType.BASE_CORE) {
         console.log('基地核心或科研之星，不提升难度');
         ruin.firstClear = false;
@@ -3111,12 +3115,14 @@ export class GameManager {
         dr.completedCount = existing.completedCount;
         dr.firstClear = existing.firstClear;
         dr.currentDifficulty = existing.currentDifficulty || RuinDifficulty.EASY;
+        dr.completedDifficulty = existing.completedDifficulty || existing.currentDifficulty || RuinDifficulty.EASY;
       } else {
         const oldRuin = this.ruins.find(r => r.type === dr.type);
         if (oldRuin) {
           dr.completedCount = oldRuin.completedCount || 0;
           dr.firstClear = oldRuin.firstClear ?? true;
           dr.currentDifficulty = oldRuin.currentDifficulty || oldRuin.difficulty || RuinDifficulty.EASY;
+          dr.completedDifficulty = oldRuin.completedDifficulty || oldRuin.currentDifficulty || oldRuin.difficulty || RuinDifficulty.EASY;
         }
       }
     });
@@ -4429,7 +4435,7 @@ export class GameManager {
   }
 
   calculateWaveRewards(): { credits: number; materials: { itemId: string; count: number }[]; exp: number } {
-    const credits = 100;
+    const credits = 10;
     const materials: { itemId: string; count: number }[] = [];
 
     const MATERIAL_WEIGHTS = [

@@ -25,6 +25,7 @@ export interface Ruin {
   name: string;
   type: RuinType;
   currentDifficulty: RuinDifficulty;
+  completedDifficulty: RuinDifficulty;
   description: string;
   completedCount: number;
   firstClear: boolean;
@@ -292,6 +293,10 @@ export function getRuinRewards(ruin: Ruin): RuinReward {
   return RUIN_DIFFICULTY_REWARDS[ruin.type][ruin.currentDifficulty];
 }
 
+export function getRuinSweepRewards(ruin: Ruin): RuinReward {
+  return RUIN_DIFFICULTY_REWARDS[ruin.type][ruin.completedDifficulty];
+}
+
 export function getNextDifficulty(current: RuinDifficulty): RuinDifficulty | null {
   const currentIndex = RUIN_DIFFICULTY_ORDER.indexOf(current);
   if (currentIndex < RUIN_DIFFICULTY_ORDER.length - 1) {
@@ -308,6 +313,7 @@ export function createRuin(templateId: string): Ruin | null {
     ...template,
     completedCount: 0,
     firstClear: true,
+    completedDifficulty: template.currentDifficulty,
   };
 }
 
@@ -367,6 +373,7 @@ export function deserializeRuin(data: any): Ruin {
       name: data.name || '未知副本',
       type: data.type || RuinType.CHIP_MATERIAL,
       currentDifficulty: data.currentDifficulty || data.difficulty || RuinDifficulty.EASY,
+      completedDifficulty: data.completedDifficulty || data.currentDifficulty || data.difficulty || RuinDifficulty.EASY,
       description: data.description || '',
       completedCount: data.completedCount || 0,
       firstClear: data.firstClear ?? true,
@@ -376,6 +383,7 @@ export function deserializeRuin(data: any): Ruin {
   return {
     ...template,
     currentDifficulty: data.currentDifficulty || data.difficulty || template.currentDifficulty,
+    completedDifficulty: data.completedDifficulty || data.currentDifficulty || data.difficulty || template.currentDifficulty,
     completedCount: data.completedCount || 0,
     firstClear: data.firstClear ?? true,
   };

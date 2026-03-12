@@ -122,7 +122,7 @@ export const RESEARCH_PROJECTS: Omit<ResearchProject, 'status' | 'progress'>[] =
   {
     id: 'chip_lv2',
     name: '芯片研发 Lv.2',
-    description: '解锁更多芯片类型',
+    description: '解锁史诗品质芯片',
     category: ResearchCategory.SPECIAL,
     icon: '💾',
     totalProgress: 180,
@@ -135,7 +135,7 @@ export const RESEARCH_PROJECTS: Omit<ResearchProject, 'status' | 'progress'>[] =
   {
     id: 'chip_lv3',
     name: '芯片研发 Lv.3',
-    description: '芯片槽位+1',
+    description: '解锁传说品质芯片',
     category: ResearchCategory.SPECIAL,
     icon: '💾',
     totalProgress: 250,
@@ -148,7 +148,7 @@ export const RESEARCH_PROJECTS: Omit<ResearchProject, 'status' | 'progress'>[] =
   {
     id: 'chip_lv4',
     name: '芯片研发 Lv.4',
-    description: '提升芯片研发成功率',
+    description: '提升芯片属性加成',
     category: ResearchCategory.SPECIAL,
     icon: '💾',
     totalProgress: 400,
@@ -161,7 +161,7 @@ export const RESEARCH_PROJECTS: Omit<ResearchProject, 'status' | 'progress'>[] =
   {
     id: 'chip_lv5',
     name: '芯片研发 Lv.5',
-    description: '芯片槽位+1',
+    description: '大幅提升芯片属性加成',
     category: ResearchCategory.SPECIAL,
     icon: '💾',
     totalProgress: 600,
@@ -174,7 +174,7 @@ export const RESEARCH_PROJECTS: Omit<ResearchProject, 'status' | 'progress'>[] =
   {
     id: 'cybernetic_lv2',
     name: '机械飞升 Lv.2',
-    description: '义体槽位+1',
+    description: '解锁史诗品质义体',
     category: ResearchCategory.SPECIAL,
     icon: '🦾',
     totalProgress: 220,
@@ -187,7 +187,7 @@ export const RESEARCH_PROJECTS: Omit<ResearchProject, 'status' | 'progress'>[] =
   {
     id: 'cybernetic_lv3',
     name: '机械飞升 Lv.3',
-    description: '义体槽位+1',
+    description: '解锁传说品质义体',
     category: ResearchCategory.SPECIAL,
     icon: '🦾',
     totalProgress: 400,
@@ -200,7 +200,7 @@ export const RESEARCH_PROJECTS: Omit<ResearchProject, 'status' | 'progress'>[] =
   {
     id: 'cybernetic_lv4',
     name: '机械飞升 Lv.4',
-    description: '义体槽位+1',
+    description: '提升义体属性加成',
     category: ResearchCategory.SPECIAL,
     icon: '🦾',
     totalProgress: 600,
@@ -213,7 +213,7 @@ export const RESEARCH_PROJECTS: Omit<ResearchProject, 'status' | 'progress'>[] =
   {
     id: 'cybernetic_lv5',
     name: '机械飞升 Lv.5',
-    description: '义体槽位+1',
+    description: '大幅提升义体属性加成',
     category: ResearchCategory.SPECIAL,
     icon: '🦾',
     totalProgress: 1000,

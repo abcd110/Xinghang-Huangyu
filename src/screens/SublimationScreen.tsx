@@ -309,9 +309,6 @@ export default function SublimationScreen({ onBack }: SublimationScreenProps) {
                 }}>
                   {selectedEquipment.name}
                 </h3>
-                <p style={{ color: '#a1a1aa', fontSize: '12px', margin: 0 }}>
-                  {RARITY_NAMES[selectedEquipment.rarity]} · 星球{selectedEquipment.stationNumber}
-                </p>
                 <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
                   <span style={{
                     color: '#00d4ff',
