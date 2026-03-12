@@ -900,7 +900,7 @@ enum ListingStatus {
 
 ### 概述
 
-遗迹探索系统允许玩家探索各种遗迹，获取稀有资源和装备。
+遗迹探索系统允许玩家探索各种遗迹，获取稀有资源和装备。战斗系统与星图战斗系统完全统一。
 
 ### 遗迹类型
 
@@ -910,37 +910,53 @@ interface Ruin {
   name: string;
   description: string;
   type: RuinType;
-  difficulty: RuinDifficulty;
-  
-  // 探索参数
-  requiredPower: number;       // 推荐战力
-  staminaCost: number;         // 体力消耗
-  maxAttempts: number;         // 每日次数限制
-  
-  // 奖励
-  rewards: RuinReward[];
+  currentDifficulty: RuinDifficulty;    // 当前挑战难度
+  completedDifficulty: RuinDifficulty;  // 已完成的最高难度（用于扫荡奖励）
   
   // 状态
-  isUnlocked: boolean;
-  isCleared: boolean;
-  remainingAttempts: number;
+  completedCount: number;    // 完成次数
+  firstClear: boolean;       // 是否首通
 }
 
 enum RuinType {
-  ABANDONED_STATION = 'abandoned_station',   // 废弃空间站
-  ANCIENT_RUINS = 'ancient_ruins',           // 古代遗迹
-  CRASHED_SHIP = 'crashed_ship',             // 坠毁飞船
-  VOID_RIFT = 'void_rift',                   // 虚空裂隙
-  DEITY_TEMPLE = 'deity_temple',             // 神明神殿
+  CHIP_MATERIAL = 'chip_material',     // 芯片研发
+  CYBER_MATERIAL = 'cyber_material',   // 义体制造
+  GENE_MATERIAL = 'gene_material',     // 基因研究
+  BASE_CORE = 'base_core',             // 基地核心
+  RESEARCH_STAR = 'research_star',     // 科研之星
 }
 
 enum RuinDifficulty {
   EASY = 'easy',
   NORMAL = 'normal',
   HARD = 'hard',
-  HELL = 'hell',
   NIGHTMARE = 'nightmare',
+  HELL = 'hell',
 }
+```
+
+### 战斗系统
+
+遗迹探索战斗系统与星图战斗系统完全统一，包含以下特性：
+
+| 特性 | 说明 |
+|------|------|
+| 基因系统加成 | 攻击%、防御%、生命%、攻速%等基因属性加成 |
+| 船员系统 | 支持多名船员同时参战，根据战斗槽位排列 |
+| 护盾系统 | 溢出治疗可转化为护盾，护盾可吸收伤害 |
+| 吸血 | 主角的吸血属性生效 |
+| 穿透 | 主角的穿透属性生效 |
+| 致命伤害存活 | 坚韧基因可触发免死效果 |
+| 位置攻击顺序 | 前排优先攻击对方后排，后排优先攻击对方前排 |
+
+### 奖励系统
+
+```typescript
+// 获取挑战奖励（当前难度）
+function getRuinRewards(ruin: Ruin): RuinReward;
+
+// 获取扫荡奖励（已完成难度）
+function getRuinSweepRewards(ruin: Ruin): RuinReward;
 ```
 
 ### 探索流程
@@ -952,17 +968,25 @@ enum RuinDifficulty {
 
     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
     │ 选择遗迹     │────▶│ 检查条件     │────▶│ 开始探索     │
-    │ (难度选择)   │     │ (战力/体力)   │     │ (进入战斗)   │
+    │ (难度选择)   │     │ (战力/次数)   │     │ (进入战斗)   │
     └─────────────┘     └─────────────┘     └──────┬──────┘
                                                │
                               ┌────────────────┼────────────────┐
                               │                │                │
                               ▼                ▼                ▼
                        ┌─────────────┐  ┌─────────────┐  ┌─────────────┐
-                       │ 战斗胜利     │  │ 战斗失败     │  │ 撤退        │
-                       │ 获得奖励     │  │ 损失体力     │  │ 保留进度    │
+                       │ 战斗胜利     │  │ 战斗失败     │  │ 扫荡        │
+                       │ 获得奖励     │  │ 无奖励       │  │ 获得已完成  │
+                       │ 难度提升     │  │              │  │ 难度奖励    │
                        └─────────────┘  └─────────────┘  └─────────────┘
 ```
+
+### 难度提升机制
+
+- 胜利后，`completedDifficulty` 更新为当前难度
+- 然后 `currentDifficulty` 提升到下一难度
+- 基地核心和科研之星副本不提升难度
+- 扫荡获得 `completedDifficulty` 对应的奖励
 
 ---
 
