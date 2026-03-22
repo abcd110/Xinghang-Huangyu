@@ -429,3 +429,420 @@
       rgba(0, 212, 255, 0.03) 4px);
   pointer-events: none;
 }
+
+/* ==================== 赛博朋克终端效果 ==================== */
+
+/* 终端扫描线 */
+@keyframes terminal-scan {
+  0% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  50% {
+    opacity: 0.3;
+  }
+  100% {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+}
+
+/* 霓虹闪烁 */
+@keyframes neon-flicker {
+  0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% {
+    text-shadow:
+      0 0 4px var(--tech-primary),
+      0 0 11px var(--tech-primary),
+      0 0 19px var(--tech-primary);
+    box-shadow:
+      0 0 4px var(--tech-primary),
+      0 0 11px var(--tech-primary);
+  }
+  20%, 24%, 55% {
+    text-shadow: none;
+    box-shadow: none;
+  }
+}
+
+/* 数据流动画 */
+@keyframes data-flow {
+  0% {
+    background-position: 0% 0%;
+  }
+  100% {
+    background-position: 100% 0%;
+  }
+}
+
+/* 进度条发光脉冲 */
+@keyframes progress-pulse {
+  0%, 100% {
+    box-shadow: 0 0 5px var(--tech-primary), 0 0 10px var(--tech-glow);
+  }
+  50% {
+    box-shadow: 0 0 15px var(--tech-primary), 0 0 25px var(--tech-glow);
+  }
+}
+
+/* 终端光标闪烁 */
+@keyframes cursor-blink {
+  0%, 50% {
+    opacity: 1;
+  }
+  51%, 100% {
+    opacity: 0;
+  }
+}
+
+/* 故障效果 */
+@keyframes glitch {
+  0% {
+    transform: translate(0);
+  }
+  20% {
+    transform: translate(-2px, 2px);
+  }
+  40% {
+    transform: translate(-2px, -2px);
+  }
+  60% {
+    transform: translate(2px, 2px);
+  }
+  80% {
+    transform: translate(2px, -2px);
+  }
+  100% {
+    transform: translate(0);
+  }
+}
+
+/* 终端容器 */
+.cyber-terminal {
+  position: relative;
+  background: linear-gradient(180deg, rgba(10, 14, 39, 0.95) 0%, rgba(5, 8, 20, 0.98) 100%);
+  border: 1px solid var(--tech-primary);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.cyber-terminal::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 1px,
+    rgba(0, 212, 255, 0.015) 1px,
+    rgba(0, 212, 255, 0.015) 2px
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+
+.cyber-terminal::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100px;
+  background: linear-gradient(180deg, rgba(0, 212, 255, 0.08) 0%, transparent 100%);
+  animation: terminal-scan 4s linear infinite;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* 终端标题栏 */
+.cyber-terminal-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: linear-gradient(90deg, rgba(0, 212, 255, 0.15) 0%, transparent 100%);
+  border-bottom: 1px solid rgba(0, 212, 255, 0.3);
+  position: relative;
+  z-index: 3;
+}
+
+.cyber-terminal-header::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--tech-primary);
+  box-shadow: 0 0 10px var(--tech-primary);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+/* 终端内容区 */
+.cyber-terminal-body {
+  position: relative;
+  z-index: 3;
+  padding: 14px;
+}
+
+/* 赛博朋克进度条 */
+.cyber-progress {
+  position: relative;
+  height: 20px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(0, 212, 255, 0.4);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.cyber-progress::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent,
+    transparent 4px,
+    rgba(0, 212, 255, 0.05) 4px,
+    rgba(0, 212, 255, 0.05) 8px
+  );
+  z-index: 1;
+}
+
+.cyber-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--tech-secondary) 0%, var(--tech-primary) 50%, var(--tech-secondary) 100%);
+  background-size: 200% 100%;
+  animation: data-flow 2s linear infinite;
+  position: relative;
+  z-index: 2;
+  box-shadow: 0 0 15px var(--tech-glow);
+}
+
+.cyber-progress-bar::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 20px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4));
+}
+
+/* 赛博朋克卡片 */
+.cyber-card {
+  position: relative;
+  background: linear-gradient(135deg, rgba(10, 14, 39, 0.9) 0%, rgba(20, 25, 50, 0.85) 100%);
+  border: 1px solid rgba(0, 212, 255, 0.3);
+  border-radius: 4px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.cyber-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 3px;
+  height: 100%;
+  background: var(--tech-primary);
+  box-shadow: 0 0 10px var(--tech-primary);
+}
+
+.cyber-card:hover {
+  border-color: var(--tech-primary);
+  box-shadow: 0 0 20px var(--tech-glow), inset 0 0 20px rgba(0, 212, 255, 0.05);
+}
+
+.cyber-card.active {
+  border-color: #f59e0b;
+  box-shadow: 0 0 25px rgba(245, 158, 11, 0.3);
+}
+
+.cyber-card.active::before {
+  background: #f59e0b;
+  box-shadow: 0 0 15px #f59e0b;
+}
+
+.cyber-card.completed {
+  border-color: #10b981;
+}
+
+.cyber-card.completed::before {
+  background: #10b981;
+  box-shadow: 0 0 15px #10b981;
+}
+
+.cyber-card.locked {
+  border-color: rgba(100, 100, 100, 0.3);
+  opacity: 0.6;
+}
+
+.cyber-card.locked::before {
+  background: #6b7280;
+}
+
+/* 赛博朋克按钮 */
+.cyber-btn {
+  position: relative;
+  padding: 12px 20px;
+  background: transparent;
+  border: 1px solid var(--tech-primary);
+  color: var(--tech-primary);
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  cursor: pointer;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.cyber-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(0, 212, 255, 0.2), transparent);
+  transition: left 0.5s ease;
+}
+
+.cyber-btn:hover::before {
+  left: 100%;
+}
+
+.cyber-btn:hover {
+  background: rgba(0, 212, 255, 0.1);
+  box-shadow: 0 0 20px var(--tech-glow);
+}
+
+.cyber-btn:active {
+  transform: scale(0.98);
+}
+
+.cyber-btn.danger {
+  border-color: #ef4444;
+  color: #ef4444;
+}
+
+.cyber-btn.danger:hover {
+  background: rgba(239, 68, 68, 0.1);
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.3);
+}
+
+.cyber-btn.success {
+  border-color: #10b981;
+  color: #10b981;
+}
+
+.cyber-btn.success:hover {
+  background: rgba(16, 185, 129, 0.1);
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
+}
+
+/* 赛博朋克标签 */
+.cyber-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: rgba(0, 212, 255, 0.15);
+  border: 1px solid rgba(0, 212, 255, 0.4);
+  border-radius: 2px;
+  font-family: 'Courier New', monospace;
+  font-size: 10px;
+  color: var(--tech-primary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.cyber-tag.warning {
+  background: rgba(245, 158, 11, 0.15);
+  border-color: rgba(245, 158, 11, 0.4);
+  color: #f59e0b;
+}
+
+.cyber-tag.success {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.4);
+  color: #10b981;
+}
+
+.cyber-tag.locked {
+  background: rgba(100, 100, 100, 0.15);
+  border-color: rgba(100, 100, 100, 0.4);
+  color: #6b7280;
+}
+
+/* 终端文本样式 */
+.cyber-text {
+  font-family: 'Courier New', monospace;
+  color: var(--tech-primary);
+  text-shadow: 0 0 5px var(--tech-glow);
+}
+
+.cyber-text-dim {
+  font-family: 'Courier New', monospace;
+  color: #6b7280;
+}
+
+.cyber-text-highlight {
+  font-family: 'Courier New', monospace;
+  color: #fff;
+  text-shadow: 0 0 10px var(--tech-primary);
+}
+
+/* 数据网格 */
+.cyber-grid {
+  display: grid;
+  gap: 12px;
+}
+
+/* 科技树连线 */
+.cyber-tree-line {
+  position: relative;
+}
+
+.cyber-tree-line::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -12px;
+  width: 1px;
+  height: 12px;
+  background: linear-gradient(180deg, var(--tech-primary), transparent);
+}
+
+/* 脉冲圆点 */
+.cyber-pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--tech-primary);
+  box-shadow: 0 0 10px var(--tech-primary);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.cyber-pulse-dot.warning {
+  background: #f59e0b;
+  box-shadow: 0 0 10px #f59e0b;
+}
+
+.cyber-pulse-dot.success {
+  background: #10b981;
+  box-shadow: 0 0 10px #10b981;
+}
+
+/* 终端输入光标 */
+.cyber-cursor::after {
+  content: '█';
+  animation: cursor-blink 1s step-end infinite;
+  color: var(--tech-primary);
+}

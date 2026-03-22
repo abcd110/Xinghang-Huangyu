@@ -41,12 +41,11 @@ export class Player {
   baseAttackSpeed: number;
   baseHit: number;
   baseDodge: number;
-  baseCrit: number; // 会心
+  baseCrit: number; // 暴击率
   baseCritDamage: number;
   basePenetration: number; // 穿透固定值
   basePenetrationPercent: number; // 穿透百分比
   baseTrueDamage: number;
-  baseGuard: number; // 护心
   baseLuck: number; // 幸运
 
   // 装备系统（6槽位）
@@ -83,7 +82,6 @@ export class Player {
     this.basePenetration = 0;
     this.basePenetrationPercent = 0;
     this.baseTrueDamage = 0;
-    this.baseGuard = attrs.baseGuard;
     this.baseLuck = attrs.baseLuck;
 
     this.equipment = new Map();
@@ -131,7 +129,6 @@ export class Player {
       basePenetration: 0,
       basePenetrationPercent: 0,
       baseTrueDamage: 0,
-      baseGuard: 5,
       baseLuck: 0,
     };
   }
@@ -190,33 +187,23 @@ export class Player {
     return this.baseCrit + this.equipmentStats.crit + geneCrit;
   }
 
-  // 获取总暴击伤害
   get totalCritDamage(): number {
     const geneCritDamage = this.geneStats['critDamage'] || 0;
     return this.baseCritDamage + this.equipmentStats.critDamage + geneCritDamage;
   }
 
-  // 获取总穿透固定值
   get totalPenetration(): number {
     return this.basePenetration + this.equipmentStats.penetration + (this.geneStats['penetration'] || 0);
   }
 
-  // 获取总穿透百分比
   get totalPenetrationPercent(): number {
     return this.basePenetrationPercent + this.equipmentStats.penetrationPercent + (this.geneStats['penetrationPercent'] || 0);
   }
 
-  // 获取总真实伤害倍率
   get totalTrueDamage(): number {
     return this.baseTrueDamage + this.equipmentStats.trueDamage + (this.geneStats['trueDamage'] || 0);
   }
 
-  // 获取总护心
-  get totalGuard(): number {
-    return this.baseGuard + this.equipmentStats.guard + (this.geneStats['guard'] || 0);
-  }
-
-  // 获取总幸运
   get totalLuck(): number {
     return this.baseLuck + this.equipmentStats.luck + (this.geneStats['luck'] || 0);
   }
@@ -231,6 +218,11 @@ export class Player {
   // 获取生命偷取率（基因专属属性）
   get totalLifeSteal(): number {
     return this.lifeStealPercent;
+  }
+
+  // 获取HP再生百分比（基因专属属性）
+  get totalHpRegenPercent(): number {
+    return this.geneStats['hpRegenPercent'] || 0;
   }
 
   // 更新基因属性
@@ -461,7 +453,6 @@ export class Player {
         { stat: 'critDamage', value: stats.critDamage },
         { stat: 'penetration', value: stats.penetration },
         { stat: 'trueDamage', value: stats.trueDamage },
-        { stat: 'guard', value: stats.guard },
         { stat: 'luck', value: stats.luck },
       ].filter(e => e.value > 0)
     }];

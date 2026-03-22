@@ -1617,12 +1617,8 @@ export const ITEMS: Record<string, Item> = {
   // 船员招募票
   // ============================================
   'recruit_ticket_normal': {
-    id: 'recruit_ticket_normal', name: '普通招募票', type: ItemType.SPECIAL, rarity: ItemRarity.UNCOMMON,
-    description: '用于普通招募的票据，可招募船员加入队伍。', sublimationLevel: 0,
-  },
-  'recruit_ticket_limited': {
-    id: 'recruit_ticket_limited', name: '限定招募票', type: ItemType.SPECIAL, rarity: ItemRarity.EPIC,
-    description: '用于限定招募的珍贵票据，有更高概率招募到稀有船员。', sublimationLevel: 0,
+    id: 'recruit_ticket_normal', name: '招募票', type: ItemType.SPECIAL, rarity: ItemRarity.UNCOMMON,
+    description: '用于招募船员的票据，可招募船员加入队伍。', sublimationLevel: 0,
   },
 
   // ============================================
@@ -1695,6 +1691,37 @@ export const ITEMS: Record<string, Item> = {
   'research_star': {
     id: 'research_star', name: '科研之星', type: ItemType.MATERIAL, rarity: ItemRarity.EPIC,
     description: '用于科研实验室升级采矿平台、芯片研发、基因工程、机械飞升的珍贵材料。', sublimationLevel: 0,
+  },
+
+  // ============================================
+  // 经验书 - 用于船员升级
+  // ============================================
+  'exp_book_small': {
+    id: 'exp_book_small', name: '初级经验书', type: ItemType.CONSUMABLE, rarity: ItemRarity.COMMON,
+    description: '提供100点经验值，用于船员升级。', sublimationLevel: 0, effectValue: 100,
+  },
+  'exp_book_medium': {
+    id: 'exp_book_medium', name: '中级经验书', type: ItemType.CONSUMABLE, rarity: ItemRarity.UNCOMMON,
+    description: '提供500点经验值，用于船员升级。', sublimationLevel: 0, effectValue: 500,
+  },
+  'exp_book_large': {
+    id: 'exp_book_large', name: '高级经验书', type: ItemType.CONSUMABLE, rarity: ItemRarity.RARE,
+    description: '提供2000点经验值，用于船员升级。', sublimationLevel: 0, effectValue: 2000,
+  },
+  // ============================================
+  // 技能书 - 用于船员技能升级
+  // ============================================
+  'skill_book_small': {
+    id: 'skill_book_small', name: '初级技能书', type: ItemType.CONSUMABLE, rarity: ItemRarity.COMMON,
+    description: '用于船员技能升级。', sublimationLevel: 0, effectValue: 1,
+  },
+  'skill_book_medium': {
+    id: 'skill_book_medium', name: '中级技能书', type: ItemType.CONSUMABLE, rarity: ItemRarity.UNCOMMON,
+    description: '用于船员技能升级。', sublimationLevel: 0, effectValue: 3,
+  },
+  'skill_book_large': {
+    id: 'skill_book_large', name: '高级技能书', type: ItemType.CONSUMABLE, rarity: ItemRarity.RARE,
+    description: '用于船员技能升级。', sublimationLevel: 0, effectValue: 5,
   },
 };
 

@@ -4,6 +4,8 @@ export enum RuinType {
   GENE_MATERIAL = 'gene_material',
   BASE_CORE = 'base_core',
   RESEARCH_STAR = 'research_star',
+  EXP_BOOK = 'exp_book',
+  SKILL_BOOK = 'skill_book',
 }
 
 export enum RuinDifficulty {
@@ -51,14 +53,16 @@ export const RUIN_TYPE_CONFIG: Record<RuinType, { name: string; icon: string; co
   [RuinType.GENE_MATERIAL]: { name: '基因研究', icon: '🧬', color: '#22c55e' },
   [RuinType.BASE_CORE]: { name: '基地核心', icon: '🏗️', color: '#3b82f6' },
   [RuinType.RESEARCH_STAR]: { name: '科研之星', icon: '⭐', color: '#fbbf24' },
+  [RuinType.EXP_BOOK]: { name: '经验书库', icon: '📚', color: '#22c55e' },
+  [RuinType.SKILL_BOOK]: { name: '技能书库', icon: '📖', color: '#a855f7' },
 };
 
 export const RUIN_DIFFICULTY_CONFIG: Record<RuinDifficulty, { name: string; color: string; multiplier: number }> = {
-  [RuinDifficulty.EASY]: { name: '简单', color: '#22c55e', multiplier: 1.0 },
-  [RuinDifficulty.NORMAL]: { name: '普通', color: '#3b82f6', multiplier: 1.5 },
-  [RuinDifficulty.HARD]: { name: '困难', color: '#f59e0b', multiplier: 2.0 },
-  [RuinDifficulty.NIGHTMARE]: { name: '噩梦', color: '#a855f7', multiplier: 3.0 },
-  [RuinDifficulty.HELL]: { name: '地狱', color: '#ef4444', multiplier: 5.0 },
+  [RuinDifficulty.EASY]: { name: '简单', color: '#22c55e', multiplier: 2.0 },
+  [RuinDifficulty.NORMAL]: { name: '普通', color: '#3b82f6', multiplier: 9.0 },
+  [RuinDifficulty.HARD]: { name: '困难', color: '#f59e0b', multiplier: 14.0 },
+  [RuinDifficulty.NIGHTMARE]: { name: '噩梦', color: '#a855f7', multiplier: 20.0 },
+  [RuinDifficulty.HELL]: { name: '地狱', color: '#ef4444', multiplier: 27.0 },
 };
 
 export const MAX_DAILY_ATTEMPTS = 5;
@@ -249,6 +253,88 @@ export const RUIN_DIFFICULTY_REWARDS: Record<RuinType, Record<RuinDifficulty, Ru
       experience: 100,
     },
   },
+  [RuinType.EXP_BOOK]: {
+    [RuinDifficulty.EASY]: {
+      credits: 200,
+      items: [
+        { itemId: 'exp_book_small', count: 5, chance: 1.0 },
+      ],
+      experience: 50,
+    },
+    [RuinDifficulty.NORMAL]: {
+      credits: 500,
+      items: [
+        { itemId: 'exp_book_small', count: 8, chance: 1.0 },
+        { itemId: 'exp_book_medium', count: 2, chance: 0.5 },
+      ],
+      experience: 120,
+    },
+    [RuinDifficulty.HARD]: {
+      credits: 1000,
+      items: [
+        { itemId: 'exp_book_medium', count: 5, chance: 1.0 },
+        { itemId: 'exp_book_large', count: 1, chance: 0.3 },
+      ],
+      experience: 300,
+    },
+    [RuinDifficulty.NIGHTMARE]: {
+      credits: 2000,
+      items: [
+        { itemId: 'exp_book_medium', count: 8, chance: 1.0 },
+        { itemId: 'exp_book_large', count: 3, chance: 0.5 },
+      ],
+      experience: 600,
+    },
+    [RuinDifficulty.HELL]: {
+      credits: 5000,
+      items: [
+        { itemId: 'exp_book_large', count: 5, chance: 1.0 },
+        { itemId: 'exp_book_medium', count: 10, chance: 1.0 },
+      ],
+      experience: 1200,
+    },
+  },
+  [RuinType.SKILL_BOOK]: {
+    [RuinDifficulty.EASY]: {
+      credits: 200,
+      items: [
+        { itemId: 'skill_book_small', count: 5, chance: 1.0 },
+      ],
+      experience: 50,
+    },
+    [RuinDifficulty.NORMAL]: {
+      credits: 500,
+      items: [
+        { itemId: 'skill_book_small', count: 8, chance: 1.0 },
+        { itemId: 'skill_book_medium', count: 2, chance: 0.5 },
+      ],
+      experience: 120,
+    },
+    [RuinDifficulty.HARD]: {
+      credits: 1000,
+      items: [
+        { itemId: 'skill_book_medium', count: 5, chance: 1.0 },
+        { itemId: 'skill_book_large', count: 1, chance: 0.3 },
+      ],
+      experience: 300,
+    },
+    [RuinDifficulty.NIGHTMARE]: {
+      credits: 2000,
+      items: [
+        { itemId: 'skill_book_medium', count: 8, chance: 1.0 },
+        { itemId: 'skill_book_large', count: 3, chance: 0.5 },
+      ],
+      experience: 600,
+    },
+    [RuinDifficulty.HELL]: {
+      credits: 5000,
+      items: [
+        { itemId: 'skill_book_large', count: 5, chance: 1.0 },
+        { itemId: 'skill_book_medium', count: 10, chance: 1.0 },
+      ],
+      experience: 1200,
+    },
+  },
 };
 
 export const RUIN_TEMPLATES: Omit<Ruin, 'completedCount' | 'firstClear'>[] = [
@@ -286,6 +372,20 @@ export const RUIN_TEMPLATES: Omit<Ruin, 'completedCount' | 'firstClear'>[] = [
     type: RuinType.RESEARCH_STAR,
     currentDifficulty: RuinDifficulty.EASY,
     description: '一座神秘的科研数据中心，藏有珍贵的科研之星材料。',
+  },
+  {
+    id: 'ruin_exp_book',
+    name: '知识档案馆',
+    type: RuinType.EXP_BOOK,
+    currentDifficulty: RuinDifficulty.EASY,
+    description: '一座保存完好的档案馆，藏有大量经验书籍。',
+  },
+  {
+    id: 'ruin_skill_book',
+    name: '技能训练场',
+    type: RuinType.SKILL_BOOK,
+    currentDifficulty: RuinDifficulty.EASY,
+    description: '一座废弃的军事训练场，藏有珍贵的技能书籍。',
   },
 ];
 

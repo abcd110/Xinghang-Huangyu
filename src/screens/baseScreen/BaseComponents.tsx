@@ -12,6 +12,7 @@ export function BaseHeader({ onBack }: { onBack: () => void }) {
       backdropFilter: 'blur(12px)',
       borderBottom: '1px solid rgba(0, 212, 255, 0.3)',
       padding: '12px 16px',
+      paddingTop: 'max(env(safe-area-inset-top, 0), 8px)',
       boxShadow: '0 0 20px rgba(0, 212, 255, 0.1)',
     }}>
       <div style={{

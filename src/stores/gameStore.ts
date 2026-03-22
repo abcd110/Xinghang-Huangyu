@@ -119,13 +119,7 @@ interface GameStore {
   recruitCrewTen: (recruitType: import('../core/CrewSystem').RecruitType) => { success: boolean; message: string; crews?: import('../core/CrewSystem').CrewMember[] };
   setCrewBattleSlot: (crewId: string, slot: number) => { success: boolean; message: string };
   dismissCrew: (crewId: string) => { success: boolean; message: string };
-
-  // 通讯系统
-  getCommEvents: () => import('../core/CommSystem').CommEvent[];
-  scanCommSignals: () => { success: boolean; message: string; newEvents?: import('../core/CommSystem').CommEvent[] };
-  respondToCommEvent: (eventId: string) => { success: boolean; message: string; rewards?: string };
-  ignoreCommEvent: (eventId: string) => { success: boolean; message: string };
-  getCommScanCooldown: () => number;
+  ascendCrew: (crewId: string) => { success: boolean; message: string };
 
   // 研究系统
   getResearchProjects: () => import('../core/ResearchSystem').ResearchProject[];
@@ -153,7 +147,7 @@ interface GameStore {
   equipChip: (chipId: string) => { success: boolean; message: string };
   unequipChip: (slot: import('../core/ChipSystem').ChipSlot) => { success: boolean; message: string };
   decomposeChip: (chipId: string) => { success: boolean; message: string; rewards?: string };
-  enhanceChip: (chipId: string, subStatIndex: number) => { success: boolean; message: string };
+  decomposeChips: (chipIds: string[]) => { success: boolean; message: string; rewards?: string; decomposedCount: number };
   rerollChipSubStat: (chipId: string, subStatIndex: number) => { success: boolean; message: string; newValue?: number };
   rerollAllChipSubStats: (chipId: string) => { success: boolean; message: string };
   toggleChipLock: (chipId: string) => { success: boolean; message: string; locked?: boolean };
@@ -456,13 +450,28 @@ export const useGameStore = create<GameStore>((set, get) => {
     recruitCrewTen: (recruitType) => executeGameAction(() => get().gameManager.recruitCrewTen(recruitType)),
     setCrewBattleSlot: (crewId, slot) => executeGameAction(() => get().gameManager.setCrewBattleSlot(crewId, slot)),
     dismissCrew: (crewId) => executeGameAction(() => get().gameManager.dismissCrew(crewId)),
-
-    // 通讯系统
-    getCommEvents: () => get().gameManager.getCommEvents(),
-    scanCommSignals: () => executeGameAction(() => get().gameManager.scanCommSignals()),
-    respondToCommEvent: (eventId) => executeGameAction(() => get().gameManager.respondToCommEvent(eventId)),
-    ignoreCommEvent: (eventId) => executeGameAction(() => get().gameManager.ignoreCommEvent(eventId)),
-    getCommScanCooldown: () => get().gameManager.getCommScanCooldown(),
+    ascendCrew: (crewId) => {
+      const { gameManager } = get();
+      const crew = gameManager.crewMembers.find(c => c.id === crewId);
+      if (!crew) {
+        return { success: false, message: '船员不存在' };
+      }
+      const currentStar = crew.star || 0;
+      const nextStar = currentStar + 1;
+      if (nextStar > 5) {
+        return { success: false, message: '已达到最高星级' };
+      }
+      const essenceRequired = nextStar * 50;
+      const currentEssence = crew.originEssence || 0;
+      if (currentEssence < essenceRequired) {
+        return { success: false, message: `本源碎片不足，需要 ${essenceRequired}` };
+      }
+      crew.originEssence = currentEssence - essenceRequired;
+      crew.star = nextStar;
+      get().saveGame();
+      set({ gameManager: get().gameManager });
+      return { success: true, message: `升星成功！${crew.name} 已升至 ${nextStar} 星` };
+    },
 
     // 研究系统
     getResearchProjects: () => get().gameManager.getResearchProjects(),
@@ -490,7 +499,7 @@ export const useGameStore = create<GameStore>((set, get) => {
     equipChip: (chipId) => executeGameAction(() => get().gameManager.equipChip(chipId)),
     unequipChip: (slot) => executeGameAction(() => get().gameManager.unequipChip(slot)),
     decomposeChip: (chipId) => executeGameAction(() => get().gameManager.decomposeChip(chipId)),
-    enhanceChip: (chipId, subStatIndex) => executeGameAction(() => get().gameManager.enhanceChipItem(chipId, subStatIndex)),
+    decomposeChips: (chipIds) => executeGameAction(() => get().gameManager.decomposeChips(chipIds)),
     rerollChipSubStat: (chipId, subStatIndex) => executeGameAction(() => get().gameManager.rerollChipSubStat(chipId, subStatIndex)),
     rerollAllChipSubStats: (chipId) => executeGameAction(() => get().gameManager.rerollAllChipSubStats(chipId)),
     toggleChipLock: (chipId) => executeGameAction(() => get().gameManager.toggleChipLockState(chipId)),

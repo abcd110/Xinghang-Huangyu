@@ -24,13 +24,11 @@ export enum ChipSubStat {
   DEFENSE = 'defense',
   CRIT_RATE = 'crit_rate',
   CRIT_DAMAGE = 'crit_damage',
-  SPEED = 'speed',
   HP_PERCENT = 'hp_percent',
   ATTACK_PERCENT = 'attack_percent',
   DEFENSE_PERCENT = 'defense_percent',
   HIT = 'hit',
   DODGE = 'dodge',
-  PROTECTION = 'protection',
 }
 
 export enum ChipRarity {
@@ -85,7 +83,7 @@ export const CHIP_MAIN_STAT_CONFIG: Record<ChipMainStat, { name: string; baseVal
   [ChipMainStat.HP]: { name: '生命', baseValue: 100, growth: 50 },
   [ChipMainStat.ATTACK]: { name: '攻击', baseValue: 10, growth: 2 },
   [ChipMainStat.DEFENSE]: { name: '防御', baseValue: 8, growth: 1.5 },
-  [ChipMainStat.CRIT_RATE]: { name: '会心', baseValue: 5, growth: 2 },
+  [ChipMainStat.CRIT_RATE]: { name: '暴击率', baseValue: 5, growth: 2 },
   [ChipMainStat.CRIT_DAMAGE]: { name: '爆伤', baseValue: 5, growth: 5 },
   [ChipMainStat.SPEED]: { name: '攻速', baseValue: 0.3, growth: 0.1 },
   [ChipMainStat.HP_PERCENT]: { name: '生命%', baseValue: 10, growth: 5 },
@@ -94,19 +92,17 @@ export const CHIP_MAIN_STAT_CONFIG: Record<ChipMainStat, { name: string; baseVal
   [ChipMainStat.HIT]: { name: '命中', baseValue: 10, growth: 5 },
 };
 
-export const CHIP_SUB_STAT_CONFIG: Record<ChipSubStat, { name: string; minValue: number; maxValue: number; enhanceValue: number }> = {
-  [ChipSubStat.HP]: { name: '生命', minValue: 50, maxValue: 200, enhanceValue: 10 },
-  [ChipSubStat.ATTACK]: { name: '攻击', minValue: 10, maxValue: 30, enhanceValue: 2 },
-  [ChipSubStat.DEFENSE]: { name: '防御', minValue: 1, maxValue: 10, enhanceValue: 1 },
-  [ChipSubStat.CRIT_RATE]: { name: '会心', minValue: 1, maxValue: 5, enhanceValue: 0.5 },
-  [ChipSubStat.CRIT_DAMAGE]: { name: '爆伤', minValue: 3, maxValue: 18, enhanceValue: 1.5 },
-  [ChipSubStat.SPEED]: { name: '攻速', minValue: 0.1, maxValue: 1, enhanceValue: 0.1 },
-  [ChipSubStat.HP_PERCENT]: { name: '生命%', minValue: 5, maxValue: 20, enhanceValue: 1 },
-  [ChipSubStat.ATTACK_PERCENT]: { name: '攻击%', minValue: 3, maxValue: 12, enhanceValue: 0.5 },
-  [ChipSubStat.DEFENSE_PERCENT]: { name: '防御%', minValue: 1, maxValue: 6, enhanceValue: 0.3 },
-  [ChipSubStat.HIT]: { name: '命中', minValue: 5, maxValue: 20, enhanceValue: 1 },
-  [ChipSubStat.DODGE]: { name: '闪避', minValue: 1, maxValue: 10, enhanceValue: 0.5 },
-  [ChipSubStat.PROTECTION]: { name: '护心', minValue: 1, maxValue: 5, enhanceValue: 0.3 },
+export const CHIP_SUB_STAT_CONFIG: Record<ChipSubStat, { name: string; minValue: number; maxValue: number }> = {
+  [ChipSubStat.HP]: { name: '生命', minValue: 50, maxValue: 200 },
+  [ChipSubStat.ATTACK]: { name: '攻击', minValue: 10, maxValue: 30 },
+  [ChipSubStat.DEFENSE]: { name: '防御', minValue: 1, maxValue: 10 },
+  [ChipSubStat.CRIT_RATE]: { name: '暴击率', minValue: 1, maxValue: 5 },
+  [ChipSubStat.CRIT_DAMAGE]: { name: '爆伤', minValue: 3, maxValue: 18 },
+  [ChipSubStat.HP_PERCENT]: { name: '生命%', minValue: 5, maxValue: 20 },
+  [ChipSubStat.ATTACK_PERCENT]: { name: '攻击%', minValue: 3, maxValue: 12 },
+  [ChipSubStat.DEFENSE_PERCENT]: { name: '防御%', minValue: 1, maxValue: 6 },
+  [ChipSubStat.HIT]: { name: '命中', minValue: 5, maxValue: 20 },
+  [ChipSubStat.DODGE]: { name: '闪避', minValue: 1, maxValue: 5 },
 };
 
 export const CHIP_SET_CONFIG: Record<ChipSet, { name: string; icon: string; color: string; bonus2: string; bonus4: string }> = {
@@ -190,6 +186,9 @@ export function createChip(slot: ChipSlot, rarity: ChipRarity): Chip {
   for (let i = 0; i < rarityConfig.subStatCount; i++) {
     const stat = getRandomSubStat(usedStats);
     usedStats.push(stat);
+    if (stat === ChipSubStat.DODGE) {
+      usedStats.push(ChipSubStat.DODGE);
+    }
     const config = CHIP_SUB_STAT_CONFIG[stat];
     const value = config.minValue + Math.random() * (config.maxValue - config.minValue);
     subStats.push({ stat, value: Math.round(value * 10) / 10 });
@@ -215,7 +214,7 @@ export function createChip(slot: ChipSlot, rarity: ChipRarity): Chip {
 export function upgradeChip(chip: Chip, materialCount: number): { success: boolean; newLevel: number; unlockedSubStat?: ChipSubStat } {
   const rarityConfig = CHIP_RARITY_CONFIG[chip.rarity];
   const maxLevel = rarityConfig.maxLevel;
-  
+
   if (chip.level >= maxLevel) {
     return { success: false, newLevel: chip.level };
   }
@@ -233,6 +232,10 @@ export function upgradeChip(chip: Chip, materialCount: number): { success: boole
       chip.lockedSubStatLevels = chip.lockedSubStatLevels.filter(l => l !== unlockLevel);
 
       const usedStats = chip.subStats.map(s => s.stat);
+      const hasDodge = usedStats.includes(ChipSubStat.DODGE);
+      if (hasDodge) {
+        usedStats.push(ChipSubStat.DODGE);
+      }
       const newStat = getRandomSubStat(usedStats);
       const config = CHIP_SUB_STAT_CONFIG[newStat];
       const value = config.minValue + Math.random() * (config.maxValue - config.minValue);
@@ -245,27 +248,6 @@ export function upgradeChip(chip: Chip, materialCount: number): { success: boole
   return { success: true, newLevel: chip.level, unlockedSubStat };
 }
 
-export function enhanceChip(chip: Chip, subStatIndex: number): { success: boolean; message: string } {
-  const rarityConfig = CHIP_RARITY_CONFIG[chip.rarity];
-  
-  if (chip.enhanceCount >= rarityConfig.maxEnhance) {
-    return { success: false, message: '已达到最大强化次数' };
-  }
-
-  if (subStatIndex < 0 || subStatIndex >= chip.subStats.length) {
-    return { success: false, message: '无效的副属性索引' };
-  }
-
-  const subStat = chip.subStats[subStatIndex];
-  const config = CHIP_SUB_STAT_CONFIG[subStat.stat];
-  
-  const enhanceResult = config.enhanceValue * (0.8 + Math.random() * 0.4);
-  subStat.value = Math.round((subStat.value + enhanceResult) * 10) / 10;
-  chip.enhanceCount++;
-
-  return { success: true, message: `强化成功，${config.name}+${enhanceResult.toFixed(1)}` };
-}
-
 export function rerollSubStat(chip: Chip, subStatIndex: number): { success: boolean; message: string; newStat?: ChipSubStat; newValue?: number } {
   if (chip.locked) {
     return { success: false, message: '芯片已锁定，无法重随' };
@@ -275,27 +257,30 @@ export function rerollSubStat(chip: Chip, subStatIndex: number): { success: bool
     return { success: false, message: '无效的副属性索引' };
   }
 
-  // 获取所有可能的副属性类型
-  const allSubStats = Object.values(ChipSubStat);
-  
-  // 随机选择一个新属性类型（可以与原来相同）
+  const currentStat = chip.subStats[subStatIndex].stat;
+  const otherStats = chip.subStats.filter((_, idx) => idx !== subStatIndex).map(s => s.stat);
+  const hasDodgeElsewhere = otherStats.includes(ChipSubStat.DODGE);
+
+  let allSubStats = Object.values(ChipSubStat);
+  if (hasDodgeElsewhere) {
+    allSubStats = allSubStats.filter(s => s !== ChipSubStat.DODGE);
+  }
+
   const newStat = allSubStats[Math.floor(Math.random() * allSubStats.length)];
   const config = CHIP_SUB_STAT_CONFIG[newStat];
-  
-  // 在新属性的范围内随机生成数值
+
   const newValue = config.minValue + Math.random() * (config.maxValue - config.minValue);
-  
-  // 更新副属性
+
   chip.subStats[subStatIndex] = {
     stat: newStat,
     value: Math.round(newValue * 10) / 10
   };
 
-  return { 
-    success: true, 
+  return {
+    success: true,
     message: `重随成功，新属性: ${config.name} +${chip.subStats[subStatIndex].value}`,
     newStat,
-    newValue: chip.subStats[subStatIndex].value 
+    newValue: chip.subStats[subStatIndex].value
   };
 }
 
@@ -306,8 +291,10 @@ export function rerollAllSubStats(chip: Chip): { success: boolean; message: stri
 
   chip.subStats.forEach(subStat => {
     const config = CHIP_SUB_STAT_CONFIG[subStat.stat];
-    const newValue = config.minValue + Math.random() * (config.maxValue - config.minValue);
-    subStat.value = Math.round(newValue * 10) / 10;
+    if (config) {
+      const newValue = config.minValue + Math.random() * (config.maxValue - config.minValue);
+      subStat.value = Math.round(newValue * 10) / 10;
+    }
   });
 
   return { success: true, message: '所有副属性已重随' };
@@ -343,13 +330,6 @@ export function getUpgradeCost(level: number): { credits: number; materials: num
   }
 }
 
-export function getEnhanceCost(chip: Chip): { credits: number; materials: number } {
-  return {
-    credits: 200 * (chip.enhanceCount + 1),
-    materials: 2 + chip.enhanceCount,
-  };
-}
-
 export function getRerollCost(chip: Chip): { credits: number; materials: number } {
   return {
     credits: 500 * chip.level,
@@ -364,8 +344,11 @@ export function getChipStats(chip: Chip): Record<string, number> {
   stats[mainStatName] = chip.mainStatValue;
 
   chip.subStats.forEach(sub => {
-    const statName = CHIP_SUB_STAT_CONFIG[sub.stat].name;
-    stats[statName] = (stats[statName] || 0) + sub.value;
+    const config = CHIP_SUB_STAT_CONFIG[sub.stat];
+    if (config) {
+      const statName = config.name;
+      stats[statName] = (stats[statName] || 0) + sub.value;
+    }
   });
 
   return stats;
@@ -373,7 +356,7 @@ export function getChipStats(chip: Chip): Record<string, number> {
 
 export function getSetBonus(chips: Chip[]): { set: ChipSet; count: number; bonuses: string[] }[] {
   const setCounts: Record<ChipSet, number> = {} as Record<ChipSet, number>;
-  
+
   chips.forEach(chip => {
     if (chip.setId) {
       setCounts[chip.setId] = (setCounts[chip.setId] || 0) + 1;
@@ -385,7 +368,7 @@ export function getSetBonus(chips: Chip[]): { set: ChipSet; count: number; bonus
   Object.entries(setCounts).forEach(([setId, count]) => {
     const setConfig = CHIP_SET_CONFIG[setId as ChipSet];
     const activeBonuses: string[] = [];
-    
+
     if (count >= 2) {
       activeBonuses.push(`2件套: ${setConfig.bonus2}`);
     }
@@ -414,7 +397,7 @@ export function deserializeChip(data: ChipData): Chip {
   if (rarity === 'common' || rarity === 'uncommon') {
     rarity = ChipRarity.RARE;
   }
-  
+
   return {
     ...data,
     rarity,

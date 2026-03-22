@@ -12,6 +12,14 @@ const config: CapacitorConfig = {
       launchShowDuration: 2000,
       backgroundColor: '#1a1a1a',
     },
+    StatusBar: {
+      style: 'DARK',
+      backgroundColor: '#0a0e27',
+      overlaysWebView: false,
+    },
+  },
+  android: {
+    backgroundColor: '#0a0e27',
   },
 };
 

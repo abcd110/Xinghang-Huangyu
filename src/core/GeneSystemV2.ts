@@ -346,7 +346,7 @@ export const GENE_FRAGMENT_TEMPLATES: GeneFragmentTemplate[] = [
       type: 'stat_boost',
       stats: { critRate: 10, critDamage: 20 },
     },
-    description: '会心+10，暴击伤害+20%',
+    description: '暴击率+10，暴击伤害+20%',
     category: 'special',
   },
   {
@@ -370,7 +370,7 @@ export const GENE_FRAGMENT_TEMPLATES: GeneFragmentTemplate[] = [
       type: 'stat_boost',
       stats: { critRate: 15, critDamage: 40 },
     },
-    description: '会心+15，暴击伤害+40%',
+    description: '暴击率+15，暴击伤害+40%',
     category: 'special',
   },
   {
@@ -395,7 +395,7 @@ export const GENE_FRAGMENT_TEMPLATES: GeneFragmentTemplate[] = [
       type: 'stat_boost',
       stats: { attackPercent: 25, defensePercent: 25, maxHpPercent: 25, critRate: 5, dodgeRate: 5, critDamage: 25, speedPercent: 25 },
     },
-    description: '攻击+25%，防御+25%，生命+25%，会心+5，闪避+5，暴击伤害+25%，攻速+25%',
+    description: '攻击+25%，防御+25%，生命+25%，暴击率+5，闪避+5，暴击伤害+25%，攻速+25%',
     category: 'special',
   },
 ];
@@ -499,13 +499,13 @@ export function findGeneFragments(chromosome: Chromosome): GeneFragment[] {
   const senseBases = chromosome.senseStrand.nucleotides.map(n => n.base);
 
   const chromosomeType = chromosome.bonusType;
+  const senseStr = senseBases.join('');
 
   for (const template of GENE_FRAGMENT_TEMPLATES) {
     if (template.category !== chromosomeType) continue;
 
     const pattern = template.pattern;
     const patternStr = pattern.join('');
-    const senseStr = senseBases.join('');
 
     let searchPos = 0;
     while (searchPos <= senseStr.length - patternStr.length) {
@@ -812,30 +812,39 @@ export function deserializeGeneSystemState(data: string): GeneSystemState {
     parsed.chromosomes.push(createChromosome(chromosomeConfig, true));
   }
 
-  parsed.chromosomes.forEach((c: Chromosome, index: number) => {
-    const config = CHROMOSOME_CONFIGS[index];
-    if (config && c.length !== config.length) {
-      const newLength = config.length || 60;
-      if (c.senseStrand.nucleotides.length < newLength) {
-        const additionalNucleotides: Nucleotide[] = [];
-        for (let i = c.senseStrand.nucleotides.length; i < newLength; i++) {
-          const bases = [BasePair.ADENINE, BasePair.THYMINE, BasePair.GUANINE, BasePair.CYTOSINE];
-          const randomBase = bases[Math.floor(Math.random() * bases.length)];
-          additionalNucleotides.push(createNucleotide(randomBase, i));
+  parsed.chromosomes.forEach((c: Chromosome) => {
+    const config = CHROMOSOME_CONFIGS.find(cfg => cfg.id === c.id);
+    if (config) {
+      if (c.length !== config.length) {
+        const newLength = config.length || 60;
+        if (c.senseStrand.nucleotides.length < newLength) {
+          const additionalNucleotides: Nucleotide[] = [];
+          for (let i = c.senseStrand.nucleotides.length; i < newLength; i++) {
+            const bases = [BasePair.ADENINE, BasePair.THYMINE, BasePair.GUANINE, BasePair.CYTOSINE];
+            const randomBase = bases[Math.floor(Math.random() * bases.length)];
+            additionalNucleotides.push(createNucleotide(randomBase, i));
+          }
+          c.senseStrand.nucleotides.push(...additionalNucleotides);
+          const antisenseAdditional = additionalNucleotides.map((n, i) =>
+            createNucleotide(getComplementBase(n.base), c.antisenseStrand.nucleotides.length + i)
+          );
+          c.antisenseStrand.nucleotides.push(...antisenseAdditional);
         }
-        c.senseStrand.nucleotides.push(...additionalNucleotides);
-        const antisenseAdditional = additionalNucleotides.map((n, i) =>
-          createNucleotide(getComplementBase(n.base), c.antisenseStrand.nucleotides.length + i)
-        );
-        c.antisenseStrand.nucleotides.push(...antisenseAdditional);
+        c.length = newLength;
+        c.senseStrand.length = newLength;
+        c.antisenseStrand.length = newLength;
       }
-      c.length = newLength;
-      c.senseStrand.length = newLength;
-      c.antisenseStrand.length = newLength;
+      c.bonusType = config.bonusType;
+      c.bonusPercent = config.bonusPercent ?? 0;
+    } else {
+      const indexMatch = CHROMOSOME_CONFIGS[parsed.chromosomes.indexOf(c)];
+      if (indexMatch) {
+        c.id = indexMatch.id;
+        c.bonusType = indexMatch.bonusType;
+        c.bonusPercent = indexMatch.bonusPercent ?? 0;
+      }
     }
     c.unlocked = true;
-    c.bonusType = config?.bonusType;
-    c.bonusPercent = config?.bonusPercent ?? 0;
   });
 
   // 反序列化后重新识别基因片段

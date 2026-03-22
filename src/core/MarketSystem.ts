@@ -104,20 +104,11 @@ export function calculateFinalPrice(price: number): number {
 export const SYSTEM_LISTINGS: Omit<MarketListing, 'id' | 'expiresAt' | 'listedAt'>[] = [
   {
     itemId: 'recruit_ticket_normal',
-    itemName: '普通招募票',
+    itemName: '招募票',
     itemType: MarketItemType.SPECIAL,
     rarity: MarketRarity.RARE,
     quantity: 1,
     price: 500,
-    seller: '系统商店',
-  },
-  {
-    itemId: 'recruit_ticket_limited',
-    itemName: '限定招募票',
-    itemType: MarketItemType.SPECIAL,
-    rarity: MarketRarity.EPIC,
-    quantity: 1,
-    price: 2000,
     seller: '系统商店',
   },
   {

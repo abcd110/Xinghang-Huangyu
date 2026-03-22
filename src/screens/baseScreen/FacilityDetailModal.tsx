@@ -86,6 +86,7 @@ export function FacilityDetailModal({ facility, onClose, onStartRuinBattle }: Fa
         <div style={{
           background: `linear-gradient(180deg, ${facility.color}30, ${facility.color}10)`,
           padding: '16px',
+          paddingTop: 'max(env(safe-area-inset-top, 0), 12px)',
           borderBottom: `1px solid ${facility.color}50`,
           display: 'flex',
           alignItems: 'center',

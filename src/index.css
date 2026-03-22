@@ -20,6 +20,9 @@
 /* 全局emoji样式 - 应用到所有元素 */
 * {
   box-sizing: border-box;
+  /* 禁止文字选中，提升游戏体验 */
+  -webkit-user-select: none;
+  user-select: none;
   /* 为emoji字符指定专用字体栈 - Fluent UI 3D 优先 */
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
@@ -52,6 +55,8 @@
 html {
   height: 100%;
   overflow: hidden;
+  /* 安全区域适配 - 顶部状态栏 */
+  padding-top: env(safe-area-inset-top, 0);
 }
 
 body {
@@ -84,29 +89,33 @@ body {
   position: relative;
 }
 
-/* ==================== 滚动条样式（新主题）==================== */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+/* ==================== 隐藏所有滚动条 ==================== */
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
-::-webkit-scrollbar-track {
-  background: #1a1f3a;
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #0099cc;
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #00d4ff;
+*::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 /* ==================== 安全区域适配 ==================== */
+.safe-area-top {
+  padding-top: env(safe-area-inset-top, 0);
+}
+
 .safe-area-bottom {
   padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+.safe-area-left {
+  padding-left: env(safe-area-inset-left, 0);
+}
+
+.safe-area-right {
+  padding-right: env(safe-area-inset-right, 0);
 }
 
 /* ==================== 禁用文本选择 ==================== */
@@ -129,6 +138,9 @@ textarea {
   padding: 0.5rem;
   border-radius: 0.5rem;
   transition: all 0.3s ease;
+  /* 输入框允许文字选中 */
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 input:focus,
@@ -418,4 +430,182 @@ textarea:focus {
       rgba(0, 212, 255, 0.03) 2px,
       rgba(0, 212, 255, 0.03) 4px);
   pointer-events: none;
+}
+
+/* ==================== 采矿平台科幻动画 ==================== */
+
+/* 能量流动动画 */
+@keyframes energyFlow {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* 矿物脉冲动画 */
+@keyframes mineralPulse {
+  0%, 100% {
+    filter: drop-shadow(0 0 8px currentColor) drop-shadow(0 0 15px currentColor);
+    transform: scale(1);
+  }
+  50% {
+    filter: drop-shadow(0 0 12px currentColor) drop-shadow(0 0 25px currentColor);
+    transform: scale(1.05);
+  }
+}
+
+/* 按钮扫描动画 */
+@keyframes buttonScan {
+  0% {
+    left: -100%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+/* 脉冲呼吸动画 */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.1);
+  }
+}
+
+/* 数据流动画 */
+@keyframes dataFlow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* 全息闪烁 */
+@keyframes hologramFlicker {
+  0%, 100% {
+    opacity: 1;
+  }
+  92% {
+    opacity: 1;
+  }
+  93% {
+    opacity: 0.8;
+  }
+  94% {
+    opacity: 1;
+  }
+  95% {
+    opacity: 0.9;
+  }
+  96% {
+    opacity: 1;
+  }
+}
+
+/* 深度指示器动画 */
+@keyframes depthPulse {
+  0%, 100% {
+    box-shadow: 0 0 5px currentColor;
+  }
+  50% {
+    box-shadow: 0 0 15px currentColor, 0 0 25px currentColor;
+  }
+}
+
+/* 卡片悬浮效果 */
+@keyframes cardFloat {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
+/* 边角发光动画 */
+@keyframes cornerGlow {
+  0%, 100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* 科技线条动画 */
+@keyframes techLine {
+  0% {
+    width: 0;
+    opacity: 0;
+  }
+  50% {
+    width: 100%;
+    opacity: 1;
+  }
+  100% {
+    width: 100%;
+    opacity: 0;
+  }
+}
+
+/* 采矿震动效果 */
+@keyframes miningShake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  10%, 30%, 50%, 70%, 90% {
+    transform: translateX(-1px);
+  }
+  20%, 40%, 60%, 80% {
+    transform: translateX(1px);
+  }
+}
+
+/* 资源收集动画 */
+@keyframes resourceCollect {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(0);
+    opacity: 0;
+  }
+}
+
+/* 扫描线覆盖 */
+@keyframes scanlineMove {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(100vh);
+  }
+}
+
+/* 霓虹边框动画 */
+@keyframes neonBorder {
+  0%, 100% {
+    border-color: rgba(0, 212, 255, 0.5);
+    box-shadow: 0 0 10px rgba(0, 212, 255, 0.3), inset 0 0 10px rgba(0, 212, 255, 0.1);
+  }
+  50% {
+    border-color: rgba(0, 212, 255, 1);
+    box-shadow: 0 0 20px rgba(0, 212, 255, 0.5), inset 0 0 15px rgba(0, 212, 255, 0.2);
+  }
 }

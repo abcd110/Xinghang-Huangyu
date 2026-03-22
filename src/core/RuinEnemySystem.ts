@@ -274,6 +274,134 @@ export const RUIN_ENEMY_TEMPLATES: RuinEnemyTemplate[] = [
     baseCritDamage: 80,
     baseGuard: 6,
   },
+
+  // ========== 经验书副本敌人 ==========
+  {
+    id: 'enemy_exp_bookworm',
+    name: '书虫',
+    icon: '🐛',
+    type: RuinType.EXP_BOOK,
+    baseHp: 70,
+    baseAttack: 10,
+    baseDefense: 5,
+    baseSpeed: 1.0,
+    baseHit: 80,
+    baseDodge: 8,
+    baseCrit: 5,
+    baseCritDamage: 50,
+    baseGuard: 5,
+  },
+  {
+    id: 'enemy_exp_guardian',
+    name: '知识守护者',
+    icon: '📚',
+    type: RuinType.EXP_BOOK,
+    baseHp: 120,
+    baseAttack: 18,
+    baseDefense: 10,
+    baseSpeed: 1.2,
+    baseHit: 85,
+    baseDodge: 10,
+    baseCrit: 12,
+    baseCritDamage: 70,
+    baseGuard: 10,
+  },
+  {
+    id: 'enemy_exp_ancient',
+    name: '远古智者',
+    icon: '🧙',
+    type: RuinType.EXP_BOOK,
+    baseHp: 180,
+    baseAttack: 28,
+    baseDefense: 18,
+    baseSpeed: 1.3,
+    baseHit: 90,
+    baseDodge: 15,
+    baseCrit: 18,
+    baseCritDamage: 100,
+    baseGuard: 15,
+    isBoss: true,
+  },
+  {
+    id: 'enemy_exp_master',
+    name: '知识大师',
+    icon: '🎓',
+    type: RuinType.EXP_BOOK,
+    baseHp: 320,
+    baseAttack: 42,
+    baseDefense: 26,
+    baseSpeed: 1.5,
+    baseHit: 95,
+    baseDodge: 20,
+    baseCrit: 25,
+    baseCritDamage: 130,
+    baseGuard: 22,
+    isBoss: true,
+  },
+
+  // ========== 技能书副本敌人 ==========
+  {
+    id: 'enemy_skill_trainee',
+    name: '训练傀儡',
+    icon: '🎯',
+    type: RuinType.SKILL_BOOK,
+    baseHp: 80,
+    baseAttack: 12,
+    baseDefense: 6,
+    baseSpeed: 1.0,
+    baseHit: 80,
+    baseDodge: 6,
+    baseCrit: 8,
+    baseCritDamage: 55,
+    baseGuard: 6,
+  },
+  {
+    id: 'enemy_skill_instructor',
+    name: '战斗教官',
+    icon: '⚔️',
+    type: RuinType.SKILL_BOOK,
+    baseHp: 110,
+    baseAttack: 20,
+    baseDefense: 10,
+    baseSpeed: 1.3,
+    baseHit: 88,
+    baseDodge: 12,
+    baseCrit: 15,
+    baseCritDamage: 75,
+    baseGuard: 10,
+  },
+  {
+    id: 'enemy_skill_champion',
+    name: '竞技冠军',
+    icon: '🏆',
+    type: RuinType.SKILL_BOOK,
+    baseHp: 200,
+    baseAttack: 32,
+    baseDefense: 20,
+    baseSpeed: 1.4,
+    baseHit: 92,
+    baseDodge: 18,
+    baseCrit: 22,
+    baseCritDamage: 110,
+    baseGuard: 18,
+    isBoss: true,
+  },
+  {
+    id: 'enemy_skill_legend',
+    name: '传奇战士',
+    icon: '👑',
+    type: RuinType.SKILL_BOOK,
+    baseHp: 350,
+    baseAttack: 48,
+    baseDefense: 30,
+    baseSpeed: 1.6,
+    baseHit: 96,
+    baseDodge: 22,
+    baseCrit: 30,
+    baseCritDamage: 150,
+    baseGuard: 25,
+    isBoss: true,
+  },
 ];
 
 export function generateRuinEnemy(
@@ -291,22 +419,18 @@ export function generateRuinEnemy(
   const template = availableTemplates[Math.floor(Math.random() * availableTemplates.length)] || templates[0];
 
   const difficultyMultiplier = difficultyConfig.multiplier;
-  const levelScaling = 1 + (playerLevel - 1) * 0.1;
-  const powerScaling = Math.max(0.8, Math.min(1.5, playerTotalPower / 500));
 
-  const finalMultiplier = difficultyMultiplier * levelScaling * powerScaling;
+  const hp = Math.floor(template.baseHp * difficultyMultiplier);
+  const attack = Math.floor(template.baseAttack * difficultyMultiplier);
+  const defense = Math.floor(template.baseDefense * difficultyMultiplier);
+  const speed = Math.round(template.baseSpeed * (1 + (difficultyMultiplier - 1) * 0.05) * 10) / 10;
+  const hit = Math.min(99, Math.floor(template.baseHit + Math.min(difficultyMultiplier, 20)));
+  const dodge = Math.min(50, Math.floor(template.baseDodge + Math.min(difficultyMultiplier * 0.5, 25)));
+  const crit = Math.min(50, Math.floor(template.baseCrit + Math.min(difficultyMultiplier * 0.3, 20)));
+  const critDamage = Math.floor(template.baseCritDamage + Math.min(difficultyMultiplier * 2, 50));
+  const guard = Math.floor(template.baseGuard + Math.min(difficultyMultiplier * 0.5, 20));
 
-  const hp = Math.floor(template.baseHp * finalMultiplier);
-  const attack = Math.floor(template.baseAttack * finalMultiplier);
-  const defense = Math.floor(template.baseDefense * finalMultiplier);
-  const speed = Math.round(template.baseSpeed * (1 + (difficultyMultiplier - 1) * 0.3) * 10) / 10;
-  const hit = Math.min(99, Math.floor(template.baseHit + difficultyMultiplier * 2));
-  const dodge = Math.min(50, Math.floor(template.baseDodge + difficultyMultiplier * 3));
-  const crit = Math.min(50, Math.floor(template.baseCrit + difficultyMultiplier * 2));
-  const critDamage = Math.floor(template.baseCritDamage + difficultyMultiplier * 10);
-  const guard = Math.floor(template.baseGuard + difficultyMultiplier * 2);
-
-  const enemyLevel = Math.max(1, playerLevel + Math.floor(difficultyMultiplier - 1));
+  const enemyLevel = Math.max(1, playerLevel + Math.floor(difficultyMultiplier * 0.5));
 
   return {
     id: `${template.id}_${Date.now()}`,
@@ -325,7 +449,7 @@ export function generateRuinEnemy(
     isElite: difficulty === RuinDifficulty.HARD,
     isBoss: template.isBoss || difficulty === RuinDifficulty.NIGHTMARE || difficulty === RuinDifficulty.HELL,
     rewards: {
-      exp: Math.floor(50 * difficultyMultiplier * levelScaling),
+      exp: Math.floor(50 * difficultyMultiplier),
     },
   };
 }
@@ -338,25 +462,9 @@ export function generateRuinEnemies(
 ): BattleEnemy[] {
   const difficultyConfig = RUIN_DIFFICULTY_CONFIG[difficulty];
 
-  let enemyCount = 1;
-  if (difficulty === RuinDifficulty.NORMAL) enemyCount = 1;
-  else if (difficulty === RuinDifficulty.HARD) enemyCount = 2;
-  else if (difficulty === RuinDifficulty.NIGHTMARE) enemyCount = 2;
-  else if (difficulty === RuinDifficulty.HELL) enemyCount = 3;
-
   const enemies: BattleEnemy[] = [];
-  for (let i = 0; i < enemyCount; i++) {
-    const enemy = generateRuinEnemy(ruinType, difficulty, playerLevel, playerTotalPower);
-    enemy.id = `${enemy.id}_${i}`;
-    if (i > 0) {
-      enemy.name = `${enemy.name} #${i + 1}`;
-      enemy.isBoss = false;
-      enemy.hp = Math.floor(enemy.hp * 0.7);
-      enemy.maxHp = enemy.hp;
-      enemy.attack = Math.floor(enemy.attack * 0.8);
-    }
-    enemies.push(enemy);
-  }
+  const enemy = generateRuinEnemy(ruinType, difficulty, playerLevel, playerTotalPower);
+  enemies.push(enemy);
 
   return enemies;
 }

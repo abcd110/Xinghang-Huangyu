@@ -1,4 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
+import { StatusBar, Style } from '@capacitor/status-bar';
+import { Capacitor } from '@capacitor/core';
 import StartScreen from './screens/StartScreen';
 import NameInputScreen from './screens/NameInputScreen';
 import HomeScreen from './screens/HomeScreen';
@@ -86,7 +88,24 @@ function App() {
   const [currentScreen, setCurrentScreen] = useState<ScreenType>('start');
   const [inRuinBattle, setInRuinBattle] = useState(false);
   const [inFacilityDetail, setInFacilityDetail] = useState(false);
+  const [inCrewScreen, setInCrewScreen] = useState(false);
   const { saveGame, toasts, removeToast, gameManager } = useGameStore();
+
+  // 初始化状态栏 - 仅在原生平台执行
+  useEffect(() => {
+    const initStatusBar = async () => {
+      if (Capacitor.isNativePlatform()) {
+        try {
+          await StatusBar.setStyle({ style: Style.Dark });
+          await StatusBar.setBackgroundColor({ color: '#0a0e27' });
+          await StatusBar.setOverlaysWebView({ overlay: false });
+        } catch (error) {
+          console.warn('StatusBar plugin not available:', error);
+        }
+      }
+    };
+    initStatusBar();
+  }, []);
 
   // 研究进度更新 - 每秒更新
   useEffect(() => {
@@ -218,14 +237,14 @@ function App() {
       case 'test':
         return <TestScreen onBack={handleBack} />;
       case 'base':
-        return <BaseScreen onNavigate={handleNavigate} onBack={handleBack} onBattleStateChange={setInRuinBattle} onDetailStateChange={setInFacilityDetail} />;
+        return <BaseScreen onNavigate={handleNavigate} onBack={handleBack} onBattleStateChange={setInRuinBattle} onDetailStateChange={setInFacilityDetail} onCrewScreenChange={setInCrewScreen} />;
       default:
         return <HomeScreen onNavigate={handleNavigate} />;
     }
   };
 
   // 判断是否显示底部导航
-  const showBottomNav = currentScreen !== 'start' && currentScreen !== 'name-input' && currentScreen !== 'battle' && !inRuinBattle && !inFacilityDetail;
+  const showBottomNav = currentScreen !== 'start' && currentScreen !== 'name-input' && currentScreen !== 'battle' && !inRuinBattle && !inFacilityDetail && !inCrewScreen;
 
   return (
     <div className="space-theme" style={{

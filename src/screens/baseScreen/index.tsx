@@ -4,7 +4,7 @@ import CrewScreen from '../CrewScreen';
 import { FACILITIES, type BaseFacility } from './types';
 import { BaseHeader, BaseOverview, FacilityCard } from './BaseComponents';
 import { FacilityDetailModal } from './FacilityDetailModal';
-import { GenericBattleScreen, type GenericEnemy } from '../../core/GenericBattleScreen';
+import { BattleScreen, type BattleEnemy as BattleEnemyType } from '../../core/BattleScreen';
 import { useGameStore } from '../../stores/gameStore';
 import { RUIN_TYPE_CONFIG, RUIN_DIFFICULTY_CONFIG, type Ruin, getRuinRewards } from '../../core/RuinSystem';
 import { generateRuinEnemies } from '../../core/RuinEnemySystem';
@@ -16,9 +16,10 @@ interface BaseScreenProps {
   onNavigate?: (screen: string) => void;
   onBattleStateChange?: (inBattle: boolean) => void;
   onDetailStateChange?: (inDetail: boolean) => void;
+  onCrewScreenChange?: (showCrew: boolean) => void;
 }
 
-function convertToGenericEnemy(enemy: BattleEnemy): GenericEnemy {
+function convertToBattleEnemy(enemy: BattleEnemy): BattleEnemyType {
   return {
     id: enemy.id,
     name: enemy.name,
@@ -31,7 +32,6 @@ function convertToGenericEnemy(enemy: BattleEnemy): GenericEnemy {
     critDamage: enemy.critDamage,
     hit: enemy.hit,
     dodge: enemy.dodge,
-    guard: enemy.guard,
     isBoss: enemy.isBoss,
     isElite: enemy.isElite,
     icon: enemy.isBoss ? '👹' : enemy.isElite ? '💀' : '🤖',
@@ -39,12 +39,12 @@ function convertToGenericEnemy(enemy: BattleEnemy): GenericEnemy {
   };
 }
 
-function BaseScreen({ onBack, onNavigate, onBattleStateChange, onDetailStateChange }: BaseScreenProps) {
+function BaseScreen({ onBack, onNavigate, onBattleStateChange, onDetailStateChange, onCrewScreenChange }: BaseScreenProps) {
   const [selectedFacility, setSelectedFacility] = useState<BaseFacility | null>(null);
   const [showCrewScreen, setShowCrewScreen] = useState(false);
 
   // 战斗状态在 BaseScreen 层级管理
-  const [battleEnemies, setBattleEnemies] = useState<GenericEnemy[]>([]);
+  const [battleEnemies, setBattleEnemies] = useState<BattleEnemyType[]>([]);
   const [battleConfig, setBattleConfig] = useState<{ title: string; subtitle: string; themeColor: string } | null>(null);
   const [pendingBattleRuinId, setPendingBattleRuinId] = useState<string | null>(null);
   const pendingBattleRuinIdRef = useRef<string | null>(null);
@@ -65,24 +65,15 @@ function BaseScreen({ onBack, onNavigate, onBattleStateChange, onDetailStateChan
         // 使用 ref 获取当前的 ruinId，避免闭包问题
         const ruinId = pendingBattleRuinIdRef.current;
         if (!ruinId) {
-          console.log('handleRuinBattleEnd: ruinId is null');
           return;
         }
 
-        console.log(`handleRuinBattleEnd: victory=${victory}, ruinId=${ruinId}`);
-
-        // 获取遗迹数据
-        console.log('获取遗迹数据...');
         const ruins = gameManager.getRuins();
-        console.log('ruins:', ruins);
         const ruin = ruins.find(r => r.id === ruinId);
-        console.log('找到的 ruin:', ruin);
 
         if (ruin) {
           const isFirstClear = ruin.firstClear && victory;
-          console.log('isFirstClear:', isFirstClear);
 
-          // 只有胜利时才给奖励和更新状态
           if (victory) {
             const ruinRewards = getRuinRewards(ruin);
 
@@ -91,32 +82,22 @@ function BaseScreen({ onBack, onNavigate, onBattleStateChange, onDetailStateChan
               items: ruinRewards.items.map(item => ({ ...item })),
             };
 
-            console.log('发放奖励:', rewards);
             gameManager.trainCoins += rewards.credits;
             rewards.items.forEach(item => {
               gameManager.inventory.addItem(item.itemId, item.count);
             });
 
-            // 更新遗迹状态（只有胜利时才更新）
-            console.log('更新遗迹状态...');
             updateRuinBattleResult(ruinId, victory, isFirstClear);
-            console.log('更新遗迹状态完成');
           }
-        } else {
-          console.log('未找到 ruin，跳过奖励发放');
         }
 
-        // 清除战斗状态（无论胜利或失败都要执行）
-        console.log('清除战斗状态');
         setBattleEnemies([]);
         setBattleConfig(null);
         setPendingBattleRuinId(null);
         pendingBattleRuinIdRef.current = null;
         onBattleStateChange?.(false);
 
-        console.log('保存游戏...');
         await saveGame();
-        console.log('保存完成');
       } catch (error) {
         console.error('handleRuinBattleEnd 错误:', error);
       }
@@ -125,8 +106,6 @@ function BaseScreen({ onBack, onNavigate, onBattleStateChange, onDetailStateChan
 
   // 稳定的回调函数
   const handleRuinBattleEnd = useCallback((victory: boolean, totalExp: number) => {
-    console.log('handleRuinBattleEnd 被调用');
-    console.log('handleRuinBattleEndRef.current:', handleRuinBattleEndRef.current);
     if (handleRuinBattleEndRef.current) {
       handleRuinBattleEndRef.current(victory, totalExp);
     }
@@ -135,6 +114,7 @@ function BaseScreen({ onBack, onNavigate, onBattleStateChange, onDetailStateChan
   const handleFacilityClick = (facility: BaseFacility) => {
     if (facility.id === 'crew') {
       setShowCrewScreen(true);
+      onCrewScreenChange?.(true);
     } else {
       setSelectedFacility(facility);
       onDetailStateChange?.(true);
@@ -161,7 +141,7 @@ function BaseScreen({ onBack, onNavigate, onBattleStateChange, onDetailStateChan
 
     setPendingBattleRuinId(ruin.id);
     pendingBattleRuinIdRef.current = ruin.id;
-    setBattleEnemies(enemies.map(convertToGenericEnemy));
+    setBattleEnemies(enemies.map(convertToBattleEnemy));
     setBattleConfig({
       title: `${typeConfig.icon} ${ruin.name}`,
       subtitle: difficultyConfig.name,
@@ -171,13 +151,14 @@ function BaseScreen({ onBack, onNavigate, onBattleStateChange, onDetailStateChan
   }, [gameManager, onBattleStateChange]);
 
   if (showCrewScreen) {
-    return <CrewScreen onBack={() => setShowCrewScreen(false)} />;
+    return <CrewScreen onBack={() => { setShowCrewScreen(false); onCrewScreenChange?.(false); }} />;
   }
 
   // 战斗界面全屏显示
   if (battleEnemies.length > 0 && battleConfig) {
     return (
-      <GenericBattleScreen
+      <BattleScreen
+        mode="single"
         enemies={battleEnemies}
         onBattleEnd={handleRuinBattleEnd}
         title={battleConfig.title}

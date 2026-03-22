@@ -19,10 +19,9 @@ import { AutoCollectMode, CollectReward, getCollectRobot } from '../data/autoCol
 import { synthesize, synthesizeBatch, getSynthesizableMaterials } from './MaterialSynthesisSystem';
 import { BaseFacilitySystem, FacilityType } from './BaseFacilitySystem';
 import { CrewMember, CrewMemberData, RecruitType, RECRUIT_CONFIG, RARITY_CONFIG, addCrewExp, getRarityByRoll, getRandomCrewDefinition, generateCrewFromDefinition, generateFallbackCrew, serializeCrewMember, deserializeCrewMember, createPlayerCrew, isPlayerCrew } from './CrewSystem';
-import { CommEvent, CommEventData, generateCommEvent, getMaxEvents, getScanCooldown, serializeCommEvent, deserializeCommEvent, isEventExpired } from './CommSystem';
 import { ResearchProject, ResearchProjectData, ResearchStatus, createResearchProject, serializeResearchProject, deserializeResearchProject, canStartResearch, getMaxConcurrentResearch, getResearchSpeedBonus, RESEARCH_PROJECTS } from './ResearchSystem';
 import { MiningTask, MiningTaskData, MiningStatus, MiningSite, MINING_SITES, MINERAL_CONFIG, getMiningYield, getMaxMiningSlots, createMiningTask, serializeMiningTask, deserializeMiningTask, isMiningComplete, getMiningProgress, getCrewMiningBonus, checkMiningEvent, processMiningEvent, getDepthBonusDescription } from './MiningSystem';
-import { Chip, ChipData, ChipSlot, ChipRarity, ChipSet, createChip, upgradeChip, enhanceChip, rerollSubStat, rerollAllSubStats, toggleChipLock, serializeChip, deserializeChip, getUpgradeCost, getEnhanceCost, getRerollCost, getChipStats, getSetBonus, CHIP_RARITY_CONFIG, CHIP_CRAFT_COST } from './ChipSystem';
+import { Chip, ChipData, ChipSlot, ChipRarity, ChipSet, createChip, upgradeChip, rerollSubStat, rerollAllSubStats, toggleChipLock, serializeChip, deserializeChip, getUpgradeCost, getRerollCost, getChipStats, getSetBonus, CHIP_RARITY_CONFIG, CHIP_CRAFT_COST } from './ChipSystem';
 import { GeneNode, GeneNodeData, GeneType, GENE_TREE, createGeneNode, upgradeGeneNode, getGeneUpgradeCost, getGeneTotalStats, serializeGeneNode, deserializeGeneNode, GENE_TYPE_CONFIG } from './GeneSystemLegacy';
 import { BasePair, GeneSystemState, Chromosome, GeneFragment, BattleContext, GeneSystemV2, createGeneSystemState, findGeneFragments, calculateTotalLifeSteal, calculateGeneStats, getActiveGeneEffects, replaceNucleotide, calculateIntegrity, serializeGeneSystemState, deserializeGeneSystemState, CHROMOSOME_CONFIGS, hasOverflowToShield, checkSurviveFatal, setFragmentCooldown, resetAllCooldowns } from './GeneSystemV2';
 import { Implant, ImplantData, ImplantType, ImplantRarity, IMPLANT_TYPE_CONFIG, IMPLANT_RARITY_CONFIG, createImplant, upgradeImplant, getImplantStats, getImplantUpgradeCost, serializeImplant, deserializeImplant } from './CyberneticSystem';
@@ -53,8 +52,6 @@ export interface GameState {
   }; // 自动采集系统数据
   baseFacilitySystem?: Record<string, import('./BaseFacilitySystem').FacilityState>; // 基地设施系统数据
   crewMembers?: CrewMemberData[]; // 船员列表
-  commEvents?: CommEventData[]; // 通讯事件列表
-  lastCommScanTime?: number; // 上次扫描时间戳
   researchProjects?: ResearchProjectData[]; // 研究项目列表
   completedResearch?: string[]; // 已完成的研究ID列表
   miningTasks?: MiningTaskData[]; // 采矿任务列表
@@ -99,10 +96,6 @@ export class GameManager {
 
   // 船员系统
   crewMembers: CrewMember[] = [];
-
-  // 通讯系统
-  commEvents: CommEvent[] = [];
-  lastCommScanTime: number = 0;
 
   // 研究系统
   researchProjects: ResearchProject[] = [];
@@ -161,6 +154,11 @@ export class GameManager {
   initPlayerCrew() {
     const playerCrew = createPlayerCrew(this.playerName, this.player.level);
     this.crewMembers.push(playerCrew);
+
+    // 给新玩家初始经验书
+    this.inventory.addItem('exp_book_small', 10);
+    this.inventory.addItem('exp_book_medium', 5);
+    this.inventory.addItem('exp_book_large', 2);
   }
 
   setPlayerName(name: string): void {
@@ -287,36 +285,19 @@ export class GameManager {
 
   // 更新任务进度
   updateQuestProgress(conditionType: QuestConditionType, targetId: string, amount: number = 1): void {
-    console.log('[任务调试] updateQuestProgress 被调用', { conditionType, targetId, amount });
-    console.log('[任务调试] 当前任务数量:', this.quests.size);
-
     this.quests.forEach(quest => {
-      console.log('[任务调试] 检查任务:', quest.id, '状态:', quest.status, '条件数量:', quest.conditions.length);
-
       if (quest.status !== QuestStatus.ACTIVE) {
-        console.log('[任务调试] 任务状态不是 ACTIVE，跳过');
         return;
       }
 
       quest.conditions.forEach(condition => {
-        console.log('[任务调试] 检查条件:', {
-          conditionType: condition.conditionType,
-          targetId: condition.targetId,
-          currentAmount: condition.currentAmount,
-          requiredAmount: condition.requiredAmount
-        });
-
         if (condition.conditionType === conditionType &&
           (condition.targetId === targetId || condition.targetId === 'any')) {
-          console.log('[任务调试] 条件匹配，更新进度');
-
-          // 对于 REACH_STAGE，设置为当前关卡数而不是累加
           if (conditionType === QuestConditionType.REACH_STAGE) {
             condition.currentAmount = Math.max(condition.currentAmount, amount);
           } else {
             condition.updateProgress(amount);
           }
-          console.log('[任务调试] 更新后进度:', condition.currentAmount, '/', condition.requiredAmount);
 
           if (quest.isCompleted()) {
             quest.complete();
@@ -891,8 +872,6 @@ export class GameManager {
       autoCollectSystem: this.autoCollectSystem.serialize(),
       baseFacilitySystem: this.baseFacilitySystem.serialize(),
       crewMembers: this.crewMembers.map(c => serializeCrewMember(c)),
-      commEvents: this.commEvents.map(e => serializeCommEvent(e)),
-      lastCommScanTime: this.lastCommScanTime,
       researchProjects: this.researchProjects.map(p => serializeResearchProject(p)),
       completedResearch: this.completedResearch,
       miningTasks: this.miningTasks.map(t => serializeMiningTask(t)),
@@ -910,7 +889,7 @@ export class GameManager {
       lastRuinResetDate: this.lastRuinResetDate,
       lastSaveTime: Date.now(),
       endlessStageLevel: this.endlessStageLevel,
-      endlessWaveNumber: this.endlessWaveNumber,
+      originEssence: this.originEssence,
     };
   }
 
@@ -952,17 +931,6 @@ export class GameManager {
       if (playerCrew && playerCrew.battleSlot === 0) {
         playerCrew.battleSlot = 1;
       }
-    }
-
-    // 加载通讯事件
-    if (state.commEvents) {
-      this.commEvents = state.commEvents
-        .map(e => deserializeCommEvent(e))
-        .filter(e => !isEventExpired(e));
-    }
-
-    if (state.lastCommScanTime) {
-      this.lastCommScanTime = state.lastCommScanTime;
     }
 
     // 加载研究项目
@@ -1049,8 +1017,8 @@ export class GameManager {
       this.endlessStageLevel = state.endlessStageLevel;
     }
 
-    if (state.endlessWaveNumber !== undefined) {
-      this.endlessWaveNumber = state.endlessWaveNumber;
+    if (state.originEssence !== undefined) {
+      this.originEssence = state.originEssence;
     }
 
     this.day = state.day;
@@ -1305,14 +1273,31 @@ export class GameManager {
 
   // ========== 船员系统 ==========
 
-  // 获取船员舱最大容量
+  // 添加船员
+  addCrewMember(crew: CrewMember): { success: boolean; message: string } {
+    const capacity = this.getCrewCapacity();
+    if (this.crewMembers.length >= capacity) {
+      return { success: false, message: `船员舱已满，当前容量: ${capacity}人` };
+    }
+    this.crewMembers.push(crew);
+    return { success: true, message: `成功招募 ${crew.name}` };
+  }
+
+  // 获取船员容量
   getCrewCapacity(): number {
-    return 8; // 固定8人容量
+    return 10000;
   }
 
   // 获取所有船员
   getCrewMembers(): CrewMember[] {
-    return this.crewMembers;
+    const rarityOrder: Record<string, number> = { 'S': 0, 'A': 1, 'B': 2 };
+    return [...this.crewMembers].sort((a, b) => {
+      if (a.battleSlot > 0 && b.battleSlot === 0) return -1;
+      if (a.battleSlot === 0 && b.battleSlot > 0) return 1;
+      const rarityDiff = (rarityOrder[a.rarity] ?? 3) - (rarityOrder[b.rarity] ?? 3);
+      if (rarityDiff !== 0) return rarityDiff;
+      return b.level - a.level;
+    });
   }
 
   // 获取战斗阵容（已分配位置的船员）
@@ -1472,138 +1457,44 @@ export class GameManager {
     return { success: true, message: `获得${exp}经验`, ...result };
   }
 
-  // ========== 通讯系统 ==========
+  // ========== 经验书系统 ==========
 
-  // 获取通讯阵列等级
-  getCommLevel(): number {
-    return this.getFacilityLevel(FacilityType.COMM);
+  // 经验书ID映射
+  private readonly EXP_BOOK_IDS: Record<string, string> = {
+    'small': 'exp_book_small',
+    'medium': 'exp_book_medium',
+    'large': 'exp_book_large',
+  };
+
+  // 获取经验书数量（从inventory）
+  getExpBookCount(bookId: string): number {
+    const itemId = this.EXP_BOOK_IDS[bookId];
+    if (!itemId) return 0;
+    return this.inventory.getItemCount(itemId);
   }
 
-  // 获取当前通讯事件
-  getCommEvents(): CommEvent[] {
-    this.commEvents = this.commEvents.filter(e => !isEventExpired(e));
-    return this.commEvents;
+  // 消耗经验书
+  consumeExpBook(bookId: string, count: number): { success: boolean; message: string } {
+    const itemId = this.EXP_BOOK_IDS[bookId];
+    if (!itemId) {
+      return { success: false, message: '未知经验书类型' };
+    }
+
+    const currentCount = this.inventory.getItemCount(itemId);
+    if (currentCount < count) {
+      return { success: false, message: '经验书不足' };
+    }
+
+    this.inventory.removeItem(itemId, count);
+    return { success: true, message: `消耗了${count}本经验书` };
   }
 
-  // 扫描新信号
-  scanCommSignals(): { success: boolean; message: string; newEvents?: CommEvent[] } {
-    const level = this.getCommLevel();
-    const cooldown = getScanCooldown(level);
-    const now = Date.now();
+  // 添加经验书
+  addExpBook(bookId: string, count: number): void {
+    const itemId = this.EXP_BOOK_IDS[bookId];
+    if (!itemId) return;
 
-    if (now - this.lastCommScanTime < cooldown * 60 * 1000) {
-      const remaining = cooldown * 60 * 1000 - (now - this.lastCommScanTime);
-      const minutes = Math.ceil(remaining / 60000);
-      return { success: false, message: `扫描冷却中，还需${minutes}分钟` };
-    }
-
-    this.lastCommScanTime = now;
-    this.commEvents = this.commEvents.filter(e => !isEventExpired(e));
-
-    const maxEvents = getMaxEvents(level);
-    const currentCount = this.commEvents.length;
-
-    if (currentCount >= maxEvents) {
-      return { success: true, message: '信号列表已满', newEvents: [] };
-    }
-
-    const newEvents: CommEvent[] = [];
-    const numToGenerate = Math.min(2, maxEvents - currentCount);
-
-    for (let i = 0; i < numToGenerate; i++) {
-      if (Math.random() < 0.7) {
-        const event = generateCommEvent(level);
-        if (event) {
-          this.commEvents.push(event);
-          newEvents.push(event);
-        }
-      }
-    }
-
-    if (newEvents.length > 0) {
-      this.addLog('通讯阵列', `扫描发现${newEvents.length}个新信号`);
-    } else {
-      this.addLog('通讯阵列', '扫描完成，未发现新信号');
-    }
-
-    return { success: true, message: `扫描完成，发现${newEvents.length}个新信号`, newEvents };
-  }
-
-  // 响应通讯事件
-  respondToCommEvent(eventId: string): { success: boolean; message: string; rewards?: string } {
-    const eventIndex = this.commEvents.findIndex(e => e.id === eventId);
-
-    if (eventIndex === -1) {
-      return { success: false, message: '事件不存在或已过期' };
-    }
-
-    const event = this.commEvents[eventIndex];
-
-    if (event.responded) {
-      return { success: false, message: '已响应过此事件' };
-    }
-
-    if (isEventExpired(event)) {
-      this.commEvents.splice(eventIndex, 1);
-      return { success: false, message: '事件已过期' };
-    }
-
-    event.responded = true;
-
-    const rewardMessages: string[] = [];
-
-    if (event.rewards.credits && event.rewards.credits > 0) {
-      this.trainCoins += event.rewards.credits;
-      rewardMessages.push(`${event.rewards.credits}信用点`);
-    }
-
-    if (event.rewards.items && event.rewards.items.length > 0) {
-      event.rewards.items.forEach(item => {
-        this.inventory.addItem(item.itemId, item.count);
-        const itemTemplate = getItemTemplate(item.itemId);
-        const itemName = itemTemplate?.name || item.itemId;
-        rewardMessages.push(`${itemName} x${item.count}`);
-      });
-    }
-
-    if (event.rewards.exp && event.rewards.exp > 0) {
-      this.player.addExp(event.rewards.exp);
-      rewardMessages.push(`${event.rewards.exp}经验`);
-    }
-
-    this.addLog('通讯事件', `响应「${event.title}」，获得: ${rewardMessages.join('、')}`);
-
-    this.commEvents.splice(eventIndex, 1);
-
-    return {
-      success: true,
-      message: `成功响应「${event.title}」`,
-      rewards: rewardMessages.join('、'),
-    };
-  }
-
-  // 忽略通讯事件
-  ignoreCommEvent(eventId: string): { success: boolean; message: string } {
-    const eventIndex = this.commEvents.findIndex(e => e.id === eventId);
-
-    if (eventIndex === -1) {
-      return { success: false, message: '事件不存在' };
-    }
-
-    const event = this.commEvents[eventIndex];
-    this.commEvents.splice(eventIndex, 1);
-    this.addLog('通讯事件', `忽略了信号「${event.title}」`);
-
-    return { success: true, message: `已忽略「${event.title}」` };
-  }
-
-  // 获取扫描冷却剩余时间
-  getCommScanCooldown(): number {
-    const level = this.getCommLevel();
-    const cooldown = getScanCooldown(level);
-    const elapsed = Date.now() - this.lastCommScanTime;
-    const remaining = cooldown * 60 * 1000 - elapsed;
-    return Math.max(0, remaining);
+    this.inventory.addItem(itemId, count);
   }
 
   // ========== 研究系统 ==========
@@ -2223,34 +2114,44 @@ export class GameManager {
     return { success: true, message: '分解成功', rewards: rewards.join('、') };
   }
 
-  // 强化芯片副属性
-  enhanceChipItem(chipId: string, subStatIndex: number): { success: boolean; message: string } {
-    const chip = this.chips.find(c => c.id === chipId);
+  // 批量分解芯片
+  decomposeChips(chipIds: string[]): { success: boolean; message: string; rewards?: string; decomposedCount: number } {
+    const rewards: string[] = [];
+    let totalMaterials = 0;
+    let decomposedCount = 0;
 
-    if (!chip) {
-      return { success: false, message: '芯片不存在' };
+    for (const chipId of chipIds) {
+      const chipIndex = this.chips.findIndex(c => c.id === chipId);
+      if (chipIndex === -1) continue;
+
+      const chip = this.chips[chipIndex];
+
+      if (chip.locked) continue;
+      if (this.equippedChips[chip.slot] === chipId) continue;
+
+      const materialReward = {
+        [ChipRarity.RARE]: 1,
+        [ChipRarity.EPIC]: 5,
+        [ChipRarity.LEGENDARY]: 10,
+      }[chip.rarity] || 0;
+
+      totalMaterials += materialReward;
+      this.chips.splice(chipIndex, 1);
+      decomposedCount++;
     }
 
-    const cost = getEnhanceCost(chip);
-
-    if (this.trainCoins < cost.credits) {
-      return { success: false, message: `信用点不足，需要${cost.credits}` };
+    if (decomposedCount === 0) {
+      return { success: false, message: '没有可分解的芯片', decomposedCount: 0 };
     }
 
-    if (!this.inventory.hasItem('mineral_crystal', cost.materials)) {
-      return { success: false, message: `水晶矿不足，需要${cost.materials}个` };
+    if (totalMaterials > 0) {
+      this.inventory.addItem('chip_material', totalMaterials);
+      rewards.push(`${totalMaterials}个芯片材料`);
     }
 
-    this.trainCoins -= cost.credits;
-    this.inventory.removeItem('mineral_crystal', cost.materials);
+    this.addLog('芯片研发', `批量分解了${decomposedCount}个芯片，获得${rewards.join('、')}`);
 
-    const result = enhanceChip(chip, subStatIndex);
-
-    if (result.success) {
-      this.addLog('芯片研发', `强化芯片: ${result.message}`);
-    }
-
-    return result;
+    return { success: true, message: `成功分解${decomposedCount}个芯片`, rewards: rewards.join('、'), decomposedCount };
   }
 
   // 重随单个副属性
@@ -3057,42 +2958,23 @@ export class GameManager {
 
   // 更新遗迹战斗结果（用于战斗界面回调）
   updateRuinBattleResult(ruinId: string, victory: boolean, isFirstClear: boolean): void {
-    console.log(`updateRuinBattleResult: ruinId=${ruinId}, victory=${victory}, isFirstClear=${isFirstClear}`);
-    console.log('this.ruins:', this.ruins);
     const ruin = this.ruins.find(r => r.id === ruinId);
-    console.log('找到的 ruin:', ruin);
     if (!ruin) {
-      console.log('未找到 ruin，返回');
       return;
     }
 
     if (victory) {
-      console.log('胜利，更新状态...');
-      console.log('ruin.type:', ruin.type);
-      console.log('RuinType.RESEARCH_STAR:', RuinType.RESEARCH_STAR);
-      console.log('RuinType.BASE_CORE:', RuinType.BASE_CORE);
-      console.log('比较结果:', ruin.type === RuinType.RESEARCH_STAR, ruin.type === RuinType.BASE_CORE);
-
       ruin.completedCount += 1;
       ruin.completedDifficulty = ruin.currentDifficulty;
-      console.log('completedCount 已增加:', ruin.completedCount);
-      console.log('completedDifficulty 已更新:', ruin.completedDifficulty);
 
       if (!isFirstClear) {
-        console.log('非首通，扣除挑战次数');
         this.dailyRuinAttempts[ruin.type] = (this.dailyRuinAttempts[ruin.type] || 0) + 1;
-      } else {
-        console.log('首通，不扣除挑战次数');
       }
 
       if (ruin.type === RuinType.RESEARCH_STAR || ruin.type === RuinType.BASE_CORE) {
-        console.log('基地核心或科研之星，不提升难度');
         ruin.firstClear = false;
       } else {
-        console.log('提升难度...');
-        console.log('当前难度:', ruin.currentDifficulty);
         const nextDifficulty = getNextDifficulty(ruin.currentDifficulty);
-        console.log('下一难度:', nextDifficulty);
         if (nextDifficulty) {
           ruin.currentDifficulty = nextDifficulty;
           ruin.firstClear = true;
@@ -3102,7 +2984,6 @@ export class GameManager {
         }
       }
     }
-    console.log('updateRuinBattleResult 完成');
   }
 
   // 获取遗迹列表
@@ -4377,7 +4258,7 @@ export class GameManager {
 
     const baseMultiplier = 0.7;
     const stageGrowth = Math.pow(1.18, this.endlessStageLevel - 1);
-    let waveMultiplier = baseMultiplier * stageGrowth + (this.endlessWaveNumber - 1) * 0.04;
+    let waveMultiplier = baseMultiplier * stageGrowth;
     if (this.endlessStageLevel >= 5) {
       waveMultiplier *= 1.3;
     }

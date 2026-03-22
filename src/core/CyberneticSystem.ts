@@ -79,7 +79,7 @@ export const IMPLANT_RARITY_CONFIG: Record<ImplantRarity, { name: string; color:
 };
 
 export const IMPLANT_TEMPLATES: Omit<Implant, 'level'>[] = [
-  // 神经接口 - 唯一提供攻速的部位
+  // 神经接口 - 暴击率+命中+暴击伤害
   {
     id: 'implant_neural_rare',
     type: ImplantType.NEURAL,
@@ -87,8 +87,8 @@ export const IMPLANT_TEMPLATES: Omit<Implant, 'level'>[] = [
     name: '神经加速器',
     description: '提升神经反应速度的植入体',
     maxLevel: 10,
-    baseStats: { speed: 0.5, critRate: 3, hit: 2 },
-    levelScaling: { speed: 0.05, critRate: 0.5, hit: 0.3 },
+    baseStats: { critRate: 3, hit: 2 },
+    levelScaling: { critRate: 0.5, hit: 0.3 },
   },
   {
     id: 'implant_neural_epic',
@@ -97,14 +97,8 @@ export const IMPLANT_TEMPLATES: Omit<Implant, 'level'>[] = [
     name: '量子神经网络',
     description: '利用量子纠缠原理的超前神经接口',
     maxLevel: 15,
-    baseStats: { speed: 1, critRate: 5, critDamage: 10, hit: 3 },
-    levelScaling: { speed: 0.08, critRate: 0.8, critDamage: 1.5, hit: 0.4 },
-    specialEffect: {
-      name: '量子闪避',
-      description: '有概率完全闪避攻击',
-      trigger: 'onHit',
-      effect: 'dodge_chance_10',
-    },
+    baseStats: { critRate: 5, critDamage: 10, hit: 3 },
+    levelScaling: { critRate: 0.8, critDamage: 1.5, hit: 0.4 },
   },
   {
     id: 'implant_neural_legendary',
@@ -113,14 +107,8 @@ export const IMPLANT_TEMPLATES: Omit<Implant, 'level'>[] = [
     name: '虚空神经核心',
     description: '连接虚空意识的终极神经接口',
     maxLevel: 20,
-    baseStats: { speed: 1.5, critRate: 8, critDamage: 15, hit: 5 },
-    levelScaling: { speed: 0.1, critRate: 1, critDamage: 2, hit: 0.5 },
-    specialEffect: {
-      name: '虚空预知',
-      description: '预知敌人攻击轨迹',
-      trigger: 'passive',
-      effect: 'dodge_chance_20',
-    },
+    baseStats: { critRate: 8, critDamage: 15, hit: 5 },
+    levelScaling: { critRate: 1, critDamage: 2, hit: 0.5 },
   },
   // 骨骼强化 - 防御+生命+闪避
   {
@@ -130,8 +118,8 @@ export const IMPLANT_TEMPLATES: Omit<Implant, 'level'>[] = [
     name: '钛合金骨架',
     description: '轻量化的钛合金骨骼替代品',
     maxLevel: 10,
-    baseStats: { defense: 12, hp: 25, dodge: 1 },
-    levelScaling: { defense: 2, hp: 5, dodge: 0.15 },
+    baseStats: { defense: 12, hp: 25, dodge: 0.5 },
+    levelScaling: { defense: 2, hp: 5, dodge: 0.3 },
   },
   {
     id: 'implant_skeletal_epic',
@@ -140,14 +128,8 @@ export const IMPLANT_TEMPLATES: Omit<Implant, 'level'>[] = [
     name: '纳米碳纤维骨骼',
     description: '自修复纳米材料构成的超级骨骼',
     maxLevel: 15,
-    baseStats: { defense: 25, hp: 50, dodge: 2 },
-    levelScaling: { defense: 4, hp: 8, dodge: 0.2 },
-    specialEffect: {
-      name: '自我修复',
-      description: '战斗中持续恢复生命',
-      trigger: 'passive',
-      effect: 'hp_regen_2',
-    },
+    baseStats: { defense: 25, hp: 50, dodge: 1 },
+    levelScaling: { defense: 4, hp: 8, dodge: 0.4 },
   },
   {
     id: 'implant_skeletal_legendary',
@@ -156,14 +138,8 @@ export const IMPLANT_TEMPLATES: Omit<Implant, 'level'>[] = [
     name: '虚空晶骨',
     description: '虚空晶体质构成的永恒骨骼',
     maxLevel: 20,
-    baseStats: { defense: 40, hp: 80, dodge: 3 },
-    levelScaling: { defense: 6, hp: 12, dodge: 0.3 },
-    specialEffect: {
-      name: '虚空护盾',
-      description: '受到致命伤害时触发护盾',
-      trigger: 'passive',
-      effect: 'death_shield_50',
-    },
+    baseStats: { defense: 40, hp: 80, dodge: 2 },
+    levelScaling: { defense: 6, hp: 12, dodge: 0.4 },
   },
   // 肌肉增强 - 攻击+生命+暴击伤害
   {
@@ -185,12 +161,6 @@ export const IMPLANT_TEMPLATES: Omit<Implant, 'level'>[] = [
     maxLevel: 15,
     baseStats: { attack: 28, hp: 20, critDamage: 12 },
     levelScaling: { attack: 5, hp: 4, critDamage: 1.5 },
-    specialEffect: {
-      name: '过载打击',
-      description: '攻击时有概率造成额外伤害',
-      trigger: 'onAttack',
-      effect: 'extra_damage_15',
-    },
   },
   {
     id: 'implant_muscular_legendary',
@@ -201,12 +171,6 @@ export const IMPLANT_TEMPLATES: Omit<Implant, 'level'>[] = [
     maxLevel: 20,
     baseStats: { attack: 45, hp: 30, critDamage: 20 },
     levelScaling: { attack: 7, hp: 5, critDamage: 2.5 },
-    specialEffect: {
-      name: '虚空爆发',
-      description: '攻击时有概率触发虚空能量爆发',
-      trigger: 'onAttack',
-      effect: 'void_burst_25',
-    },
   },
   // 心血管改造 - 生命+防御+攻击
   {
@@ -228,12 +192,6 @@ export const IMPLANT_TEMPLATES: Omit<Implant, 'level'>[] = [
     maxLevel: 15,
     baseStats: { hp: 80, defense: 12, attack: 8 },
     levelScaling: { hp: 12, defense: 2, attack: 1.5 },
-    specialEffect: {
-      name: '能量过载',
-      description: '濒死时触发护盾',
-      trigger: 'passive',
-      effect: 'death_shield_30',
-    },
   },
   {
     id: 'implant_cardio_legendary',
@@ -244,12 +202,6 @@ export const IMPLANT_TEMPLATES: Omit<Implant, 'level'>[] = [
     maxLevel: 20,
     baseStats: { hp: 120, defense: 20, attack: 15 },
     levelScaling: { hp: 15, defense: 3, attack: 2 },
-    specialEffect: {
-      name: '虚空再生',
-      description: '战斗中持续大幅恢复生命',
-      trigger: 'passive',
-      effect: 'hp_regen_5',
-    },
   },
 ];
 

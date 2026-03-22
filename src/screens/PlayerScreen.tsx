@@ -57,7 +57,7 @@ export default function PlayerScreen({ onBack }: PlayerScreenProps) {
   const implantSpeed = implantStats['speed'] || 0;
   const finalAttackSpeed = player.totalAttackSpeed + chipSpeed + implantSpeed;
 
-  const chipCritRate = (chipStatBonus['会心'] || 0);
+  const chipCritRate = (chipStatBonus['暴击率'] || 0);
   const implantCritRate = implantStats['critRate'] || 0;
   const finalCrit = player.totalCrit + chipCritRate + implantCritRate;
 
@@ -352,13 +352,12 @@ export default function PlayerScreen({ onBack }: PlayerScreenProps) {
             <StatItem label="真伤" value={`${Math.floor(player.totalTrueDamage)}%`} color="#ec4899" flex={1} />
           </div>
 
-          {/* 第四行：会心、护心、暴伤、幸运 */}
+          {/* 第四行：暴击率、暴伤、幸运 */}
           <div style={{
             display: 'flex',
             gap: '6px'
           }}>
-            <StatItem label="会心" value={Math.floor(finalCrit)} color="#ef4444" flex={1} />
-            <StatItem label="护心" value={Math.floor(player.totalGuard)} color="#22d3ee" flex={1} />
+            <StatItem label="暴击率" value={`${Math.floor(finalCrit)}%`} color="#ef4444" flex={1} />
             <StatItem label="暴伤" value={`${Math.floor(finalCritDamage)}%`} color="#f472b6" flex={1} />
             <StatItem label="幸运" value={Math.floor(player.totalLuck)} color="#00d4ff" flex={1} />
           </div>
@@ -441,7 +440,7 @@ export default function PlayerScreen({ onBack }: PlayerScreenProps) {
               {Object.entries(implantStats).map(([stat, value]) => (
                 <EquipmentBonusItem
                   key={stat}
-                  label={stat === 'attack' ? '攻击' : stat === 'defense' ? '防御' : stat === 'hp' ? '生命' : stat === 'speed' ? '攻速' : stat === 'critRate' ? '会心' : stat === 'critDamage' ? '暴击伤害' : stat === 'hit' ? '命中' : stat === 'dodge' ? '闪避' : stat}
+                  label={stat === 'attack' ? '攻击' : stat === 'defense' ? '防御' : stat === 'hp' ? '生命' : stat === 'speed' ? '攻速' : stat === 'critRate' ? '暴击率' : stat === 'critDamage' ? '暴击伤害' : stat === 'hit' ? '命中' : stat === 'dodge' ? '闪避' : stat}
                   value={typeof value === 'number' ? parseFloat(value.toFixed(1)) : value}
                   color="#a855f7"
                 />
@@ -472,7 +471,7 @@ export default function PlayerScreen({ onBack }: PlayerScreenProps) {
             maxHpPercent: '最大HP',
             attackPercent: '攻击力',
             defensePercent: '防御力',
-            critRate: '会心',
+            critRate: '暴击率',
             critDamage: '暴击伤害',
             dodgeRate: '闪避',
             speedPercent: '攻速',
@@ -481,7 +480,7 @@ export default function PlayerScreen({ onBack }: PlayerScreenProps) {
             defense: '防御',
             hp: '生命',
             speed: '攻速',
-            crit: '会心',
+            crit: '暴击率',
             hit: '命中',
             dodge: '闪避',
           };

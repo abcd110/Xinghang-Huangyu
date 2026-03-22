@@ -82,14 +82,17 @@ export function ConfirmDialog({ show, title, content, onConfirm, onCancel }: Con
 
   return (
     <div style={{
-      position: 'absolute',
-      top: '50%',
-      left: '50%',
-      transform: 'translate(-50%, -50%)',
-      zIndex: 200,
-      width: '280px',
+      position: 'fixed',
+      inset: 0,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 2000,
+      background: 'rgba(0, 0, 0, 0.5)',
     }}>
       <div style={{
+        width: '280px',
+        maxWidth: '90%',
         background: 'rgba(0, 20, 40, 0.98)',
         borderRadius: '12px',
         padding: '16px',

@@ -1,8 +1,7 @@
 export enum CrewRarity {
-  COMMON = 'common',
-  RARE = 'rare',
-  EPIC = 'epic',
-  LEGENDARY = 'legendary',
+  B = 'B',
+  A = 'A',
+  S = 'S',
 }
 
 export enum CrewRole {
@@ -15,7 +14,6 @@ export enum CrewRole {
 
 export enum RecruitType {
   NORMAL = 'normal',
-  LIMITED = 'limited',
 }
 
 export interface CrewStats {
@@ -49,17 +47,23 @@ export interface CrewDefinition {
 
 export interface CrewMember {
   id: string;
-  crewDefId: string;
+  crewDefId?: string;
   name: string;
   rarity: CrewRarity;
   role: CrewRole;
   level: number;
-  exp: number;
-  expToNext: number;
+  exp?: number;
+  expToNext?: number;
   stats: CrewStats;
-  skills: CrewSkill[];
+  skills?: CrewSkill[];
   battleSlot: number;
   portrait: string;
+  position?: string;
+  tier?: string;
+  background?: string;
+  star?: number;
+  originEssence?: number;
+  skillLevels?: Record<string, number>;
 }
 
 export interface CrewMemberData {
@@ -74,13 +78,15 @@ export interface CrewMemberData {
   skills: CrewSkill[];
   battleSlot: number;
   portrait: string;
+  star?: number;
+  originEssence?: number;
+  skillLevels?: Record<string, number>;
 }
 
 export const RARITY_CONFIG: Record<CrewRarity, { name: string; color: string; statMultiplier: number }> = {
-  [CrewRarity.COMMON]: { name: '普通', color: '#9ca3af', statMultiplier: 1.0 },
-  [CrewRarity.RARE]: { name: '稀有', color: '#3b82f6', statMultiplier: 1.3 },
-  [CrewRarity.EPIC]: { name: '史诗', color: '#a855f7', statMultiplier: 1.6 },
-  [CrewRarity.LEGENDARY]: { name: '传说', color: '#f59e0b', statMultiplier: 2.0 },
+  [CrewRarity.B]: { name: 'B级', color: '#3b82f6', statMultiplier: 1.0 },
+  [CrewRarity.A]: { name: 'A级', color: '#a855f7', statMultiplier: 1.5 },
+  [CrewRarity.S]: { name: 'S级', color: '#f59e0b', statMultiplier: 2.0 },
 };
 
 export const ROLE_CONFIG: Record<CrewRole, { name: string; icon: string; description: string }> = {
@@ -99,7 +105,7 @@ export const RECRUIT_CONFIG: Record<RecruitType, {
   guaranteeCount: number;
 }> = {
   [RecruitType.NORMAL]: {
-    name: '普通招募',
+    name: '招募',
     ticketId: 'recruit_ticket_normal',
     rarityRates: {
       [CrewRarity.COMMON]: 70,
@@ -109,18 +115,6 @@ export const RECRUIT_CONFIG: Record<RecruitType, {
     },
     guaranteeRarity: CrewRarity.RARE,
     guaranteeCount: 10,
-  },
-  [RecruitType.LIMITED]: {
-    name: '限定招募',
-    ticketId: 'recruit_ticket_limited',
-    rarityRates: {
-      [CrewRarity.COMMON]: 50,
-      [CrewRarity.RARE]: 35,
-      [CrewRarity.EPIC]: 12,
-      [CrewRarity.LEGENDARY]: 3,
-    },
-    guaranteeRarity: CrewRarity.EPIC,
-    guaranteeCount: 20,
   },
 };
 
@@ -137,7 +131,7 @@ function generateCrewId(): string {
 export function getRarityByRoll(roll: number, recruitType: RecruitType): CrewRarity {
   const config = RECRUIT_CONFIG[recruitType];
   let cumulative = 0;
-  
+
   const rarities = [CrewRarity.COMMON, CrewRarity.RARE, CrewRarity.EPIC, CrewRarity.LEGENDARY];
   for (const rarity of rarities) {
     cumulative += config.rarityRates[rarity];
@@ -145,7 +139,7 @@ export function getRarityByRoll(roll: number, recruitType: RecruitType): CrewRar
       return rarity;
     }
   }
-  
+
   return CrewRarity.COMMON;
 }
 
@@ -160,11 +154,11 @@ export function getCrewDefinitionsByRarity(rarity: CrewRarity, limitedPool: bool
 export function getRandomCrewDefinition(rarity: CrewRarity, recruitType: RecruitType): CrewDefinition | null {
   const limitedPool = recruitType === RecruitType.LIMITED;
   const candidates = getCrewDefinitionsByRarity(rarity, limitedPool);
-  
+
   if (candidates.length === 0) {
     return null;
   }
-  
+
   return candidates[Math.floor(Math.random() * candidates.length)];
 }
 
@@ -175,7 +169,7 @@ export function calculateExpToNextLevel(level: number): number {
 export function generateCrewFromDefinition(def: CrewDefinition): CrewMember {
   const rarityConfig = RARITY_CONFIG[def.rarity];
   const statMultiplier = rarityConfig.statMultiplier;
-  
+
   const stats: CrewStats = {
     attack: Math.floor(def.baseStats.attack * statMultiplier),
     defense: Math.floor(def.baseStats.defense * statMultiplier),
@@ -184,12 +178,12 @@ export function generateCrewFromDefinition(def: CrewDefinition): CrewMember {
     critRate: Math.floor(def.baseStats.critRate * statMultiplier),
     critDamage: Math.floor(def.baseStats.critDamage * statMultiplier),
   };
-  
+
   const skills: CrewSkill[] = def.skills.map(skill => ({
     ...skill,
     id: `skill_${generateCrewId()}`,
   }));
-  
+
   return {
     id: generateCrewId(),
     crewDefId: def.id,
@@ -203,6 +197,9 @@ export function generateCrewFromDefinition(def: CrewDefinition): CrewMember {
     skills,
     battleSlot: 0,
     portrait: def.portrait,
+    star: 0,
+    originEssence: 0,
+    skillLevels: { basic: 1, skill: 1, ultimate: 1, talent: 1 },
   };
 }
 
@@ -219,7 +216,7 @@ export function generateFallbackCrew(rarity: CrewRarity): CrewMember {
     critRate: 10,
     critDamage: 150,
   };
-  
+
   const statMultiplier = rarityConfig.statMultiplier;
   const stats: CrewStats = {
     attack: Math.floor(baseStats.attack * statMultiplier),
@@ -229,12 +226,12 @@ export function generateFallbackCrew(rarity: CrewRarity): CrewMember {
     critRate: Math.floor(baseStats.critRate * statMultiplier),
     critDamage: Math.floor(baseStats.critDamage * statMultiplier),
   };
-  
+
   const skills: CrewSkill[] = [];
 
   const names = ['阿列克谢', '伊万', '娜塔莎', '维克多', '安娜', '德米特里', '叶卡捷琳娜', '谢尔盖'];
   const name = names[Math.floor(Math.random() * names.length)];
-  
+
   return {
     id: generateCrewId(),
     crewDefId: 'fallback',
@@ -248,6 +245,9 @@ export function generateFallbackCrew(rarity: CrewRarity): CrewMember {
     skills,
     battleSlot: 0,
     portrait: '👤',
+    star: 0,
+    originEssence: 0,
+    skillLevels: { basic: 1, skill: 1, ultimate: 1, talent: 1 },
   };
 }
 
@@ -255,7 +255,7 @@ export function createPlayerCrew(playerName: string, playerLevel: number): CrewM
   const baseAttack = 25 + playerLevel * 5;
   const baseDefense = 20 + playerLevel * 3;
   const baseHp = 150 + playerLevel * 20;
-  
+
   const stats: CrewStats = {
     attack: baseAttack,
     defense: baseDefense,
@@ -264,7 +264,7 @@ export function createPlayerCrew(playerName: string, playerLevel: number): CrewM
     critRate: 15,
     critDamage: 160,
   };
-  
+
   return {
     id: 'player',
     crewDefId: 'player',
@@ -286,6 +286,8 @@ export function createPlayerCrew(playerName: string, playerLevel: number): CrewM
     ],
     battleSlot: 1,
     portrait: '🧑‍✈️',
+    star: 0,
+    originEssence: 0,
   };
 }
 
@@ -296,16 +298,19 @@ export function isPlayerCrew(crewId: string): boolean {
 export function serializeCrewMember(crew: CrewMember): CrewMemberData {
   return {
     id: crew.id,
-    crewDefId: crew.crewDefId,
+    crewDefId: crew.crewDefId || '',
     name: crew.name,
     rarity: crew.rarity,
     role: crew.role,
     level: crew.level,
-    exp: crew.exp,
+    exp: crew.exp || 0,
     stats: crew.stats,
-    skills: crew.skills,
+    skills: crew.skills || [],
     battleSlot: crew.battleSlot,
     portrait: crew.portrait,
+    star: crew.star,
+    originEssence: crew.originEssence,
+    skillLevels: crew.skillLevels,
   };
 }
 
@@ -320,17 +325,17 @@ export function addCrewExp(crew: CrewMember, exp: number): { leveledUp: boolean;
   crew.exp += exp;
   let leveledUp = false;
   let newLevel = crew.level;
-  
+
   while (crew.exp >= crew.expToNext) {
     crew.exp -= crew.expToNext;
     crew.level++;
     crew.expToNext = calculateExpToNextLevel(crew.level);
     leveledUp = true;
     newLevel = crew.level;
-    
+
     const rarityConfig = RARITY_CONFIG[crew.rarity];
     const statMultiplier = rarityConfig.statMultiplier * (1 + (crew.level - 1) * 0.05);
-    
+
     const baseStats: CrewStats = {
       attack: 20,
       defense: 15,
@@ -339,7 +344,7 @@ export function addCrewExp(crew: CrewMember, exp: number): { leveledUp: boolean;
       critRate: 10,
       critDamage: 150,
     };
-    
+
     crew.stats = {
       attack: Math.floor(baseStats.attack * statMultiplier),
       defense: Math.floor(baseStats.defense * statMultiplier),
@@ -349,6 +354,6 @@ export function addCrewExp(crew: CrewMember, exp: number): { leveledUp: boolean;
       critDamage: Math.floor(baseStats.critDamage * statMultiplier),
     };
   }
-  
+
   return { leveledUp, newLevel };
 }
